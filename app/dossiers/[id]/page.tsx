@@ -33,6 +33,11 @@ const statusLabels:Record<string,string>={
   scheduled:'RDV planifié', planned:'RDV planifié', in_progress:'En cours', completed:'Terminé', done:'Terminé',
   paid:'Payé', pending:'En attente', ready:'Prêt', available:'Disponible', cancelled:'Annulé', canceled:'Annulé'
 }
+const purposeLabels:Record<string,string>={sale:'Vente',vente:'Vente',rental:'Location',rent:'Location',location:'Location',works:'Travaux',work:'Travaux',travaux:'Travaux',other:'Autre',autre:'Autre'}
+const labelPurpose=(v?:string|null)=>{
+  const raw=(v||'').trim().toLowerCase()
+  return purposeLabels[raw] || (v||'—')
+}
 const labelStatus=(v?:string|null)=>{
   const raw=(v||'').trim().toLowerCase()
   return statusLabels[raw] || (v?String(v).replaceAll('_',' '):'—')
@@ -53,6 +58,7 @@ const diagnosticLabels:Record<string,string>={
   gaz:'Gaz', gas:'Gaz', plomb:'Plomb / CREP', crep:'Plomb / CREP', termites:'Termites', termite:'Termites',
   carrez:'Loi Carrez', boutin:'Loi Boutin', erp:'ERP', assainissement:'Assainissement', sanitation:'Assainissement'
 }
+const diagnosticChoices=['DPE','Amiante','Électricité','Gaz','Plomb / CREP','Termites','Loi Carrez','Loi Boutin','ERP','Assainissement']
 const normalizeDiagnostic=(name:string)=>{
   const key=name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z]/g,'')
   const found=Object.entries(diagnosticLabels).find(([k])=>key.includes(k))
@@ -111,8 +117,10 @@ export default function DossierPage(){
  const documentCount=documents.length+storageFiles.length
 
  const openEdit=()=>{
+   const rawPurpose=String(value(d.purpose,'' )).trim().toLowerCase()
+   const normalizedPurpose=rawPurpose==='sale'||rawPurpose==='vente'?'sale':rawPurpose==='rental'||rawPurpose==='rent'||rawPurpose==='location'?'rental':rawPurpose==='works'||rawPurpose==='work'||rawPurpose==='travaux'?'works':rawPurpose==='other'||rawPurpose==='autre'?'other':rawPurpose
    setForm({
-     purpose:String(value(d.purpose,'')), property_address:address==='—'?'':String(address), contact_name:String(value(d.contact_name,'')),
+     purpose:normalizedPurpose, property_address:address==='—'?'':String(address), contact_name:String(value(d.contact_name,'')),
      contact_phone:phone==='—'?'':String(phone), contact_email:email==='—'?'':String(email), liciel_number:String(value(d.liciel_number,'')),
      building:building==='—'?'':String(building), staircase:staircase==='—'?'':String(staircase), floor:floor==='—'?'':String(floor), door_number:door==='—'?'':String(door),
      lot_numbers:lots==='—'?'':String(lots), dependencies:dependencies==='—'?'':String(dependencies), key_pickup:keyPickup==='—'?'':String(keyPickup),
@@ -120,6 +128,11 @@ export default function DossierPage(){
    }); setEditError(''); setEditing(true)
  }
  const setField=(key:keyof EditForm,val:string)=>setForm(f=>({...f,[key]:val}))
+ const toggleDiagnostic=(name:string)=>{
+   const current=cleanArray(form.diagnostics).map(normalizeDiagnostic)
+   const next=current.includes(name)?current.filter(x=>x!==name):[...current,name]
+   setField('diagnostics',next.join(', '))
+ }
  const saveEdit=async()=>{
    setSaving(true); setEditError('')
    const payload={
@@ -204,7 +217,7 @@ export default function DossierPage(){
        <div className="card dossier-section">
          <div className="section-heading"><div><span className="section-kicker">INTERVENTION</span><h2>Informations terrain</h2></div><span className="section-badge">À avoir sous la main</span></div>
          <div className="info-grid">
-           <Info label="Objet" val={value(d.purpose)} />
+           <Info label="Objet" val={labelPurpose(d.purpose)} />
            <Info label="Adresse du bien" val={address} copy={()=>copy('bien',address)} copied={copied==='bien'} />
            <Info label="Contact sur place" val={value(d.contact_name)} />
            <Info label="Téléphone" val={phone} href={phone!=='—'?`tel:${String(phone).replace(/\s/g,'')}`:undefined} />
@@ -276,14 +289,15 @@ export default function DossierPage(){
        <div className="edit-modal-head"><div><span className="section-kicker">DOSSIER</span><h2>Modifier les informations terrain</h2></div><button onClick={()=>setEditing(false)}>×</button></div>
        {editError&&<div className="error">{editError}</div>}
        <div className="edit-grid">
-         <EditField label="Objet" value={form.purpose} onChange={v=>setField('purpose',v)}/><EditField label="Adresse du bien" value={form.property_address} onChange={v=>setField('property_address',v)}/>
+         <label className="edit-field"><span>Objet</span><select value={form.purpose} onChange={e=>setField('purpose',e.target.value)} style={{width:'100%',border:'1px solid #cfdce8',borderRadius:11,padding:'12px 13px',background:'#fff'}}><option value="">Choisir…</option><option value="sale">Vente</option><option value="rental">Location</option><option value="works">Travaux</option><option value="other">Autre</option></select></label><EditField label="Adresse du bien" value={form.property_address} onChange={v=>setField('property_address',v)}/>
          <EditField label="Contact" value={form.contact_name} onChange={v=>setField('contact_name',v)}/><EditField label="Téléphone" value={form.contact_phone} onChange={v=>setField('contact_phone',v)}/>
          <EditField label="E-mail" value={form.contact_email} onChange={v=>setField('contact_email',v)}/><EditField label="N° Liciel" value={form.liciel_number} onChange={v=>setField('liciel_number',v)}/>
          <EditField label="Bâtiment" value={form.building} onChange={v=>setField('building',v)}/><EditField label="Cage" value={form.staircase} onChange={v=>setField('staircase',v)}/>
          <EditField label="Étage" value={form.floor} onChange={v=>setField('floor',v)}/><EditField label="Porte" value={form.door_number} onChange={v=>setField('door_number',v)}/>
          <EditField label="Lots" value={form.lot_numbers} onChange={v=>setField('lot_numbers',v)}/><EditField label="Dépendances (séparées par des virgules)" value={form.dependencies} onChange={v=>setField('dependencies',v)}/>
          <EditField label="Récupération des clefs" value={form.key_pickup} onChange={v=>setField('key_pickup',v)}/><EditField label="Stationnement" value={form.parking_instructions} onChange={v=>setField('parking_instructions',v)}/>
-         <EditField wide label="Accès / codes / consignes" value={form.access_instructions} onChange={v=>setField('access_instructions',v)}/><EditField wide label="Diagnostics (séparés par des virgules)" value={form.diagnostics} onChange={v=>setField('diagnostics',v)}/>
+         <EditField wide label="Accès / codes / consignes" value={form.access_instructions} onChange={v=>setField('access_instructions',v)}/>
+         <div className="edit-field wide"><span>Diagnostics commandés</span><div className="diagnostic-grid" style={{marginTop:8}}>{diagnosticChoices.map(name=>{const checked=cleanArray(form.diagnostics).map(normalizeDiagnostic).includes(name);return <label key={name} className="diagnostic-chip" style={{cursor:'pointer'}}><input type="checkbox" checked={checked} onChange={()=>toggleDiagnostic(name)} style={{marginRight:8}}/><b>{name}</b></label>})}</div></div>
        </div>
        <div className="edit-modal-actions"><button className="ghost-btn" onClick={()=>setEditing(false)}>Annuler</button><button className="action-btn primary-action" disabled={saving} onClick={saveEdit}>{saving?'Enregistrement…':'Enregistrer'}</button></div>
      </div>
