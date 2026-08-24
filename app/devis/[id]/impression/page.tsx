@@ -138,17 +138,16 @@ export default function QuotePrintPage() {
         </header>
 
         <section className="quote-parties">
-          <div className="quote-card">
+          <div className="quote-card provider-card">
             <h3>Prestataire</h3>
             <strong>ARIA Diagnostics</strong>
-            <p>18 rue de Budapest<br />94140 Alfortville</p>
-            <p>06 15 70 36 70<br />contact@aria-diagnostics.fr<br />www.aria-diagnostics.fr</p>
+            <p>18 rue de Budapest · 94140 Alfortville</p>
+            <p>06 15 70 36 70 · contact@aria-diagnostics.fr</p>
+            <p>www.aria-diagnostics.fr</p>
             <p className="legal">
-              SASU au capital de 1 000 €<br />
-              SIRET : 988 026 746 00012<br />
-              TVA : FR34 988026746 · APE : 7120B<br />
-              RCP AXA n°10988009704<br />
-              Certification Bureau Veritas
+              SASU au capital de 1 000 € · SIRET 988 026 746 00012<br />
+              TVA FR34 988026746 · APE 7120B<br />
+              RCP AXA n°10988009704 · Certification Bureau Veritas
             </p>
           </div>
 
@@ -247,39 +246,40 @@ export default function QuotePrintPage() {
         .quote-print-toolbar a{color:#0868b8;text-decoration:none;font-weight:700}
         .quote-print-toolbar button{border:0;border-radius:10px;background:#062b59;color:#fff;padding:12px 18px;font-weight:700;cursor:pointer}
         .quote-sheet{width:210mm;max-width:920px;min-height:297mm;margin:0 auto;background:#fff;padding:16mm 17mm 14mm;box-sizing:border-box;box-shadow:0 20px 50px rgba(6,43,89,.12);font-size:13px}
-        .quote-header{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;border-bottom:3px solid #0b6cb8;padding-bottom:16px}
-        .quote-logo{display:block;width:235px;height:auto;max-height:92px;object-fit:contain;object-position:left top}
-        .quote-meta{text-align:right;display:grid;gap:4px;font-size:13px}
-        .quote-meta strong{font-size:14px}
-        .quote-title{font-size:25px;font-weight:800;letter-spacing:1.6px}
-        .quote-meta span{color:#66788c;font-size:13px}
-        .quote-parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px;align-items:start}
-        .quote-card,.property-card{border:1px solid #dce6f0;border-radius:10px;padding:13px}
-        .property-card{margin-top:13px}
-        .quote-card h3,.property-card h3,.quote-note h3,.acceptance h3{margin:0 0 6px;color:#0b6cb8;font-size:10.5px;text-transform:uppercase;letter-spacing:1px}
-        .quote-card>strong,.property-card>strong{font-size:14px}
-        .quote-card p,.property-card p,.quote-note p,.acceptance p{margin:5px 0;line-height:1.32;color:#3f5063;font-size:12.5px}
-        .legal{font-size:9.5px!important;color:#66788c!important;line-height:1.28!important}
-        .quote-lines-wrap{margin-top:18px}
-        .quote-lines{width:100%;border-collapse:collapse;font-size:12.5px}
-        .quote-lines th{background:#062b59;color:#fff;text-align:left;padding:8px 8px;font-size:10.5px}
+        .quote-header{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;border-bottom:3px solid #0b6cb8;padding-bottom:14px}
+        .quote-logo{display:block;width:220px;height:auto;max-height:84px;object-fit:contain;object-position:left top}
+        .quote-meta{text-align:right;display:grid;gap:3px;font-size:12px}
+        .quote-meta strong{font-size:13px}
+        .quote-title{font-size:20px;font-weight:800;letter-spacing:1.2px}
+        .quote-meta span{color:#66788c;font-size:12px}
+        .quote-parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px;align-items:start}
+        .quote-card,.property-card{border:1px solid #dce6f0;border-radius:10px;padding:12px}
+        .provider-card p{margin:3px 0}
+        .property-card{margin-top:12px}
+        .quote-card h3,.property-card h3,.quote-note h3,.acceptance h3{margin:0 0 5px;color:#0b6cb8;font-size:10px;text-transform:uppercase;letter-spacing:.9px}
+        .quote-card>strong,.property-card>strong{font-size:13.5px}
+        .quote-card p,.property-card p,.quote-note p,.acceptance p{margin:4px 0;line-height:1.28;color:#3f5063;font-size:12px}
+        .legal{font-size:9px!important;color:#66788c!important;line-height:1.24!important;margin-top:5px!important}
+        .quote-lines-wrap{margin-top:16px}
+        .quote-lines{width:100%;border-collapse:collapse;font-size:12px}
+        .quote-lines th{background:#062b59;color:#fff;text-align:left;padding:8px;font-size:10px}
         .quote-lines th:nth-child(n+2),.quote-lines td:nth-child(n+2){text-align:right}
-        .quote-lines td{padding:9px 8px;border-bottom:1px solid #e5ecf3}
-        .quote-summary{display:grid;grid-template-columns:1fr 250px;gap:18px;margin-top:18px;align-items:start}
-        .quote-note{padding:12px;border:1px solid #e0e8f0;border-radius:10px}
-        .quote-totals{border:1px solid #dce6f0;border-radius:10px;padding:12px;font-size:12.5px}
+        .quote-lines td{padding:8px;border-bottom:1px solid #e5ecf3}
+        .quote-summary{display:grid;grid-template-columns:1fr 250px;gap:18px;margin-top:16px;align-items:start}
+        .quote-note{padding:11px;border:1px solid #e0e8f0;border-radius:10px}
+        .quote-totals{border:1px solid #dce6f0;border-radius:10px;padding:11px;font-size:12px}
         .quote-totals>div{display:flex;justify-content:space-between;gap:16px;padding:5px 0}
-        .grand-total{border-top:2px solid #062b59;margin-top:6px;padding-top:10px!important;font-size:18px}
-        .grand-total strong{font-size:22px}
-        .acceptance{margin-top:16px;border:1px solid #dce6f0;border-radius:10px;padding:12px;break-inside:avoid}
-        .accept-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-top:10px}
-        .accept-grid span{font-size:9.5px;color:#66788c}
-        .sign-line{height:18px;border-bottom:1px solid #9aa9b8}
+        .grand-total{border-top:2px solid #062b59;margin-top:6px;padding-top:9px!important;font-size:17px}
+        .grand-total strong{font-size:21px}
+        .acceptance{margin-top:14px;border:1px solid #dce6f0;border-radius:10px;padding:11px;break-inside:avoid}
+        .accept-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:9px}
+        .accept-grid span{font-size:9px;color:#66788c}
+        .sign-line{height:17px;border-bottom:1px solid #9aa9b8}
         .signature{grid-column:1/-1}
-        .signature-box{height:42px;border:1px dashed #b8c5d2;border-radius:7px;margin-top:6px}
-        .quote-footer{margin-top:16px;border-top:1px solid #dce6f0;padding-top:8px;display:flex;justify-content:space-between;gap:18px;color:#718096;font-size:8.5px}
+        .signature-box{height:38px;border:1px dashed #b8c5d2;border-radius:7px;margin-top:5px}
+        .quote-footer{margin-top:14px;border-top:1px solid #dce6f0;padding-top:7px;display:flex;justify-content:space-between;gap:18px;color:#718096;font-size:8px}
         @media(max-width:700px){
-          .quote-print-page{padding:0}.quote-sheet{width:100%;padding:24px;min-height:auto;box-shadow:none}.quote-header,.quote-footer{flex-direction:column}.quote-meta{text-align:left}.quote-parties,.quote-summary{grid-template-columns:1fr}.quote-logo{width:210px}.quote-lines{font-size:12px}.quote-lines th,.quote-lines td{padding:9px 5px}.quote-print-toolbar{padding:12px}.accept-grid{grid-template-columns:1fr}
+          .quote-print-page{padding:0}.quote-sheet{width:100%;padding:24px;min-height:auto;box-shadow:none}.quote-header,.quote-footer{flex-direction:column}.quote-meta{text-align:left}.quote-parties,.quote-summary{grid-template-columns:1fr}.quote-logo{width:200px}.quote-lines{font-size:12px}.quote-lines th,.quote-lines td{padding:9px 5px}.quote-print-toolbar{padding:12px}.accept-grid{grid-template-columns:1fr}
         }
         @media print{
           @page{size:A4;margin:0}.no-print{display:none!important}html,body{background:#fff!important}.quote-print-page{padding:0}.quote-sheet{width:210mm;min-height:297mm;max-width:none;margin:0;box-shadow:none;padding:14mm 15mm 12mm}.quote-header,.quote-card,.property-card,.quote-lines tr,.quote-summary,.acceptance,.quote-footer{break-inside:avoid}.quote-logo{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-lines th{print-color-adjust:exact;-webkit-print-color-adjust:exact}
