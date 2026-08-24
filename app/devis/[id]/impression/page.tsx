@@ -252,30 +252,30 @@ export default function QuotePrintPage() {
         .quote-meta{text-align:right;display:grid;gap:5px}
         .quote-title{font-size:30px;font-weight:800;letter-spacing:2px}
         .quote-meta span{color:#66788c}
-        .quote-parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
-        .quote-card,.property-card{border:1px solid #dce6f0;border-radius:10px;padding:15px}
-        .property-card{margin-top:14px}
-        .quote-card h3,.property-card h3,.quote-note h3,.acceptance h3{margin:0 0 7px;color:#0b6cb8;font-size:12px;text-transform:uppercase;letter-spacing:1px}
-        .quote-card p,.property-card p,.quote-note p,.acceptance p{margin:6px 0;line-height:1.38;color:#3f5063}
-        .legal{font-size:11px;color:#66788c!important}
-        .quote-lines-wrap{margin-top:24px}
+        .quote-parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px;align-items:start}
+        .quote-card,.property-card{border:1px solid #dce6f0;border-radius:10px;padding:12px 14px}
+        .property-card{margin-top:12px}
+        .quote-card h3,.property-card h3,.quote-note h3,.acceptance h3{margin:0 0 6px;color:#0b6cb8;font-size:12px;text-transform:uppercase;letter-spacing:1px}
+        .quote-card p,.property-card p,.quote-note p,.acceptance p{margin:4px 0;line-height:1.3;color:#3f5063}
+        .legal{font-size:10.5px;line-height:1.25!important;color:#66788c!important}
+        .quote-lines-wrap{margin-top:20px}
         .quote-lines{width:100%;border-collapse:collapse}
         .quote-lines th{background:#062b59;color:#fff;text-align:left;padding:10px 9px;font-size:12px}
         .quote-lines th:nth-child(n+2),.quote-lines td:nth-child(n+2){text-align:right}
         .quote-lines td{padding:11px 9px;border-bottom:1px solid #e5ecf3}
-        .quote-summary{display:grid;grid-template-columns:1fr 270px;gap:20px;margin-top:22px;align-items:start}
+        .quote-summary{display:grid;grid-template-columns:1fr 270px;gap:20px;margin-top:20px;align-items:start}
         .quote-note{padding:14px;border:1px solid #e0e8f0;border-radius:10px}
         .quote-totals{border:1px solid #dce6f0;border-radius:10px;padding:15px}
         .quote-totals>div{display:flex;justify-content:space-between;gap:18px;padding:6px 0}
         .grand-total{border-top:2px solid #062b59;margin-top:7px;padding-top:13px!important;font-size:24px}
         .grand-total strong{font-size:28px}
-        .acceptance{margin-top:20px;border:1px solid #dce6f0;border-radius:10px;padding:14px;break-inside:avoid}
-        .accept-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;margin-top:12px}
+        .acceptance{margin-top:18px;border:1px solid #dce6f0;border-radius:10px;padding:12px 14px;break-inside:avoid}
+        .accept-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;margin-top:10px}
         .accept-grid span{font-size:11px;color:#66788c}
-        .sign-line{height:22px;border-bottom:1px solid #9aa9b8}
+        .sign-line{height:20px;border-bottom:1px solid #9aa9b8}
         .signature{grid-column:1/-1}
-        .signature-box{height:54px;border:1px dashed #b8c5d2;border-radius:7px;margin-top:7px}
-        .quote-footer{margin-top:22px;border-top:1px solid #dce6f0;padding-top:10px;display:flex;justify-content:space-between;gap:18px;color:#718096;font-size:9.5px}
+        .signature-box{height:48px;border:1px dashed #b8c5d2;border-radius:7px;margin-top:6px}
+        .quote-footer{margin-top:18px;border-top:1px solid #dce6f0;padding-top:9px;display:flex;justify-content:space-between;gap:18px;color:#718096;font-size:9.5px}
         @media(max-width:700px){
           .quote-print-page{padding:0}.quote-sheet{width:100%;padding:24px;min-height:auto;box-shadow:none}.quote-header,.quote-footer{flex-direction:column}.quote-meta{text-align:left}.quote-parties,.quote-summary{grid-template-columns:1fr}.quote-logo{width:210px}.quote-lines{font-size:12px}.quote-lines th,.quote-lines td{padding:9px 5px}.quote-print-toolbar{padding:12px}.accept-grid{grid-template-columns:1fr}
         }
