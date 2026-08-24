@@ -54,7 +54,7 @@ export default function DashboardPage() {
         <div className="quick-grid">
           <Link href="/dossiers" className="card quick"><b>Dossiers en cours</b><span>Ouvrir la liste complète</span></Link>
           <div className="card quick"><b>Devis rapides</b><span>Création bientôt activée</span></div>
-          <div className="card quick"><b>Agenda / RDV</b><span>Planning des interventions</span></div>
+          <Link href="/agenda" className="card quick"><b>Agenda / RDV</b><span>Vue jour et semaine des interventions</span></Link>
           <div className="card quick"><b>Paiements</b><span>Qonto et déblocage rapports</span></div>
         </div>
       </section>
