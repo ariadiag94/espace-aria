@@ -1,5 +1,6 @@
 'use client'
 
+// Printable ARIA quote — clean rebuild after logo asset update.
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
