@@ -233,8 +233,11 @@ export default function QuotePrintPage() {
         </section>
 
         <footer className="quote-footer">
-          <div>ARIA Diagnostics · 18 rue de Budapest, 94140 Alfortville · 06 15 70 36 70 · contact@aria-diagnostics.fr</div>
-          <div>Devis {quote.quote_number}</div>
+          <div className="quote-footer-line" />
+          <div className="quote-footer-content">
+            <div>ARIA Diagnostics · 18 rue de Budapest, 94140 Alfortville · 06 15 70 36 70 · contact@aria-diagnostics.fr</div>
+            <div>Devis {quote.quote_number}</div>
+          </div>
         </footer>
       </article>
 
@@ -245,7 +248,7 @@ export default function QuotePrintPage() {
         .quote-print-toolbar{max-width:920px;margin:0 auto 14px;display:flex;justify-content:space-between;align-items:center}
         .quote-print-toolbar a{color:#0868b8;text-decoration:none;font-weight:700}
         .quote-print-toolbar button{border:0;border-radius:10px;background:#062b59;color:#fff;padding:12px 18px;font-weight:700;cursor:pointer}
-        .quote-sheet{width:210mm;max-width:920px;min-height:297mm;margin:0 auto;background:#fff;padding:16mm 17mm 14mm;box-sizing:border-box;box-shadow:0 20px 50px rgba(6,43,89,.12);font-size:13px}
+        .quote-sheet{position:relative;width:210mm;max-width:920px;min-height:297mm;margin:0 auto;background:#fff;padding:16mm 17mm 24mm;box-sizing:border-box;box-shadow:0 20px 50px rgba(6,43,89,.12);font-size:13px}
         .quote-header{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;border-bottom:3px solid #0b6cb8;padding-bottom:14px}
         .quote-logo{display:block;width:220px;height:auto;max-height:84px;object-fit:contain;object-position:left top}
         .quote-meta{text-align:right;display:grid;gap:3px;font-size:12px}
@@ -277,12 +280,16 @@ export default function QuotePrintPage() {
         .sign-line{height:17px;border-bottom:1px solid #9aa9b8}
         .signature{grid-column:1/-1}
         .signature-box{height:38px;border:1px dashed #b8c5d2;border-radius:7px;margin-top:5px}
-        .quote-footer{margin-top:14px;border-top:1px solid #dce6f0;padding-top:7px;display:flex;justify-content:space-between;gap:18px;color:#718096;font-size:8px}
+        .quote-footer{position:absolute;left:17mm;right:17mm;bottom:10mm;color:#66788c;font-size:8px}
+        .quote-footer-line{height:2px;background:#58c3e5;margin-bottom:7px}
+        .quote-footer-content{display:flex;justify-content:space-between;align-items:center;gap:18px}
+        .quote-footer-content>div:first-child{flex:1}
+        .quote-footer-content>div:last-child{white-space:nowrap}
         @media(max-width:700px){
-          .quote-print-page{padding:0}.quote-sheet{width:100%;padding:24px;min-height:auto;box-shadow:none}.quote-header,.quote-footer{flex-direction:column}.quote-meta{text-align:left}.quote-parties,.quote-summary{grid-template-columns:1fr}.quote-logo{width:200px}.quote-lines{font-size:12px}.quote-lines th,.quote-lines td{padding:9px 5px}.quote-print-toolbar{padding:12px}.accept-grid{grid-template-columns:1fr}
+          .quote-print-page{padding:0}.quote-sheet{width:100%;padding:24px;min-height:auto;box-shadow:none}.quote-header,.quote-footer-content{flex-direction:column}.quote-meta{text-align:left}.quote-parties,.quote-summary{grid-template-columns:1fr}.quote-logo{width:200px}.quote-lines{font-size:12px}.quote-lines th,.quote-lines td{padding:9px 5px}.quote-print-toolbar{padding:12px}.accept-grid{grid-template-columns:1fr}.quote-footer{position:static;margin-top:16px}.quote-footer-content{align-items:flex-start}
         }
         @media print{
-          @page{size:A4;margin:0}.no-print{display:none!important}html,body{background:#fff!important}.quote-print-page{padding:0}.quote-sheet{width:210mm;min-height:297mm;max-width:none;margin:0;box-shadow:none;padding:14mm 15mm 12mm}.quote-header,.quote-card,.property-card,.quote-lines tr,.quote-summary,.acceptance,.quote-footer{break-inside:avoid}.quote-logo{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-lines th{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+          @page{size:A4;margin:0}.no-print{display:none!important}html,body{background:#fff!important}.quote-print-page{padding:0}.quote-sheet{width:210mm;min-height:297mm;max-width:none;margin:0;box-shadow:none;padding:14mm 15mm 24mm}.quote-header,.quote-card,.property-card,.quote-lines tr,.quote-summary,.acceptance{break-inside:avoid}.quote-logo{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-lines th,.quote-footer-line{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-footer{left:15mm;right:15mm;bottom:9mm}
         }
       `}</style>
     </main>
