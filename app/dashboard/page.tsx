@@ -53,7 +53,7 @@ export default function DashboardPage() {
         <div className="section-title"><h2>Accès rapides</h2></div>
         <div className="quick-grid">
           <Link href="/dossiers" className="card quick"><b>Dossiers en cours</b><span>Ouvrir la liste complète</span></Link>
-          <div className="card quick"><b>Devis rapides</b><span>Création bientôt activée</span></div>
+          <Link href="/devis" className="card quick"><b>Devis rapides</b><span>Créer et chiffrer un devis</span></Link>
           <Link href="/agenda" className="card quick"><b>Agenda / RDV</b><span>Vue jour et semaine des interventions</span></Link>
           <div className="card quick"><b>Paiements</b><span>Qonto et déblocage rapports</span></div>
         </div>
