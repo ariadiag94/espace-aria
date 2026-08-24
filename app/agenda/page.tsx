@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { supabase } from '@/lib/supabase'
@@ -83,20 +83,20 @@ export default function AgendaPage(){
       <div style={{paddingBottom:10,borderBottom:'1px solid #edf2f7',marginBottom:10}}><span style={{display:'block',fontSize:11,textTransform:'uppercase',color:isToday?'#0b65b5':'#6f7d90',fontWeight:800}}>{shortDay(day)}</span><b style={{display:'block',fontSize:24,color:'#062b59'}}>{day.getDate()}</b></div>
       {items.length===0?<div style={{fontSize:11,color:'#9aa6b3'}}>Aucun RDV</div>:items.map(a=><WeekCard key={a.id} a={a} dossier={dossierMap.get(a.dossier_id)}/>)}
      </section>})}
-   </div> : <DayView day={selected} items={selectedAppointments} dossierMap={dossierMap}/>} 
+   </div> : <DayView items={selectedAppointments} dossierMap={dossierMap}/>} 
 
-   {view==='week'&&<section style={{marginTop:18}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:9}}><h2 style={{margin:0,color:'#062b59',fontSize:19,textTransform:'capitalize'}}>{fullDateFr(selected)}</h2><span style={{color:'#6f7d90',fontSize:12}}>{selectedAppointments.length} RDV</span></div><DayView day={selected} items={selectedAppointments} dossierMap={dossierMap}/></section>}
+   {view==='week'&&<section style={{marginTop:18}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:9}}><h2 style={{margin:0,color:'#062b59',fontSize:19,textTransform:'capitalize'}}>{fullDateFr(selected)}</h2><span style={{color:'#6f7d90',fontSize:12}}>{selectedAppointments.length} RDV</span></div><DayView items={selectedAppointments} dossierMap={dossierMap}/></section>}
   </main>
  </AppShell>
 }
 
 function WeekCard({a,dossier}:{a:Appointment,dossier?:Dossier}){const raw=appointmentDate(a);return <Link href={`/dossiers/${a.dossier_id}`} onClick={e=>e.stopPropagation()} style={{display:'block',background:'#eef7ff',border:'1px solid #cfe4f5',borderRadius:10,padding:9,marginBottom:8}}><b style={{display:'block',fontSize:12,color:'#07589f'}}>{timeFr(raw)}</b><span style={{display:'block',marginTop:4,fontSize:11,fontWeight:700,color:'#173d63',lineHeight:1.35}}>{dossier?.dossier_name||'Dossier'}</span><span style={{display:'block',marginTop:4,fontSize:10,color:'#6f7d90'}}>{text(dossier?.property_address)}</span></Link>}
 
-function DayView({day,items,dossierMap}:{day:Date,items:Appointment[],dossierMap:Map<string,Dossier>}){if(items.length===0)return <div className="card" style={{padding:22,color:'#6f7d90'}}>Aucune intervention planifiée pour cette journée.</div>;return <div style={{display:'grid',gap:10}}>{items.map(a=>{const d=dossierMap.get(a.dossier_id);const raw=appointmentDate(a);return <div className="card" key={a.id} style={{padding:16,display:'grid',gridTemplateColumns:'95px minmax(0,1fr) auto',gap:16,alignItems:'start'}}>
+function DayView({items,dossierMap}:{items:Appointment[],dossierMap:Map<string,Dossier>}){if(items.length===0)return <div className="card" style={{padding:22,color:'#6f7d90'}}>Aucune intervention planifiée pour cette journée.</div>;return <div style={{display:'grid',gap:10}}>{items.map(a=>{const d=dossierMap.get(a.dossier_id);const raw=appointmentDate(a);return <div className="card" key={a.id} style={{padding:16,display:'grid',gridTemplateColumns:'95px minmax(0,1fr) auto',gap:16,alignItems:'start'}}>
  <div><b style={{fontSize:22,color:'#062b59'}}>{timeFr(raw)}</b>{a.ends_at&&<span style={{display:'block',fontSize:11,color:'#6f7d90',marginTop:3}}>→ {timeFr(a.ends_at)}</span>}<span className="status" style={{marginTop:9}}>{statusLabel(a.status)}</span></div>
  <div><Link href={`/dossiers/${a.dossier_id}`} style={{fontSize:16,fontWeight:800,color:'#062b59'}}>{d?.dossier_name||'Dossier'}</Link><div style={{marginTop:7,color:'#4c6077',fontSize:12}}><b>Adresse :</b> {text(d?.property_address,d?.address)}</div><div style={{marginTop:5,color:'#4c6077',fontSize:12}}><b>Contact :</b> {text(a.contact_name,d?.contact_name)} {text(a.contact_phone,d?.contact_phone)!=='—'&&<>· <a href={`tel:${String(text(a.contact_phone,d?.contact_phone)).replace(/\s/g,'')}`} style={{color:'#0b65b5',fontWeight:700}}>{text(a.contact_phone,d?.contact_phone)}</a></>}</div><div style={{marginTop:5,color:'#4c6077',fontSize:12}}><b>Accès :</b> {text(a.key_pickup,d?.key_pickup)} · {text(a.access_instructions,d?.access_instructions)}</div><div style={{marginTop:5,color:'#4c6077',fontSize:12}}><b>Repères :</b> Bât. {text(d?.building)} · Cage {text(d?.staircase)} · Étage {text(d?.floor)} · Porte {text(d?.door_number)}</div><div style={{marginTop:5,color:'#4c6077',fontSize:12}}><b>Lots / annexes :</b> {text(d?.lot_numbers)} · {text(d?.dependencies)}</div></div>
  <Link href={`/dossiers/${a.dossier_id}`} style={{border:'1px solid #cddbe8',borderRadius:9,padding:'9px 11px',color:'#175d98',fontWeight:700,fontSize:12}}>Ouvrir</Link>
  </div>})}</div>}
 
-const navButton:React.CSSProperties={border:'1px solid #cddbe8',background:'#fff',color:'#174d80',borderRadius:9,padding:'8px 11px',fontWeight:700,cursor:'pointer'}
-const toggleStyle=(active:boolean):React.CSSProperties=>({border:'1px solid '+(active?'#0a5fae':'#cddbe8'),background:active?'#0a5fae':'#fff',color:active?'#fff':'#174d80',borderRadius:9,padding:'9px 13px',fontWeight:800,cursor:'pointer'})
+const navButton:CSSProperties={border:'1px solid #cddbe8',background:'#fff',color:'#174d80',borderRadius:9,padding:'8px 11px',fontWeight:700,cursor:'pointer'}
+const toggleStyle=(active:boolean):CSSProperties=>({border:'1px solid '+(active?'#0a5fae':'#cddbe8'),background:active?'#0a5fae':'#fff',color:active?'#fff':'#174d80',borderRadius:9,padding:'9px 13px',fontWeight:800,cursor:'pointer'})
