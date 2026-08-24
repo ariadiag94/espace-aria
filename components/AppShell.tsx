@@ -22,7 +22,7 @@ export function AppShell({ children, active = 'accueil' }: { children: React.Rea
       {children}
       <nav className="mobile-nav">
         <Link className={active==='accueil'?'active':''} href="/dashboard">Accueil</Link>
-        <Link className={active==='devis'?'active':''} href="/dashboard">Devis</Link>
+        <Link className={active==='agenda'?'active':''} href="/agenda">Agenda</Link>
         <Link className={active==='dossiers'?'active':''} href="/dossiers">Dossiers</Link>
         <Link className={active==='menu'?'active':''} href="/dashboard">Menu</Link>
       </nav>
