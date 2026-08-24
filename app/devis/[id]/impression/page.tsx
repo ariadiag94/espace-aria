@@ -272,12 +272,12 @@ export default function QuotePrintPage() {
         .quote-lines th{background:#062b59;color:#fff;text-align:left;padding:6px 8px;font-size:9.5px}
         .quote-lines th:nth-child(n+2),.quote-lines td:nth-child(n+2){text-align:right}
         .quote-lines td{padding:5px 8px;border-bottom:1px solid #e5ecf3;line-height:1.16}
-        .quote-summary{display:grid;grid-template-columns:1fr 250px;gap:18px;margin-top:14px;align-items:start}
+        .quote-summary{display:grid;grid-template-columns:1fr 230px;gap:16px;margin-top:14px;align-items:start}
         .quote-note{padding:9px 11px;border:1px solid #e0e8f0;border-radius:10px}
-        .quote-totals{border:1px solid #dce6f0;border-radius:10px;padding:11px;font-size:12px}
-        .quote-totals>div{display:flex;justify-content:space-between;gap:16px;padding:5px 0}
-        .grand-total{border-top:2px solid #062b59;margin-top:6px;padding-top:9px!important;font-size:17px}
-        .grand-total strong{font-size:21px}
+        .quote-totals{border:1px solid #dce6f0;border-radius:10px;padding:9px 10px;font-size:10.5px}
+        .quote-totals>div{display:flex;justify-content:space-between;gap:14px;padding:4px 0}
+        .grand-total{border-top:1.5px solid #062b59;margin-top:5px;padding-top:7px!important;font-size:13px}
+        .grand-total strong{font-size:15px}
         .acceptance{margin-top:14px;border:1px solid #dce6f0;border-radius:10px;padding:11px;break-inside:avoid}
         .accept-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:9px}
         .accept-grid span{font-size:9px;color:#66788c}
