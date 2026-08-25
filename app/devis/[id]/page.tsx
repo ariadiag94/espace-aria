@@ -16,7 +16,7 @@ const statusLabel=(s:string)=>({draft:'Brouillon',sent:'Envoyé',accepted:'Accep
 
 export default function QuoteDetailPage(){
  const params=useParams<{id:string}>();const router=useRouter();const id=params.id
- const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);const [sending,setSending]=useState(false);const [error,setError]=useState('');const [sendMessage,setSendMessage]=useState('')
+ const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);const [sending,setSending]=useState(false);const [error,setError]=useState('');const [sendMessage,setSendMessage]=useState('');const [confirmSend,setConfirmSend]=useState(false)
  const [quote,setQuote]=useState<Quote|null>(null);const [dossier,setDossier]=useState<Dossier|null>(null);const [lines,setLines]=useState<Line[]>([]);const [notes,setNotes]=useState('')
 
  const load=async()=>{
@@ -35,13 +35,18 @@ export default function QuoteDetailPage(){
  const addLine=()=>setLines(v=>[...v,{label:'Nouvelle prestation',quantity:1,unit_ttc:0,total_ttc:0,sort_order:v.length}])
  const removeLine=(i:number)=>setLines(v=>v.filter((_,n)=>n!==i).map((l,n)=>({...l,sort_order:n})))
 
+ const persistQuote=async()=>{
+  if(!quote)return false
+  const {error:qErr}=await supabase.from('quotes').update({total_ht:totalHt,total_vat:vat,total_ttc:totalTtc,notes:notes||null}).eq('id',quote.id)
+  if(qErr){setError(qErr.message);return false}
+  const {error:delErr}=await supabase.from('quote_lines').delete().eq('quote_id',quote.id);if(delErr){setError(delErr.message);return false}
+  if(lines.length){const {error:lErr}=await supabase.from('quote_lines').insert(lines.map((l,i)=>({quote_id:quote.id,label:l.label||'Prestation',quantity:Number(l.quantity||0),unit_ttc:Number(l.unit_ttc||0),total_ttc:Number(l.quantity||0)*Number(l.unit_ttc||0),sort_order:i})));if(lErr){setError(lErr.message);return false}}
+  return true
+ }
+
  const save=async()=>{
   if(!quote)return;setSaving(true);setError('');setSendMessage('')
-  const {error:qErr}=await supabase.from('quotes').update({total_ht:totalHt,total_vat:vat,total_ttc:totalTtc,notes:notes||null}).eq('id',quote.id)
-  if(qErr){setError(qErr.message);setSaving(false);return}
-  const {error:delErr}=await supabase.from('quote_lines').delete().eq('quote_id',quote.id);if(delErr){setError(delErr.message);setSaving(false);return}
-  if(lines.length){const {error:lErr}=await supabase.from('quote_lines').insert(lines.map((l,i)=>({quote_id:quote.id,label:l.label||'Prestation',quantity:Number(l.quantity||0),unit_ttc:Number(l.unit_ttc||0),total_ttc:Number(l.quantity||0)*Number(l.unit_ttc||0),sort_order:i})));if(lErr){setError(lErr.message);setSaving(false);return}}
-  setSaving(false);await load()
+  const ok=await persistQuote();setSaving(false);if(ok)await load()
  }
 
  const changeStatus=async(status:'draft'|'sent'|'accepted')=>{
@@ -53,10 +58,16 @@ export default function QuoteDetailPage(){
   setSaving(false);await load()
  }
 
- const sendQuote=async()=>{
-  if(!quote)return
+ const requestSend=()=>{
   if(!dossier?.contact_email){setError('Aucune adresse e-mail n’est renseignée pour le donneur d’ordre.');return}
-  setSending(true);setError('');setSendMessage('')
+  setError('');setSendMessage('');setConfirmSend(true)
+ }
+
+ const sendQuote=async()=>{
+  if(!quote||!dossier?.contact_email)return
+  setConfirmSend(false);setSending(true);setError('');setSendMessage('')
+  const saved=await persistQuote()
+  if(!saved){setSending(false);return}
   const {data:{session}}=await supabase.auth.getSession()
   if(!session){setSending(false);router.replace('/login');return}
   try{
@@ -76,7 +87,7 @@ export default function QuoteDetailPage(){
   <Link href="/devis" className="back">← Retour aux devis</Link>
   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:16,flexWrap:'wrap',margin:'14px 0 18px'}}>
    <div><div className="eyebrow">DEVIS</div><h1 style={{margin:'4px 0 6px'}}>{quote.quote_number}</h1><div style={{display:'flex',gap:9,alignItems:'center',flexWrap:'wrap'}}><span className="status">{statusLabel(quote.status)}</span><span style={{color:'#6f7d90'}}>Créé le {dateFr(quote.created_at)}</span></div></div>
-   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><Link className="ghost-btn" href={`/devis/${quote.id}/impression`}>Aperçu PDF</Link><button className="action-btn primary-action" disabled={sending||saving||!dossier?.contact_email} onClick={sendQuote}>{sending?'Envoi…':'Envoyer le devis'}</button>{quote.status!=='accepted'&&<button className="ghost-btn" disabled={saving||sending} onClick={()=>changeStatus('accepted')}>Marquer accepté</button>}</div>
+   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><Link className="ghost-btn" href={`/devis/${quote.id}/impression`}>Aperçu PDF</Link><button className="action-btn primary-action" disabled={sending||saving||!dossier?.contact_email} onClick={requestSend}>{sending?'Envoi…':quote.status==='sent'?'Renvoyer le devis':'Envoyer le devis'}</button>{quote.status!=='accepted'&&<button className="ghost-btn" disabled={saving||sending} onClick={()=>changeStatus('accepted')}>Marquer accepté</button>}</div>
   </div>
   {error&&<div className="error" style={{marginBottom:14}}>{error}</div>}
   {sendMessage&&<div style={{marginBottom:14,padding:'11px 13px',border:'1px solid #b9e4c7',borderRadius:10,background:'#f1fbf4',color:'#176b35',fontWeight:700}}>{sendMessage}</div>}
@@ -98,5 +109,7 @@ export default function QuoteDetailPage(){
     <section className="card" style={{padding:20}}><div className="eyebrow">STATUT</div><h3 style={{margin:'5px 0 12px',color:'#062b59'}}>{statusLabel(quote.status)}</h3><div style={{display:'grid',gap:8}}><button className="ghost-btn" disabled={saving||sending} onClick={()=>changeStatus('draft')}>Repasser en brouillon</button><button className="ghost-btn" disabled={saving||sending} onClick={()=>changeStatus('sent')}>Devis envoyé</button><button className="action-btn primary-action" disabled={saving||sending} onClick={()=>changeStatus('accepted')}>Devis accepté</button></div></section>
    </aside>
   </div>
+
+  {confirmSend&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setConfirmSend(false)}}><div className="edit-modal" role="dialog" aria-modal="true" aria-label="Confirmer l’envoi du devis" style={{maxWidth:560}}><div className="edit-modal-head"><div><span className="section-kicker">ENVOI DU DEVIS</span><h2>{quote.status==='sent'?'Renvoyer le devis ?':'Envoyer le devis ?'}</h2></div><button onClick={()=>setConfirmSend(false)}>×</button></div><div style={{display:'grid',gap:10}}><p style={{margin:0,color:'#52657a'}}>Le devis <strong style={{color:'#062b59'}}>{quote.quote_number}</strong> sera envoyé à :</p><div style={{padding:'12px 14px',border:'1px solid #dce6f0',borderRadius:11,background:'#f7fafd',fontWeight:800,color:'#062b59'}}>{dossier?.contact_email}</div><p style={{margin:'2px 0 0',fontSize:13,color:'#6f7d90'}}>Les modifications en cours seront enregistrées automatiquement avant l’envoi.</p><p style={{margin:'2px 0 0',fontSize:13,color:'#a45121'}}>La pièce jointe PDF automatique sera activée dans l’étape suivante ; pour l’instant l’e-mail contient le détail du devis.</p></div><div className="edit-modal-actions"><button className="ghost-btn" onClick={()=>setConfirmSend(false)}>Annuler</button><button className="action-btn primary-action" onClick={sendQuote}>{quote.status==='sent'?'Confirmer le renvoi':'Confirmer l’envoi'}</button></div></div></div>}
  </main></AppShell>
 }
