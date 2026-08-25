@@ -9,22 +9,28 @@ import { supabase } from '@/lib/supabase'
 type Quote={id:string;quote_number:string;status:string;total_ht:number;total_vat:number;total_ttc:number;created_at:string;dossier_id:string;property_type?:string|null;property_size?:string|null;quote_kind?:string|null;notes?:string|null}
 type Dossier={id:string;dossier_name:string;status?:string|null;contact_email?:string|null}
 type Line={id?:string;label:string;quantity:number;unit_ttc:number;total_ttc:number;sort_order:number}
+type EmailEvent={id:string;recipient:string;sent_at:string;resend_email_id?:string|null}
 
 const euro=(n:number)=>Number(n||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR'})
 const dateFr=(v:string)=>new Date(v).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})
+const dateTimeFr=(v:string)=>new Date(v).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
 const statusLabel=(s:string)=>({draft:'Brouillon',sent:'Envoyé',accepted:'Accepté',rejected:'Refusé'} as Record<string,string>)[s]||s
 
 export default function QuoteDetailPage(){
  const params=useParams<{id:string}>();const router=useRouter();const id=params.id
  const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);const [sending,setSending]=useState(false);const [error,setError]=useState('');const [sendMessage,setSendMessage]=useState('');const [confirmSend,setConfirmSend]=useState(false)
- const [quote,setQuote]=useState<Quote|null>(null);const [dossier,setDossier]=useState<Dossier|null>(null);const [lines,setLines]=useState<Line[]>([]);const [notes,setNotes]=useState('')
+ const [quote,setQuote]=useState<Quote|null>(null);const [dossier,setDossier]=useState<Dossier|null>(null);const [lines,setLines]=useState<Line[]>([]);const [notes,setNotes]=useState('');const [emailEvents,setEmailEvents]=useState<EmailEvent[]>([])
 
  const load=async()=>{
   const {data:{session}}=await supabase.auth.getSession();if(!session){router.replace('/login');return}
   const {data:q,error:qErr}=await supabase.from('quotes').select('*').eq('id',id).single();if(qErr||!q){setError(qErr?.message||'Devis introuvable.');setLoading(false);return}
   setQuote(q as Quote);setNotes(q.notes||'')
-  const [d,l]=await Promise.all([supabase.from('dossiers').select('id,dossier_name,status,contact_email').eq('id',q.dossier_id).single(),supabase.from('quote_lines').select('*').eq('quote_id',id).order('sort_order',{ascending:true})])
-  if(d.data)setDossier(d.data as Dossier);if(l.data)setLines((l.data as Line[]).map((x,i)=>({...x,sort_order:i})))
+  const [d,l,e]=await Promise.all([
+   supabase.from('dossiers').select('id,dossier_name,status,contact_email').eq('id',q.dossier_id).single(),
+   supabase.from('quote_lines').select('*').eq('quote_id',id).order('sort_order',{ascending:true}),
+   supabase.from('quote_email_events').select('id,recipient,sent_at,resend_email_id').eq('quote_id',id).order('sent_at',{ascending:false}).limit(10),
+  ])
+  if(d.data)setDossier(d.data as Dossier);if(l.data)setLines((l.data as Line[]).map((x,i)=>({...x,sort_order:i})));if(e.data)setEmailEvents(e.data as EmailEvent[])
   setLoading(false)
  }
  useEffect(()=>{void load()},[id])
@@ -44,10 +50,7 @@ export default function QuoteDetailPage(){
   return true
  }
 
- const save=async()=>{
-  if(!quote)return;setSaving(true);setError('');setSendMessage('')
-  const ok=await persistQuote();setSaving(false);if(ok)await load()
- }
+ const save=async()=>{if(!quote)return;setSaving(true);setError('');setSendMessage('');const ok=await persistQuote();setSaving(false);if(ok)await load()}
 
  const changeStatus=async(status:'draft'|'sent'|'accepted')=>{
   if(!quote)return;setSaving(true);setError('');setSendMessage('')
@@ -58,26 +61,19 @@ export default function QuoteDetailPage(){
   setSaving(false);await load()
  }
 
- const requestSend=()=>{
-  if(!dossier?.contact_email){setError('Aucune adresse e-mail n’est renseignée pour le donneur d’ordre.');return}
-  setError('');setSendMessage('');setConfirmSend(true)
- }
+ const requestSend=()=>{if(!dossier?.contact_email){setError('Aucune adresse e-mail n’est renseignée pour le donneur d’ordre.');return}setError('');setSendMessage('');setConfirmSend(true)}
 
  const sendQuote=async()=>{
   if(!quote||!dossier?.contact_email)return
   setConfirmSend(false);setSending(true);setError('');setSendMessage('')
-  const saved=await persistQuote()
-  if(!saved){setSending(false);return}
-  const {data:{session}}=await supabase.auth.getSession()
-  if(!session){setSending(false);router.replace('/login');return}
+  const saved=await persistQuote();if(!saved){setSending(false);return}
+  const {data:{session}}=await supabase.auth.getSession();if(!session){setSending(false);router.replace('/login');return}
   try{
    const response=await fetch(`/api/devis/${quote.id}/send`,{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`}})
    const data=await response.json().catch(()=>({}))
    if(!response.ok){setError(data?.error||'Échec de l’envoi du devis.');setSending(false);return}
    setSendMessage(`Devis envoyé à ${data.recipient}.`);setSending(false);await load()
-  }catch{
-   setError('Impossible de contacter le service d’envoi.');setSending(false)
-  }
+  }catch{setError('Impossible de contacter le service d’envoi.');setSending(false)}
  }
 
  if(loading)return <AppShell active="devis"><div className="loading">Chargement du devis…</div></AppShell>
@@ -107,6 +103,7 @@ export default function QuoteDetailPage(){
     <section className="card" style={{padding:20}}><div className="eyebrow">DOSSIER</div><h2 style={{margin:'4px 0 10px',color:'#062b59'}}>{dossier?.dossier_name||'Dossier'}</h2><p style={{margin:'0 0 7px',color:'#6f7d90'}}>{quote.property_type==='house'?'Maison':quote.property_type==='apartment'?'Appartement':'Bien'} {quote.property_size?`· ${quote.property_size}`:''}</p><p style={{margin:'0 0 10px',color:dossier?.contact_email?'#52657a':'#a05353',fontSize:13}}>{dossier?.contact_email||'E-mail du donneur d’ordre non renseigné'}</p><Link className="back" href={`/dossiers/${quote.dossier_id}`}>Ouvrir le dossier →</Link></section>
     <section className="card" style={{padding:20}}><div className="eyebrow">TOTAL</div><div style={{display:'grid',gap:8,marginTop:10}}><div style={{display:'flex',justifyContent:'space-between'}}><span>HT</span><b>{euro(totalHt)}</b></div><div style={{display:'flex',justifyContent:'space-between'}}><span>TVA 20 %</span><b>{euro(vat)}</b></div><div style={{height:1,background:'#dce6f0',margin:'5px 0'}}/><div style={{display:'flex',justifyContent:'space-between',fontSize:25,color:'#062b59'}}><strong>TTC</strong><strong>{euro(totalTtc)}</strong></div></div></section>
     <section className="card" style={{padding:20}}><div className="eyebrow">STATUT</div><h3 style={{margin:'5px 0 12px',color:'#062b59'}}>{statusLabel(quote.status)}</h3><div style={{display:'grid',gap:8}}><button className="ghost-btn" disabled={saving||sending} onClick={()=>changeStatus('draft')}>Repasser en brouillon</button><button className="ghost-btn" disabled={saving||sending} onClick={()=>changeStatus('sent')}>Devis envoyé</button><button className="action-btn primary-action" disabled={saving||sending} onClick={()=>changeStatus('accepted')}>Devis accepté</button></div></section>
+    <section className="card" style={{padding:20}}><div className="eyebrow">ENVOIS</div><h3 style={{margin:'5px 0 12px',color:'#062b59'}}>Historique e-mail</h3>{emailEvents.length===0?<p style={{margin:0,color:'#6f7d90',fontSize:13}}>Aucun envoi enregistré pour le moment.</p>:<div style={{display:'grid',gap:10}}>{emailEvents.map(e=><div key={e.id} style={{paddingBottom:10,borderBottom:'1px solid #edf2f7'}}><b style={{display:'block',fontSize:13,color:'#062b59'}}>{dateTimeFr(e.sent_at)}</b><span style={{display:'block',fontSize:12,color:'#6f7d90',marginTop:2}}>{e.recipient}</span></div>)}</div>}<p style={{margin:'10px 0 0',fontSize:11,color:'#8a98a8'}}>L’historique détaillé sera actif dès que la migration e-mail sera appliquée.</p></section>
    </aside>
   </div>
 
