@@ -93,6 +93,13 @@ export async function POST(
     String(dossier.property_address || dossier.dossier_name || 'le bien concerné'),
   )
 
+  const calculatedTotal = Math.round(
+    (lines || []).reduce(
+      (sum, line) => sum + Number(line.quantity || 0) * Number(line.unit_ttc || 0),
+      0,
+    ) * 100,
+  ) / 100
+
   const rows = (lines || [])
     .map((line) => {
       const quantity = Number(line.quantity || 0)
@@ -127,7 +134,7 @@ export async function POST(
         <tbody>${rows}</tbody>
       </table>
       <div style="text-align:right;font-size:16px;color:#062b59;margin:16px 0 24px">
-        Total TTC : <strong>${euro(Number(quote.total_ttc || 0))}</strong>
+        Total TTC : <strong>${euro(calculatedTotal)}</strong>
       </div>
       <p>Nous restons à votre disposition pour toute question concernant ce devis.</p>
       <p style="margin-top:24px">Cordialement,<br><strong>ARIA Diagnostics</strong><br>06 15 70 36 70<br>contact@aria-diagnostics.fr</p>
@@ -138,7 +145,6 @@ export async function POST(
     headers: {
       Authorization: `Bearer ${resendApiKey}`,
       'Content-Type': 'application/json',
-      'Idempotency-Key': `quote-${quote.id}-${Date.now()}`,
     },
     body: JSON.stringify({
       from: 'ARIA Diagnostics <contact@aria-diagnostics.fr>',
@@ -157,19 +163,37 @@ export async function POST(
     )
   }
 
+  const sentAt = new Date().toISOString()
   const { error: quoteUpdateError } = await supabase
     .from('quotes')
-    .update({ status: 'sent' })
+    .update({ status: 'sent', total_ttc: calculatedTotal })
     .eq('id', quote.id)
 
-  if (quoteUpdateError) {
-    return Response.json(
-      { error: `E-mail envoyé, mais statut non mis à jour : ${quoteUpdateError.message}` },
-      { status: 500 },
-    )
-  }
+  const { error: dossierUpdateError } = await supabase
+    .from('dossiers')
+    .update({ status: 'quote_sent' })
+    .eq('id', quote.dossier_id)
 
-  await supabase.from('dossiers').update({ status: 'quote_sent' }).eq('id', quote.dossier_id)
+  // Non bloquant : cette table est ajoutée par la migration dédiée.
+  await supabase.from('quote_email_events').insert({
+    quote_id: quote.id,
+    dossier_id: quote.dossier_id,
+    recipient,
+    resend_email_id: resendData.id || null,
+    sent_at: sentAt,
+  })
 
-  return Response.json({ ok: true, emailId: resendData.id, recipient })
+  const warnings = [
+    quoteUpdateError ? `statut devis non mis à jour : ${quoteUpdateError.message}` : '',
+    dossierUpdateError ? `statut dossier non mis à jour : ${dossierUpdateError.message}` : '',
+  ].filter(Boolean)
+
+  return Response.json({
+    ok: true,
+    sent: true,
+    emailId: resendData.id,
+    recipient,
+    sentAt,
+    warnings,
+  })
 }
