@@ -151,7 +151,7 @@ export default function QuotePrintPage() {
           </div>
 
           <div className="quote-card">
-            <h3>Donneur d’ordre / propriétaire / contact</h3>
+            <h3>À l’attention du donneur d’ordre</h3>
             {dossier?.contact_name ? (
               <>
                 <strong>{dossier.contact_name}</strong>
