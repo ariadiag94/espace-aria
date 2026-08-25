@@ -267,17 +267,17 @@ export default function QuotePrintPage() {
         .quote-note h3+ p{margin-top:0}
         .quote-note p+ p{margin-top:4px}
         .legal{font-size:9px!important;color:#66788c!important;line-height:1.24!important;margin-top:5px!important}
-        .quote-lines-wrap{margin-top:14px}
-        .quote-lines{width:100%;border-collapse:collapse;font-size:11.5px}
-        .quote-lines th{background:#062b59;color:#fff;text-align:left;padding:6px 8px;font-size:9.5px}
+        .quote-lines-wrap{margin-top:12px}
+        .quote-lines{width:100%;border-collapse:collapse;font-size:10.8px}
+        .quote-lines th{background:#062b59;color:#fff;text-align:left;padding:5px 7px;font-size:9.2px;line-height:1.1}
         .quote-lines th:nth-child(n+2),.quote-lines td:nth-child(n+2){text-align:right}
-        .quote-lines td{padding:5px 8px;border-bottom:1px solid #e5ecf3;line-height:1.16}
-        .quote-summary{display:grid;grid-template-columns:1fr 230px;gap:16px;margin-top:14px;align-items:start}
+        .quote-lines td{padding:3px 7px;border-bottom:1px solid #e5ecf3;line-height:1.08}
+        .quote-summary{display:grid;grid-template-columns:1fr 220px;gap:14px;margin-top:12px;align-items:start}
         .quote-note{padding:9px 11px;border:1px solid #e0e8f0;border-radius:10px}
-        .quote-totals{border:1px solid #dce6f0;border-radius:10px;padding:9px 10px;font-size:10.5px}
-        .quote-totals>div{display:flex;justify-content:space-between;gap:14px;padding:4px 0}
-        .grand-total{border-top:1.5px solid #062b59;margin-top:5px;padding-top:7px!important;font-size:13px}
-        .grand-total strong{font-size:15px}
+        .quote-totals{border:1px solid #dce6f0;border-radius:10px;padding:8px 9px;font-size:10px}
+        .quote-totals>div{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
+        .grand-total{border-top:1.5px solid #062b59;margin-top:4px;padding-top:6px!important;font-size:11.5px}
+        .grand-total strong{font-size:13.5px}
         .acceptance{margin-top:14px;border:1px solid #dce6f0;border-radius:10px;padding:11px;break-inside:avoid}
         .accept-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:9px}
         .accept-grid span{font-size:9px;color:#66788c}
@@ -290,7 +290,7 @@ export default function QuotePrintPage() {
         .quote-footer-content>div:first-child{flex:1}
         .quote-footer-content>div:last-child{white-space:nowrap}
         @media(max-width:700px){
-          .quote-print-page{padding:0}.quote-sheet{width:100%;padding:24px;min-height:auto;box-shadow:none}.quote-header,.quote-footer-content{flex-direction:column}.quote-meta{text-align:left}.quote-parties,.quote-summary{grid-template-columns:1fr}.quote-logo{width:200px}.quote-lines{font-size:11.5px}.quote-lines th,.quote-lines td{padding:7px 5px}.quote-print-toolbar{padding:12px}.accept-grid{grid-template-columns:1fr}.quote-footer{position:static;margin-top:16px}.quote-footer-content{align-items:flex-start}
+          .quote-print-page{padding:0}.quote-sheet{width:100%;padding:24px;min-height:auto;box-shadow:none}.quote-header,.quote-footer-content{flex-direction:column}.quote-meta{text-align:left}.quote-parties,.quote-summary{grid-template-columns:1fr}.quote-logo{width:200px}.quote-lines{font-size:10.8px}.quote-lines th,.quote-lines td{padding:5px}.quote-print-toolbar{padding:12px}.accept-grid{grid-template-columns:1fr}.quote-footer{position:static;margin-top:16px}.quote-footer-content{align-items:flex-start}
         }
         @media print{
           @page{size:A4;margin:0}.no-print{display:none!important}html,body{background:#fff!important}.quote-print-page{padding:0}.quote-sheet{width:210mm;min-height:297mm;max-width:none;margin:0;box-shadow:none;padding:14mm 15mm 24mm}.quote-header,.quote-card,.property-card,.quote-lines tr,.quote-summary,.acceptance{break-inside:avoid}.quote-logo{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-lines th,.quote-footer-line{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-footer{left:15mm;right:15mm;bottom:9mm}
