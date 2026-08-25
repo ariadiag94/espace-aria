@@ -60,7 +60,7 @@ export default function QuoteDetailPage(){
   <Link href="/devis" className="back">← Retour aux devis</Link>
   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:16,flexWrap:'wrap',margin:'14px 0 18px'}}>
    <div><div className="eyebrow">DEVIS</div><h1 style={{margin:'4px 0 6px'}}>{quote.quote_number}</h1><div style={{display:'flex',gap:9,alignItems:'center',flexWrap:'wrap'}}><span className="status">{statusLabel(quote.status)}</span><span style={{color:'#6f7d90'}}>Créé le {dateFr(quote.created_at)}</span></div></div>
-   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{quote.status!=='sent'&&<button className="ghost-btn" disabled={saving} onClick={()=>changeStatus('sent')}>Marquer envoyé</button>}{quote.status!=='accepted'&&<button className="action-btn primary-action" disabled={saving} onClick={()=>changeStatus('accepted')}>Marquer accepté</button>}</div>
+   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><Link className="ghost-btn" href={`/devis/${quote.id}/impression`}>Aperçu PDF</Link>{quote.status!=='sent'&&<button className="ghost-btn" disabled={saving} onClick={()=>changeStatus('sent')}>Marquer envoyé</button>}{quote.status!=='accepted'&&<button className="action-btn primary-action" disabled={saving} onClick={()=>changeStatus('accepted')}>Marquer accepté</button>}</div>
   </div>
   {error&&<div className="error" style={{marginBottom:14}}>{error}</div>}
   <div style={{display:'grid',gridTemplateColumns:'minmax(0,1.45fr) minmax(300px,.55fr)',gap:18,alignItems:'start'}}>
