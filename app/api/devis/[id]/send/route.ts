@@ -11,6 +11,21 @@ const escapeHtml = (value: string) =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;')
 
+const resendErrorMessage = (data: any) => {
+  const raw = String(data?.message || data?.error || '').trim()
+  const normalized = raw.toLowerCase()
+
+  if (normalized.includes('domain is not verified') || normalized.includes('verify your domain')) {
+    return 'Domaine d’envoi ARIA non encore vérifié. L’envoi sera disponible après validation DNS.'
+  }
+
+  if (normalized.includes('api key') && (normalized.includes('invalid') || normalized.includes('unauthorized'))) {
+    return 'Le service d’envoi ARIA n’est pas correctement authentifié. Vérifie la configuration Resend.'
+  }
+
+  return raw || 'Échec de l’envoi du devis.'
+}
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -33,7 +48,7 @@ export async function POST(
 
   if (!resendApiKey) {
     return Response.json(
-      { error: 'RESEND_API_KEY n’est pas encore configurée dans Vercel.' },
+      { error: 'Le service d’envoi ARIA n’est pas encore configuré.' },
       { status: 503 },
     )
   }
@@ -158,7 +173,7 @@ export async function POST(
   const resendData = await resendResponse.json().catch(() => ({}))
   if (!resendResponse.ok) {
     return Response.json(
-      { error: resendData?.message || resendData?.error || 'Échec de l’envoi du devis.' },
+      { error: resendErrorMessage(resendData) },
       { status: resendResponse.status },
     )
   }
