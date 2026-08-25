@@ -151,7 +151,7 @@ export default function QuotePrintPage() {
           </div>
 
           <div className="quote-card">
-            <h3>À l’attention du donneur d’ordre</h3>
+            <h3 className="recipient-title">À l’attention du donneur d’ordre</h3>
             {dossier?.contact_name ? (
               <>
                 <strong>{dossier.contact_name}</strong>
@@ -262,6 +262,7 @@ export default function QuotePrintPage() {
         .provider-card .legal{margin-top:3px!important;line-height:1.14!important}
         .property-card{margin-top:12px}
         .quote-card h3,.property-card h3,.quote-note h3,.acceptance h3{margin:0 0 5px;color:#0b6cb8;font-size:10px;text-transform:uppercase;letter-spacing:.9px}
+        .quote-card h3.recipient-title{text-transform:none;letter-spacing:.35px}
         .quote-card>strong,.property-card>strong{font-size:13.5px}
         .quote-card p,.property-card p,.acceptance p{margin:4px 0;line-height:1.28;color:#3f5063;font-size:12px}
         .quote-note p{margin:2px 0;line-height:1.16;color:#3f5063;font-size:10.5px}
