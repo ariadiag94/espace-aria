@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { generateQuotePdf } from '@/lib/quote-pdf'
 
 const euro = (value: number) =>
   Number(value || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
@@ -65,7 +66,7 @@ export async function POST(
 
   const { data: quote, error: quoteError } = await supabase
     .from('quotes')
-    .select('id,quote_number,status,total_ttc,dossier_id')
+    .select('id,quote_number,status,total_ttc,dossier_id,created_at,property_type,property_size,notes')
     .eq('id', id)
     .single()
 
@@ -77,7 +78,7 @@ export async function POST(
     await Promise.all([
       supabase
         .from('dossiers')
-        .select('id,dossier_name,property_address,contact_name,contact_email')
+        .select('id,dossier_name,property_address,contact_name,contact_email,contact_phone')
         .eq('id', quote.dossier_id)
         .single(),
       supabase
@@ -104,9 +105,10 @@ export async function POST(
   }
 
   const contactName = escapeHtml(String(dossier.contact_name || 'Madame, Monsieur'))
-  const propertyAddress = escapeHtml(
-    String(dossier.property_address || dossier.dossier_name || 'le bien concerné'),
+  const rawPropertyAddress = String(
+    dossier.property_address || dossier.dossier_name || 'le bien concerné',
   )
+  const propertyAddress = escapeHtml(rawPropertyAddress)
 
   const calculatedTotal = Math.round(
     (lines || []).reduce(
@@ -136,7 +138,7 @@ export async function POST(
         <div style="font-size:13px;color:#66788c">18 rue de Budapest · 94140 Alfortville · 06 15 70 36 70</div>
       </div>
       <p>Bonjour ${contactName},</p>
-      <p>Veuillez trouver ci-dessous le détail du devis <strong>${escapeHtml(quote.quote_number)}</strong> concernant <strong>${propertyAddress}</strong>.</p>
+      <p>Veuillez trouver ci-joint le devis <strong>${escapeHtml(quote.quote_number)}</strong> concernant <strong>${propertyAddress}</strong>.</p>
       <table style="width:100%;border-collapse:collapse;margin:18px 0;font-size:13px">
         <thead>
           <tr style="background:#dff4fd;color:#062b59">
@@ -151,9 +153,42 @@ export async function POST(
       <div style="text-align:right;font-size:16px;color:#062b59;margin:16px 0 24px">
         Total TTC : <strong>${euro(calculatedTotal)}</strong>
       </div>
+      <p>Le devis complet est joint à cet e-mail au format PDF.</p>
       <p>Nous restons à votre disposition pour toute question concernant ce devis.</p>
       <p style="margin-top:24px">Cordialement,<br><strong>ARIA Diagnostics</strong><br>06 15 70 36 70<br>contact@aria-diagnostics.fr</p>
     </div>`
+
+  let pdfBase64 = ''
+  try {
+    const pdfBytes = await generateQuotePdf({
+      quoteNumber: quote.quote_number,
+      createdAt: quote.created_at,
+      contactName: dossier.contact_name,
+      contactEmail: dossier.contact_email,
+      contactPhone: dossier.contact_phone,
+      propertyAddress: rawPropertyAddress,
+      propertyLabel:
+        quote.property_type === 'house'
+          ? 'Maison'
+          : quote.property_type === 'apartment'
+            ? 'Appartement'
+            : 'Bien',
+      propertySize: quote.property_size,
+      notes: quote.notes,
+      lines: (lines || []).map((line) => ({
+        label: String(line.label || 'Prestation'),
+        quantity: Number(line.quantity || 0),
+        unit_ttc: Number(line.unit_ttc || 0),
+      })),
+    })
+    pdfBase64 = Buffer.from(pdfBytes).toString('base64')
+  } catch (pdfError) {
+    console.error('Quote PDF generation failed', pdfError)
+    return Response.json(
+      { error: 'Le PDF du devis n’a pas pu être généré. L’e-mail n’a pas été envoyé.' },
+      { status: 500 },
+    )
+  }
 
   const resendResponse = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -167,6 +202,12 @@ export async function POST(
       reply_to: 'contact@aria-diagnostics.fr',
       subject: `Votre devis ARIA Diagnostics ${quote.quote_number}`,
       html,
+      attachments: [
+        {
+          filename: `${quote.quote_number}.pdf`,
+          content: pdfBase64,
+        },
+      ],
     }),
   })
 
@@ -189,7 +230,6 @@ export async function POST(
     .update({ status: 'quote_sent' })
     .eq('id', quote.dossier_id)
 
-  // Non bloquant : cette table est ajoutée par la migration dédiée.
   await supabase.from('quote_email_events').insert({
     quote_id: quote.id,
     dossier_id: quote.dossier_id,
@@ -209,6 +249,7 @@ export async function POST(
     emailId: resendData.id,
     recipient,
     sentAt,
+    attachment: `${quote.quote_number}.pdf`,
     warnings,
   })
 }
