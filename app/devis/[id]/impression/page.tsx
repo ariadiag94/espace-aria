@@ -139,7 +139,6 @@ export default function QuotePrintPage() {
 
         <section className="quote-parties">
           <div className="quote-card provider-card">
-            <h3>Prestataire</h3>
             <strong>ARIA Diagnostics</strong>
             <p>18 rue de Budapest · 94140 Alfortville</p>
             <p>06 15 70 36 70 · contact@aria-diagnostics.fr</p>
@@ -152,7 +151,7 @@ export default function QuotePrintPage() {
           </div>
 
           <div className="quote-card">
-            <h3>Donneur d’ordre / contact</h3>
+            <h3>Donneur d’ordre / propriétaire / contact</h3>
             {dossier?.contact_name ? (
               <>
                 <strong>{dossier.contact_name}</strong>
@@ -257,7 +256,10 @@ export default function QuotePrintPage() {
         .quote-meta span{color:#66788c;font-size:12px}
         .quote-parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px;align-items:start}
         .quote-card,.property-card{border:1px solid #dce6f0;border-radius:10px;padding:12px}
-        .provider-card p{margin:3px 0}
+        .provider-card{padding-top:10px;padding-bottom:9px}
+        .provider-card>strong{display:block;margin-bottom:2px;line-height:1.08}
+        .provider-card p{margin:1px 0;line-height:1.12!important}
+        .provider-card .legal{margin-top:3px!important;line-height:1.14!important}
         .property-card{margin-top:12px}
         .quote-card h3,.property-card h3,.quote-note h3,.acceptance h3{margin:0 0 5px;color:#0b6cb8;font-size:10px;text-transform:uppercase;letter-spacing:.9px}
         .quote-card>strong,.property-card>strong{font-size:13.5px}
