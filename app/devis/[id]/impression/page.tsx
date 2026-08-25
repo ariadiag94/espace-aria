@@ -269,7 +269,7 @@ export default function QuotePrintPage() {
         .legal{font-size:9px!important;color:#66788c!important;line-height:1.24!important;margin-top:5px!important}
         .quote-lines-wrap{margin-top:12px}
         .quote-lines{width:100%;border-collapse:collapse;font-size:10.8px}
-        .quote-lines th{background:#58c3e5;color:#062b59;text-align:left;padding:5px 7px;font-size:9.2px;line-height:1.1}
+        .quote-lines th{background:#dff4fd;color:#062b59;text-align:left;padding:5px 7px;font-size:9.2px;line-height:1.1}
         .quote-lines th:nth-child(n+2),.quote-lines td:nth-child(n+2){text-align:right}
         .quote-lines td{padding:3px 7px;border-bottom:1px solid #e5ecf3;line-height:1.08}
         .quote-summary{display:grid;grid-template-columns:1fr 220px;gap:14px;margin-top:12px;align-items:start}
