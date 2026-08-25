@@ -151,7 +151,7 @@ export default function QuotePrintPage() {
           </div>
 
           <div className="quote-card">
-            <h3 className="recipient-title">À l’attention du donneur d’ordre</h3>
+            <h3 className="sentence-title">À l’attention du donneur d’ordre</h3>
             {dossier?.contact_name ? (
               <>
                 <strong>{dossier.contact_name}</strong>
@@ -168,7 +168,7 @@ export default function QuotePrintPage() {
         </section>
 
         <section className="property-card">
-          <h3>Bien concerné par la mission</h3>
+          <h3 className="sentence-title">Bien concerné par la mission</h3>
           <strong>{dossier?.property_address || dossier?.dossier_name || 'Adresse du bien non renseignée'}</strong>
           <p>{propertyLabel}{quote.property_size ? ` · ${quote.property_size}` : ''}</p>
         </section>
@@ -198,7 +198,7 @@ export default function QuotePrintPage() {
 
         <section className="quote-summary">
           <div className="quote-note">
-            <h3>Conditions</h3>
+            <h3 className="sentence-title">Conditions</h3>
             <p>Paiement à réception. Validité du devis : 30 jours à compter de sa date d’émission.</p>
             <p>Les prestations seront réalisées selon le périmètre indiqué ci-dessus et les informations communiquées au moment de la commande.</p>
             {quote.notes ? (
@@ -262,7 +262,7 @@ export default function QuotePrintPage() {
         .provider-card .legal{margin-top:3px!important;line-height:1.14!important}
         .property-card{margin-top:12px}
         .quote-card h3,.property-card h3,.quote-note h3,.acceptance h3{margin:0 0 5px;color:#0b6cb8;font-size:10px;text-transform:uppercase;letter-spacing:.9px}
-        .quote-card h3.recipient-title{text-transform:none;letter-spacing:.35px}
+        h3.sentence-title{text-transform:none;letter-spacing:.35px}
         .quote-card>strong,.property-card>strong{font-size:13.5px}
         .quote-card p,.property-card p,.acceptance p{margin:4px 0;line-height:1.28;color:#3f5063;font-size:12px}
         .quote-note p{margin:2px 0;line-height:1.16;color:#3f5063;font-size:10.5px}
