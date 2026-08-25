@@ -253,7 +253,7 @@ export default function QuotePrintPage() {
         .quote-logo{display:block;width:220px;height:auto;max-height:84px;object-fit:contain;object-position:left top}
         .quote-meta{text-align:right;display:grid;gap:3px;font-size:12px}
         .quote-meta strong{font-size:13px}
-        .quote-title{font-size:20px;font-weight:800;letter-spacing:1.2px}
+        .quote-title{font-size:18px;font-weight:500;letter-spacing:1px}
         .quote-meta span{color:#66788c;font-size:12px}
         .quote-parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px;align-items:start}
         .quote-card,.property-card{border:1px solid #dce6f0;border-radius:10px;padding:12px}
@@ -269,7 +269,7 @@ export default function QuotePrintPage() {
         .legal{font-size:9px!important;color:#66788c!important;line-height:1.24!important;margin-top:5px!important}
         .quote-lines-wrap{margin-top:12px}
         .quote-lines{width:100%;border-collapse:collapse;font-size:10.8px}
-        .quote-lines th{background:#062b59;color:#fff;text-align:left;padding:5px 7px;font-size:9.2px;line-height:1.1}
+        .quote-lines th{background:#58c3e5;color:#062b59;text-align:left;padding:5px 7px;font-size:9.2px;line-height:1.1}
         .quote-lines th:nth-child(n+2),.quote-lines td:nth-child(n+2){text-align:right}
         .quote-lines td{padding:3px 7px;border-bottom:1px solid #e5ecf3;line-height:1.08}
         .quote-summary{display:grid;grid-template-columns:1fr 220px;gap:14px;margin-top:12px;align-items:start}
