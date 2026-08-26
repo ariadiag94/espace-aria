@@ -4,6 +4,14 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import {
+  dpeDocument,
+  generalTerms,
+  hasDpe,
+  interventionTerms,
+  missionDocument,
+  withdrawalDocument,
+} from '@/lib/quote-contract'
 
 type Quote = {
   id: string
@@ -114,6 +122,21 @@ export default function QuotePrintPage() {
       : quote.property_type === 'apartment'
         ? 'Appartement'
         : 'Bien'
+
+  const propertyAddress =
+    dossier?.property_address || dossier?.dossier_name || 'Adresse du bien non renseignée'
+  const contractLines = lines.map((line) => ({
+    label: line.label,
+    quantity: Number(line.quantity || 0),
+    unit_ttc: Number(line.unit_ttc || 0),
+  }))
+  const contractDocuments = [
+    missionDocument(quote.quote_number, propertyAddress, dossier?.contact_name, contractLines),
+    generalTerms,
+    interventionTerms(contractLines),
+    withdrawalDocument,
+    ...(hasDpe(contractLines) ? [dpeDocument] : []),
+  ]
 
   return (
     <main className="quote-print-page">
@@ -240,6 +263,49 @@ export default function QuotePrintPage() {
         </footer>
       </article>
 
+      <section className="contract-documents">
+        {contractDocuments.map((document, documentIndex) => (
+          <article className="quote-sheet contract-sheet" key={document.title}>
+            <header className="contract-header">
+              <div>
+                <img className="contract-logo" src="/logo-aria.svg" alt="ARIA Diagnostics" />
+              </div>
+              <div className="contract-reference">
+                <strong>{quote.quote_number}</strong>
+                <span>{propertyAddress}</span>
+              </div>
+            </header>
+
+            <div className="contract-title-block">
+              <div className="eyebrow">{documentIndex === 0 ? 'DOCUMENT CONTRACTUEL' : 'ANNEXE CONTRACTUELLE'}</div>
+              <h1>{document.title}</h1>
+              {document.subtitle ? <p>{document.subtitle}</p> : null}
+            </div>
+
+            <div className="contract-blocks">
+              {document.blocks.map((block) => (
+                <section className="contract-block" key={block.title}>
+                  <h2>{block.title}</h2>
+                  {block.paragraphs.map((paragraph, paragraphIndex) => (
+                    <p key={`${block.title}-${paragraphIndex}`} className={paragraph.startsWith('•') ? 'contract-bullet' : ''}>
+                      {paragraph || '\u00a0'}
+                    </p>
+                  ))}
+                </section>
+              ))}
+            </div>
+
+            <footer className="quote-footer contract-footer">
+              <div className="quote-footer-line" />
+              <div className="quote-footer-content">
+                <div>ARIA Diagnostics · 18 rue de Budapest, 94140 Alfortville · 06 15 70 36 70 · contact@aria-diagnostics.fr</div>
+                <div>{document.title}</div>
+              </div>
+            </footer>
+          </article>
+        ))}
+      </section>
+
       <style>{`
         body{margin:0;background:#eef3f8;color:#062b59;font-family:Arial,Helvetica,sans-serif}
         .simple-state{padding:30px;font-family:Arial,Helvetica,sans-serif}
@@ -292,11 +358,27 @@ export default function QuotePrintPage() {
         .quote-footer-content{display:flex;justify-content:space-between;align-items:center;gap:18px}
         .quote-footer-content>div:first-child{flex:1}
         .quote-footer-content>div:last-child{white-space:nowrap}
+        .contract-documents{display:grid;gap:22px;margin-top:22px}
+        .contract-sheet{min-height:297mm;padding-top:14mm}
+        .contract-header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;border-bottom:2px solid #0b6cb8;padding-bottom:10px}
+        .contract-logo{display:block;width:150px;height:auto;max-height:56px;object-fit:contain;object-position:left top}
+        .contract-reference{text-align:right;display:grid;gap:4px;max-width:330px;font-size:10px;color:#66788c}
+        .contract-reference strong{font-size:11px;color:#062b59}
+        .contract-title-block{padding:18px 0 10px}
+        .contract-title-block .eyebrow{font-size:9px;font-weight:800;letter-spacing:1px;color:#0b6cb8}
+        .contract-title-block h1{font-size:21px;margin:4px 0 5px;color:#062b59}
+        .contract-title-block p{font-size:11px;margin:0;color:#66788c}
+        .contract-blocks{display:grid;gap:10px}
+        .contract-block{break-inside:avoid;padding-left:12px;border-left:3px solid #58c3e5}
+        .contract-block h2{font-size:12px;margin:0 0 5px;color:#062b59}
+        .contract-block p{font-size:9.5px;line-height:1.38;margin:0 0 5px;color:#3f5063;text-align:justify}
+        .contract-bullet{padding-left:10px;text-indent:-10px}
+        .contract-footer{position:static;margin-top:20px}
         @media(max-width:700px){
           .quote-print-page{padding:0}.quote-sheet{width:100%;padding:24px;min-height:auto;box-shadow:none}.quote-header,.quote-footer-content{flex-direction:column}.quote-meta{text-align:left}.quote-parties,.quote-summary{grid-template-columns:1fr}.quote-logo{width:200px}.quote-lines{font-size:10.8px}.quote-lines th,.quote-lines td{padding:4px 5px}.quote-print-toolbar{padding:12px}.accept-grid{grid-template-columns:1fr}.quote-footer{position:static;margin-top:16px}.quote-footer-content{align-items:flex-start}
         }
         @media print{
-          @page{size:A4;margin:0}.no-print{display:none!important}html,body{background:#fff!important}.quote-print-page{padding:0}.quote-sheet{width:210mm;min-height:297mm;max-width:none;margin:0;box-shadow:none;padding:14mm 15mm 24mm}.quote-header,.quote-card,.property-card,.quote-lines tr,.quote-summary,.acceptance{break-inside:avoid}.quote-logo{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-lines th,.quote-footer-line{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-footer{left:15mm;right:15mm;bottom:9mm}
+          @page{size:A4;margin:0}.no-print{display:none!important}html,body{background:#fff!important}.quote-print-page{padding:0}.quote-sheet{width:210mm;min-height:297mm;max-width:none;margin:0;box-shadow:none;padding:14mm 15mm 24mm}.quote-header,.quote-card,.property-card,.quote-lines tr,.quote-summary,.acceptance,.contract-block{break-inside:avoid}.quote-logo,.contract-logo{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-lines th,.quote-footer-line{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-footer{left:15mm;right:15mm;bottom:9mm}.contract-documents{display:block;margin:0}.contract-sheet{page-break-before:always;break-before:page;height:auto}.contract-footer{position:static;margin-top:18px}
         }
       `}</style>
     </main>
