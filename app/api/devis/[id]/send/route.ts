@@ -78,7 +78,7 @@ export async function POST(
     await Promise.all([
       supabase
         .from('dossiers')
-        .select('id,dossier_name,property_address,contact_name,contact_email,contact_phone')
+        .select('id,dossier_name,property_address,contact_name,contact_email,contact_phone,diagnostics')
         .eq('id', quote.dossier_id)
         .single(),
       supabase
@@ -160,6 +160,13 @@ export async function POST(
 
   let pdfBase64 = ''
   try {
+    const diagnostics = Array.isArray(dossier.diagnostics)
+      ? dossier.diagnostics.map(String).filter(Boolean)
+      : String(dossier.diagnostics || '')
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean)
+
     const pdfBytes = await generateQuotePdf({
       quoteNumber: quote.quote_number,
       createdAt: quote.created_at,
@@ -175,6 +182,7 @@ export async function POST(
             : 'Bien',
       propertySize: quote.property_size,
       notes: quote.notes,
+      diagnostics,
       lines: (lines || []).map((line) => ({
         label: String(line.label || 'Prestation'),
         quantity: Number(line.quantity || 0),
