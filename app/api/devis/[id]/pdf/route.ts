@@ -85,7 +85,10 @@ export async function GET(
       })),
     })
 
-    return new Response(pdfBytes, {
+    const pdfBody = new ArrayBuffer(pdfBytes.byteLength)
+    new Uint8Array(pdfBody).set(pdfBytes)
+
+    return new Response(pdfBody, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
