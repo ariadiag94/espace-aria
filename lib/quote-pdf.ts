@@ -24,6 +24,7 @@ type QuotePdfInput = {
   propertySize?: string | null
   notes?: string | null
   lines: QuotePdfLine[]
+  diagnostics?: string[]
 }
 
 const euro = (value: number) =>
@@ -291,12 +292,18 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   })
 
   const documents: ContractDocument[] = [
-    missionDocument(input.quoteNumber, input.propertyAddress, input.contactName, input.lines),
+    missionDocument(
+      input.quoteNumber,
+      input.propertyAddress,
+      input.contactName,
+      input.lines,
+      input.diagnostics || [],
+    ),
     generalTerms,
-    interventionTerms(input.lines),
+    interventionTerms(input.lines, input.diagnostics || []),
     withdrawalDocument,
   ]
-  if (hasDpe(input.lines)) documents.push(dpeDocument)
+  if (hasDpe(input.lines, input.diagnostics || [])) documents.push(dpeDocument)
 
   const addContractDocument = (document: ContractDocument) => {
     let page = pdf.addPage([595.28, 841.89])
