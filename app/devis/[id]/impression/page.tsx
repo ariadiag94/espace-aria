@@ -34,6 +34,7 @@ type Dossier = {
   contact_name?: string | null
   contact_email?: string | null
   contact_phone?: string | null
+  diagnostics?: string[] | string | null
 }
 
 type Line = {
@@ -90,7 +91,7 @@ export default function QuotePrintPage() {
       const [d, l] = await Promise.all([
         supabase
           .from('dossiers')
-          .select('id,dossier_name,property_address,contact_name,contact_email,contact_phone')
+          .select('id,dossier_name,property_address,contact_name,contact_email,contact_phone,diagnostics')
           .eq('id', q.dossier_id)
           .single(),
         supabase
@@ -130,12 +131,24 @@ export default function QuotePrintPage() {
     quantity: Number(line.quantity || 0),
     unit_ttc: Number(line.unit_ttc || 0),
   }))
+  const dossierDiagnostics = Array.isArray(dossier?.diagnostics)
+    ? dossier.diagnostics.map(String).filter(Boolean)
+    : String(dossier?.diagnostics || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
   const contractDocuments = [
-    missionDocument(quote.quote_number, propertyAddress, dossier?.contact_name, contractLines),
+    missionDocument(
+      quote.quote_number,
+      propertyAddress,
+      dossier?.contact_name,
+      contractLines,
+      dossierDiagnostics,
+    ),
     generalTerms,
-    interventionTerms(contractLines),
+    interventionTerms(contractLines, dossierDiagnostics),
     withdrawalDocument,
-    ...(hasDpe(contractLines) ? [dpeDocument] : []),
+    ...(hasDpe(contractLines, dossierDiagnostics) ? [dpeDocument] : []),
   ]
 
   return (
@@ -242,7 +255,7 @@ export default function QuotePrintPage() {
         <section className="acceptance">
           <div>
             <h3>Bon pour accord</h3>
-            <p>Je reconnais avoir pris connaissance du présent devis et en accepter les conditions.</p>
+            <p>Je reconnais avoir pris connaissance du devis, de l’ordre de mission, des CGV, des CGI et des annexes applicables et en accepter les conditions.</p>
           </div>
           <div className="accept-grid">
             <div><span>Date</span><div className="sign-line" /></div>
@@ -355,11 +368,11 @@ export default function QuotePrintPage() {
         .signature-box{height:38px;border:1px dashed #b8c5d2;border-radius:7px;margin-top:5px}
         .quote-footer{position:absolute;left:17mm;right:17mm;bottom:10mm;color:#66788c;font-size:8px}
         .quote-footer-line{height:2px;background:#58c3e5;margin-bottom:7px}
-        .quote-footer-content{display:flex;justify-content:space-between;align-items:center;gap:18px}
+        .quote-footer-content{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:18px}
         .quote-footer-content>div:first-child{flex:1}
         .quote-footer-content>div:last-child{white-space:nowrap}
         .contract-documents{display:grid;gap:22px;margin-top:22px}
-        .contract-sheet{min-height:297mm;padding-top:14mm}
+        .contract-sheet{min-height:296mm;padding-top:14mm}
         .contract-header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;border-bottom:2px solid #0b6cb8;padding-bottom:10px}
         .contract-logo{display:block;width:150px;height:auto;max-height:56px;object-fit:contain;object-position:left top}
         .contract-reference{text-align:right;display:grid;gap:4px;max-width:330px;font-size:10px;color:#66788c}
@@ -378,7 +391,7 @@ export default function QuotePrintPage() {
           .quote-print-page{padding:0}.quote-sheet{width:100%;padding:24px;min-height:auto;box-shadow:none}.quote-header,.quote-footer-content{flex-direction:column}.quote-meta{text-align:left}.quote-parties,.quote-summary{grid-template-columns:1fr}.quote-logo{width:200px}.quote-lines{font-size:10.8px}.quote-lines th,.quote-lines td{padding:4px 5px}.quote-print-toolbar{padding:12px}.accept-grid{grid-template-columns:1fr}.quote-footer{position:static;margin-top:16px}.quote-footer-content{align-items:flex-start}
         }
         @media print{
-          @page{size:A4;margin:0}.no-print{display:none!important}html,body{background:#fff!important}.quote-print-page{padding:0}.quote-sheet{width:210mm;min-height:297mm;max-width:none;margin:0;box-shadow:none;padding:14mm 15mm 24mm}.quote-header,.quote-card,.property-card,.quote-lines tr,.quote-summary,.acceptance,.contract-block{break-inside:avoid}.quote-logo,.contract-logo{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-lines th,.quote-footer-line{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-footer{left:15mm;right:15mm;bottom:9mm}.contract-documents{display:block;margin:0}.contract-sheet{page-break-before:always;break-before:page;height:auto}.contract-footer{position:static;margin-top:18px}
+          @page{size:A4;margin:0}.no-print{display:none!important}html,body{background:#fff!important}.quote-print-page{padding:0}.quote-sheet{width:210mm;min-height:296mm;max-width:none;margin:0;box-shadow:none;padding:14mm 15mm 24mm}.quote-header,.quote-card,.property-card,.quote-lines tr,.quote-summary,.acceptance,.contract-block{break-inside:avoid}.quote-logo,.contract-logo{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-lines th,.quote-footer-line{print-color-adjust:exact;-webkit-print-color-adjust:exact}.quote-footer{left:15mm;right:15mm;bottom:9mm}.contract-documents{display:block;margin:0}.contract-sheet{page-break-before:always;break-before:page;height:auto}.contract-footer{position:static;margin-top:18px}
         }
       `}</style>
     </main>
