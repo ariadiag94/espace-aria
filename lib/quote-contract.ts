@@ -134,12 +134,16 @@ export const generalTerms: ContractDocument = {
 
 const commonIntervention: ContractBlock[] = [
   {
-    title: 'Dispositions communes',
+    title: 'A. Dispositions communes à toutes les missions',
     paragraphs: [
-      'Le bien doit être identifié sans ambiguïté. Tous les volumes du périmètre — logement, cave, garage, parking, combles, vide sanitaire, chaufferie, locaux techniques, terrasses et annexes — doivent être accessibles.',
-      'Les objets et stockages empêchant l’accès sont déplacés avant la visite lorsque cela peut être réalisé sans danger. Les trappes, placards techniques, coffrets, regards et locaux fermés sont accessibles avec les moyens d’ouverture appropriés.',
-      'ARIA Diagnostics n’est pas tenu d’effectuer un démontage, une dépose, une remise en état ou un déplacement lourd hors du mode opératoire de la mission. Les limites, impossibilités et zones non visitées sont consignées et peuvent nécessiter une contre-visite.',
-      'Le diagnostiqueur peut être accompagné par un examinateur de l’organisme de certification lorsque les règles de certification l’exigent.',
+      '• Le bien doit être identifiable sans ambiguïté : adresse, bâtiment, cage, étage, porte, lot principal et dépendances.',
+      '• Le donneur d’ordre rend accessibles tous les volumes entrant dans le périmètre : logement, cave, garage, parking, combles, vide sanitaire, chaufferie, locaux techniques, terrasses et annexes concernés.',
+      '• Les objets, meubles ou stockages empêchant l’accès doivent être déplacés avant la visite lorsque ce déplacement peut être réalisé sans danger et sans intervention technique.',
+      '• Les trappes, placards techniques, coffrets, regards et locaux fermés doivent être accessibles avec les clés ou moyens d’ouverture appropriés.',
+      '• ARIA Diagnostics n’est pas tenu d’effectuer un démontage, une dépose, une remise en état ou un déplacement lourd qui n’entre pas dans le mode opératoire de la mission.',
+      '• Les limites, impossibilités et zones non visitées sont consignées dans le rapport et peuvent nécessiter une contre-visite.',
+      '• Le diagnostiqueur peut être accompagné par un examinateur de l’organisme de certification lorsque les règles de certification l’exigent.',
+      '• Le donneur d’ordre autorise les opérations de contrôle réglementaires nécessaires à la mission, dans les limites des textes applicables et de l’ordre de mission.',
     ],
   },
 ]
@@ -150,8 +154,11 @@ const diagnosticBlocks: Array<{ keywords: string[]; block: ContractBlock }> = [
     block: {
       title: 'Amiante — vente, DAPP, DTA, avant travaux ou démolition',
       paragraphs: [
-        'Les anciens repérages, DAPP, DTA, diagnostics, plans et informations sur travaux sont transmis lorsqu’ils existent. Pour une mission avant travaux ou démolition, le programme et les zones impactées sont définis précisément.',
-        'Les matériaux ne pouvant être conclus visuellement peuvent nécessiter des prélèvements et analyses. Le refus d’un prélèvement nécessaire, l’impossibilité d’accès ou l’absence de moyen sécurisé peut empêcher de conclure et conduire à un pré-rapport. Les remises en état après sondage ou prélèvement ne sont pas comprises sauf accord exprès.',
+        '• Les anciens repérages, DAPP, DTA, diagnostics vente, plans et informations sur travaux doivent être transmis lorsqu’ils existent.',
+        '• Le périmètre doit être clairement défini. Pour une mission avant travaux ou démolition, le programme et les zones impactées doivent être communiqués avec suffisamment de précision.',
+        '• Les matériaux ou produits ne pouvant être conclus visuellement peuvent nécessiter des prélèvements et analyses. Les frais correspondants sont facturés selon le devis ou le tarif annoncé.',
+        '• Le refus d’un prélèvement nécessaire, l’impossibilité d’accéder à une zone ou l’absence de moyen d’accès sécurisé peut empêcher de conclure et conduire à un pré-rapport ou à une réserve.',
+        '• Les réparations esthétiques ou remises en état consécutives aux sondages ou prélèvements ne sont pas comprises sauf accord exprès.',
       ],
     },
   },
@@ -160,7 +167,9 @@ const diagnosticBlocks: Array<{ keywords: string[]; block: ContractBlock }> = [
     block: {
       title: 'Plomb — CREP ou avant travaux',
       paragraphs: [
-        'Le CREP concerne les revêtements entrant dans son périmètre réglementaire. Les zones inaccessibles ou masquées sont signalées. Les informations sur travaux, peintures, revêtements et anciens constats sont communiquées lorsqu’elles sont disponibles.',
+        '• Le CREP concerne les revêtements entrant dans son périmètre réglementaire. Les zones inaccessibles ou masquées sont signalées.',
+        '• Les informations sur travaux, peintures, revêtements et anciens constats doivent être transmises lorsqu’elles sont disponibles.',
+        '• Pour les missions avant travaux, le périmètre est défini par la nature et l’étendue des travaux communiqués.',
       ],
     },
   },
@@ -169,7 +178,9 @@ const diagnosticBlocks: Array<{ keywords: string[]; block: ContractBlock }> = [
     block: {
       title: 'Termites et état parasitaire',
       paragraphs: [
-        'Les anciens états, traitements, sinistres, travaux bois et suspicions d’infestation sont signalés. Les sondages sont réalisés dans les limites du référentiel, sans démontage destructif hors mission spécifique. Les zones encombrées, doublées, coffrées ou inaccessibles constituent des limites de constat.',
+        '• Les anciens états termites, traitements, sinistres, travaux bois et suspicions d’infestation doivent être signalés.',
+        '• Les sondages mécaniques sont réalisés dans les limites du référentiel applicable, sans démontage destructif sauf mission spécifique.',
+        '• Les zones encombrées, doublées, coffrées, non accessibles ou non visibles constituent des limites de constat.',
       ],
     },
   },
@@ -178,7 +189,9 @@ const diagnosticBlocks: Array<{ keywords: string[]; block: ContractBlock }> = [
     block: {
       title: 'Gaz',
       paragraphs: [
-        'Le compteur, les appareils, robinets, conduites apparentes et locaux concernés doivent être accessibles. Lorsque nécessaire, l’installation doit être alimentée. Une installation coupée, déposée ou hors service peut limiter les contrôles. En cas de danger grave immédiat, la procédure réglementaire de sécurité est appliquée.',
+        '• Le compteur, les appareils, robinets, conduites apparentes et locaux concernés doivent être accessibles.',
+        '• Lorsque cela est nécessaire au diagnostic, l’installation doit être alimentée. Une installation coupée, déposée ou non mise en service peut conduire à des limitations ou à l’impossibilité de réaliser certains contrôles.',
+        '• En cas de danger grave immédiat répondant aux critères réglementaires, le diagnostiqueur applique la procédure de sécurité prévue par le référentiel applicable.',
       ],
     },
   },
@@ -187,7 +200,9 @@ const diagnosticBlocks: Array<{ keywords: string[]; block: ContractBlock }> = [
     block: {
       title: 'Électricité',
       paragraphs: [
-        'Le tableau, les dispositifs de coupure, les locaux et dépendances sont accessibles. L’installation doit être alimentée lorsque nécessaire. Le donneur d’ordre ou l’occupant signale les équipements ne devant pas être interrompus et prend les dispositions nécessaires avant toute coupure.',
+        '• Le tableau, les dispositifs de coupure, les locaux et dépendances relevant du diagnostic doivent être accessibles.',
+        '• Lorsque cela est nécessaire, l’installation doit être alimentée. Une coupure temporaire peut être nécessaire pour certains contrôles.',
+        '• Le donneur d’ordre ou l’occupant doit signaler les équipements qui ne doivent pas être interrompus et prendre les dispositions nécessaires pour éviter toute conséquence d’une coupure.',
       ],
     },
   },
@@ -196,8 +211,11 @@ const diagnosticBlocks: Array<{ keywords: string[]; block: ContractBlock }> = [
     block: {
       title: 'DPE et performance énergétique',
       paragraphs: [
-        'Le donneur d’ordre fournit l’identifiant fiscal du logement lorsqu’il est requis, les anciens DPE, plans, justificatifs de travaux et documents techniques disponibles sur l’enveloppe, les menuiseries et les systèmes.',
-        'Pour une copropriété ou un équipement collectif, les données du syndic, de l’exploitant ou de la chaufferie peuvent être indispensables. Leur absence peut imposer les valeurs conventionnelles prévues par la méthode. Le consentement relatif aux coordonnées du commanditaire est recueilli séparément lorsqu’il est requis.',
+        '• Le donneur d’ordre fournit l’identifiant fiscal du logement lorsqu’il est requis, les anciens DPE, plans, justificatifs de travaux et documents techniques disponibles.',
+        '• Pour l’enveloppe : transmettre les preuves concernant l’isolation, les parois, la toiture, le plancher, les menuiseries et les protections solaires.',
+        '• Pour les systèmes : transmettre les informations disponibles sur le chauffage, l’ECS, la ventilation, la climatisation, la régulation, la production collective, les réseaux et le comptage.',
+        '• Pour une copropriété ou un équipement collectif, les données du syndic, de l’exploitant ou de la chaufferie peuvent être nécessaires. Leur absence peut imposer l’utilisation des valeurs conventionnelles prévues par la méthode.',
+        '• Le consentement relatif à certaines coordonnées du commanditaire est distinct d’un éventuel accord pour une visite de contrôle de certification.',
       ],
     },
   },
@@ -206,7 +224,9 @@ const diagnosticBlocks: Array<{ keywords: string[]; block: ContractBlock }> = [
     block: {
       title: 'Mesurage Loi Carrez ou Boutin',
       paragraphs: [
-        'Le règlement de copropriété, l’état descriptif de division et les plans sont communiqués lorsqu’ils existent. Le donneur d’ordre déclare tous les lots et annexes concernés. Le mesurage ne constitue pas une vérification juridique de la propriété ou de la destination des lots.',
+        '• Le règlement de copropriété, l’état descriptif de division et les plans doivent être communiqués lorsqu’ils existent afin d’identifier les lots et leur consistance juridique.',
+        '• Le donneur d’ordre déclare les lots, caves, greniers, parkings, réserves ou annexes concernés.',
+        '• Le mesurage porte sur les surfaces entrant dans le champ de la loi applicable ; il ne constitue pas une vérification juridique de la propriété ou de la destination des lots.',
       ],
     },
   },
@@ -215,7 +235,8 @@ const diagnosticBlocks: Array<{ keywords: string[]; block: ContractBlock }> = [
     block: {
       title: 'État des risques et pollutions',
       paragraphs: [
-        'L’état est établi à partir des données réglementaires disponibles à sa date de génération et pour l’adresse communiquée. Le donneur d’ordre vérifie que l’adresse, la parcelle et la localisation correspondent exactement au bien.',
+        '• L’état est établi à partir des données réglementaires disponibles à la date de sa génération et pour l’adresse communiquée.',
+        '• Le donneur d’ordre doit vérifier que l’adresse, la parcelle ou la localisation renseignée correspond exactement au bien objet de la transaction.',
       ],
     },
   },
@@ -224,7 +245,23 @@ const diagnosticBlocks: Array<{ keywords: string[]; block: ContractBlock }> = [
     block: {
       title: 'Assainissement',
       paragraphs: [
-        'La mission est limitée aux parties visibles et accessibles et au périmètre commandé. Toute installation non collective, servitude, pompe, relevage ou dispositif particulier est déclaré. Le contrôle ne vaut pas inspection interne des canalisations ni contrôle des ouvrages publics sauf mission spécifique.',
+        '• ARIA Diagnostics intervient uniquement dans le cadre de la mission commandée et sur les parties privatives visibles et accessibles.',
+        '• Le propriétaire doit déclarer toute installation non collective totale ou partielle, ancienne installation, servitude active ou passive, pompe, relevage ou dispositif particulier.',
+        '• Les servitudes doivent être justifiées par les documents disponibles. Leur absence ou leur non-déclaration peut limiter la portée du rapport.',
+        '• Le contrôle ne vaut pas inspection interne de l’état des canalisations, regards ou ouvrages publics sauf mission spécifique.',
+        '• Les points d’eau, regards, évacuations et volumes nécessaires au contrôle doivent être accessibles. Les points non contrôlés sont identifiés et peuvent justifier une contre-visite.',
+        '• Les conclusions sont limitées aux points effectivement identifiés, testés et décrits. Toute information complémentaire susceptible de modifier le résultat doit être communiquée sans délai.',
+      ],
+    },
+  },
+  {
+    keywords: ['avant travaux', 'démolition', 'demolition', 'raat'],
+    block: {
+      title: 'Avant travaux ou démolition',
+      paragraphs: [
+        '• Le donneur d’ordre doit fournir un programme de travaux suffisamment précis, les plans, les zones d’intervention, la nature des démolitions, le phasage et les accès.',
+        '• Le repérage est limité au périmètre défini. Toute modification du programme de travaux peut rendre nécessaire une extension de mission.',
+        '• Les sondages destructifs, moyens d’accès, sécurisation, consignations, démontages ou analyses nécessaires sont définis selon la mission et peuvent faire l’objet d’une facturation distincte.',
       ],
     },
   },
@@ -233,14 +270,16 @@ const diagnosticBlocks: Array<{ keywords: string[]; block: ContractBlock }> = [
 const normalize = (value: string) =>
   value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
-export const hasDpe = (lines: ContractLine[]) =>
-  lines.some((line) => {
-    const label = normalize(line.label)
-    return label.includes('dpe') || label.includes('energetique')
-  })
+export const hasDpe = (lines: ContractLine[], diagnostics: string[] = []) => {
+  const labels = normalize([...lines.map((line) => line.label), ...diagnostics].join(' '))
+  return labels.includes('dpe') || labels.includes('energetique')
+}
 
-export const interventionTerms = (lines: ContractLine[]): ContractDocument => {
-  const labels = normalize(lines.map((line) => line.label).join(' '))
+export const interventionTerms = (
+  lines: ContractLine[],
+  diagnostics: string[] = [],
+): ContractDocument => {
+  const labels = normalize([...lines.map((line) => line.label), ...diagnostics].join(' '))
   const selected = diagnosticBlocks
     .filter(({ keywords }) => keywords.some((keyword) => labels.includes(normalize(keyword))))
     .map(({ block }) => block)
@@ -312,6 +351,7 @@ export const missionDocument = (
   propertyAddress: string,
   contactName: string | null | undefined,
   lines: ContractLine[],
+  diagnostics: string[] = [],
 ): ContractDocument => ({
   title: 'Ordre de mission',
   subtitle: 'Définition contractuelle du périmètre d’intervention',
@@ -325,7 +365,14 @@ export const missionDocument = (
       ],
     },
     {
-      title: 'Prestations commandées',
+      title: 'Diagnostics commandés',
+      paragraphs:
+        diagnostics.length > 0
+          ? diagnostics.map((diagnostic) => `• ${diagnostic}`)
+          : ['• Détail des diagnostics à compléter avant acceptation du devis.'],
+    },
+    {
+      title: 'Tarification',
       paragraphs: lines.map(
         (line) =>
           `• ${line.label} — quantité ${Number(line.quantity || 0).toLocaleString('fr-FR')}`,
