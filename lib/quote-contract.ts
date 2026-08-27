@@ -112,7 +112,7 @@ export const generalTerms: ContractDocument = {
     {
       title: '14. Rétractation du consommateur',
       paragraphs: [
-        'Lorsque le contrat est conclu à distance ou hors établissement avec un consommateur et qu’aucune exception légale n’est applicable, celui-ci dispose du délai légal de rétractation. Le formulaire figure en annexe.',
+        'Lorsque le contrat est conclu à distance ou hors établissement avec un consommateur et qu’aucune exception légale n’est applicable, celui-ci dispose du délai de rétractation de 14 jours. Le formulaire figure en annexe.',
         'Si le consommateur demande expressément le commencement de la prestation avant l’expiration du délai, il reconnaît qu’en cas d’exécution complète il perdra son droit de rétractation et qu’en cas d’exécution partielle un montant proportionné pourra être dû.',
       ],
     },
@@ -309,7 +309,7 @@ export const withdrawalDocument: ContractDocument = {
     {
       title: 'Demande d’exécution anticipée',
       paragraphs: [
-        '□ Je demande expressément que la prestation commence avant l’expiration du délai légal de rétractation.',
+        '□ Je demande expressément que la prestation commence avant l’expiration du délai de rétractation de 14 jours.',
         '□ Je reconnais qu’après exécution complète du contrat je ne pourrai plus exercer mon droit de rétractation et qu’en cas d’exécution partielle un montant proportionné pourra être dû.',
         'Date : ____________________    Signature : ______________________________',
       ],
