@@ -72,9 +72,16 @@ export const buildQuoteSuggestion = (dossier: QuoteAssistantDossier): QuoteSugge
   const normalizedDiagnostics = diagnostics.map(normalize)
   const propertyType = inferPropertyType(dossier) ?? 'apartment'
   const sizeKey = inferSizeKey(dossier, propertyType) ?? '0'
-  const boutin = normalizedDiagnostics.some(value => value.includes('boutin'))
+  const hasBoutin = normalizedDiagnostics.some(value => value.includes('boutin'))
+  // Règle tarifaire ARIA : la Boutin est comprise dans le pack appartement.
+  // Elle ne devient une option facturable que pour une maison.
+  const boutin = propertyType === 'house' && hasBoutin
   const assainissement = normalizedDiagnostics.some(value => value.includes('assain'))
-  const pricedDiagnostics = normalizedDiagnostics.filter(value => !value.includes('boutin') && !value.includes('assain'))
+  const pricedDiagnostics = normalizedDiagnostics.filter(value => {
+    if (value.includes('assain')) return false
+    if (propertyType === 'house' && value.includes('boutin')) return false
+    return true
+  })
   const maxPack = propertyType === 'house' ? 6 : 7
   const packCount = Math.max(2, Math.min(maxPack, pricedDiagnostics.length || 2))
   const address = normalize(String(dossier.property_address ?? ''))
@@ -83,7 +90,8 @@ export const buildQuoteSuggestion = (dossier: QuoteAssistantDossier): QuoteSugge
   const warnings: string[] = []
 
   if (diagnostics.length) reasons.push(`${diagnostics.length} mission(s) détectée(s) dans le dossier`)
-  if (boutin) reasons.push('Option Loi Boutin détectée')
+  if (boutin) reasons.push('Option Loi Boutin détectée pour la maison')
+  if (propertyType === 'apartment' && hasBoutin) reasons.push('Loi Boutin comprise dans le pack appartement')
   if (assainissement) reasons.push('Option assainissement détectée')
   if (proximity) reasons.push('Adresse éligible à la remise proximité')
   if (dossier.dependencies?.trim()) reasons.push('Dépendances signalées : vérifier le périmètre et le prix')
