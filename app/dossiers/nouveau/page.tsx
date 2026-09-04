@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 type FormState = {
   dossier_name: string
   purpose: string
+  property_type: 'apartment' | 'house'
   property_address: string
   contact_name: string
   contact_phone: string
@@ -40,6 +41,7 @@ export default function NewDossierPage() {
   const [form, setForm] = useState<FormState>({
     dossier_name: '',
     purpose: 'sale',
+    property_type: 'house',
     property_address: '',
     contact_name: '',
     contact_phone: '',
@@ -75,7 +77,7 @@ export default function NewDossierPage() {
     setSaving(true)
     const { data: accountSource, error: accountError } = await supabase
       .from('dossiers')
-      .select('account_id')
+      .select('*')
       .not('account_id', 'is', null)
       .limit(1)
       .maybeSingle()
@@ -86,10 +88,54 @@ export default function NewDossierPage() {
       return
     }
 
+    const { data: propertySource, error: propertySourceError } = await supabase
+      .from('properties')
+      .select('*')
+      .eq('id', accountSource.property_id)
+      .maybeSingle()
+
+    if (propertySourceError || !propertySource) {
+      setError(propertySourceError?.message || 'Impossible de préparer la fiche du bien.')
+      setSaving(false)
+      return
+    }
+
+    const propertyColumns = new Set(Object.keys(propertySource))
+    const propertyPayload: Record<string, unknown> = { account_id: accountSource.account_id }
+    const assignKnown = (names: string[], value: unknown) => {
+      names.forEach((name) => {
+        if (propertyColumns.has(name)) propertyPayload[name] = value
+      })
+    }
+    assignKnown(['address', 'property_address', 'full_address', 'address_line1', 'street_address'], form.property_address.trim())
+    assignKnown(['city', 'town'], 'Alfortville')
+    assignKnown(['postal_code', 'zip_code', 'postcode'], '94140')
+    assignKnown(['property_type', 'type'], form.property_type)
+    assignKnown(['name', 'title', 'property_name'], form.dossier_name.trim())
+    const identityColumns = ['created_by', 'user_id', 'owner_id']
+    identityColumns.forEach((name) => {
+      if (propertyColumns.has(name) && propertySource[name] != null) {
+        propertyPayload[name] = propertySource[name]
+      }
+    })
+
+    const { data: property, error: propertyError } = await supabase
+      .from('properties')
+      .insert(propertyPayload)
+      .select('id')
+      .single()
+
+    if (propertyError || !property) {
+      setError(propertyError?.message || 'Impossible de créer la fiche du bien.')
+      setSaving(false)
+      return
+    }
+
     const { data, error: insertError } = await supabase
       .from('dossiers')
       .insert({
         account_id: accountSource.account_id,
+        property_id: property.id,
         dossier_name: form.dossier_name.trim(),
         status: 'draft',
         purpose: form.purpose || null,
@@ -137,6 +183,13 @@ export default function NewDossierPage() {
                 <option value="rental">Location</option>
                 <option value="works">Travaux</option>
                 <option value="other">Autre</option>
+              </select>
+            </label>
+            <label className="edit-field">
+              <span>Type de bien *</span>
+              <select value={form.property_type} onChange={(event) => setField('property_type', event.target.value)}>
+                <option value="house">Maison</option>
+                <option value="apartment">Appartement</option>
               </select>
             </label>
             <label className="edit-field wide">
