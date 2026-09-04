@@ -320,7 +320,7 @@ export const withdrawalDocument: ContractDocument = {
 export const dpeConsentDocument: ContractDocument = {
   title: 'Formulaire de consentement au traitement des données personnelles',
   subtitle:
-    'À l’attention du client commanditaire du diagnostic de performance énergétique (DPE), avant sa réalisation',
+    'À l’attention du client commanditaire du diagnostic de performance énergétique (DPE) (1), avant sa réalisation',
   blocks: [
     {
       title: 'Information relative aux contrôles du diagnostiqueur',
