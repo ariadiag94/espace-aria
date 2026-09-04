@@ -73,9 +73,23 @@ export default function NewDossierPage() {
     }
 
     setSaving(true)
+    const { data: accountSource, error: accountError } = await supabase
+      .from('dossiers')
+      .select('account_id')
+      .not('account_id', 'is', null)
+      .limit(1)
+      .maybeSingle()
+
+    if (accountError || !accountSource?.account_id) {
+      setError(accountError?.message || 'Impossible d’identifier le compte ARIA associé au dossier.')
+      setSaving(false)
+      return
+    }
+
     const { data, error: insertError } = await supabase
       .from('dossiers')
       .insert({
+        account_id: accountSource.account_id,
         dossier_name: form.dossier_name.trim(),
         status: 'draft',
         purpose: form.purpose || null,
