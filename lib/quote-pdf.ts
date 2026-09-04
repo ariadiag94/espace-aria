@@ -2,7 +2,8 @@ import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'pdf-lib'
 import {
   ContractDocument,
   ContractLine,
-  dpeDocument,
+  dpeConsentDocument,
+  dpeFiscalDocument,
   generalTerms,
   hasDpe,
   interventionTerms,
@@ -303,11 +304,13 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     interventionTerms(input.lines, input.diagnostics || []),
     withdrawalDocument,
   ]
-  if (hasDpe(input.lines, input.diagnostics || [])) documents.push(dpeDocument)
+  if (hasDpe(input.lines, input.diagnostics || [])) {
+    documents.push(dpeConsentDocument, dpeFiscalDocument)
+  }
 
   const addContractDocument = (document: ContractDocument) => {
     let page = pdf.addPage([595.28, 841.89])
-    let currentY = 785
+    let currentY = 770
 
     const drawHeader = () => {
       page.drawText('ARIA DIAGNOSTICS', { x: left, y: 805, size: 8, font: bold, color: blue })
@@ -323,19 +326,23 @@ export async function generateQuotePdf(input: QuotePdfInput) {
 
     const newPage = () => {
       page = pdf.addPage([595.28, 841.89])
-      currentY = 785
+      currentY = 770
       drawHeader()
     }
 
     drawHeader()
-    page.drawText(pdfSafe(document.title), {
-      x: left,
-      y: currentY,
-      size: 17,
-      font: bold,
-      color: blue,
-    })
-    currentY -= 23
+    currentY = drawWrapped(
+      page,
+      document.title,
+      left,
+      currentY,
+      width,
+      bold,
+      17,
+      blue,
+      20,
+    )
+    currentY -= 3
 
     if (document.subtitle) {
       currentY = drawWrapped(
