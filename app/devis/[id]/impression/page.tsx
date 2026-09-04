@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
-  dpeDocument,
+  dpeConsentDocument,
+  dpeFiscalDocument,
   generalTerms,
   hasDpe,
   interventionTerms,
@@ -148,7 +149,9 @@ export default function QuotePrintPage() {
     generalTerms,
     interventionTerms(contractLines, dossierDiagnostics),
     withdrawalDocument,
-    ...(hasDpe(contractLines, dossierDiagnostics) ? [dpeDocument] : []),
+    ...(hasDpe(contractLines, dossierDiagnostics)
+      ? [dpeConsentDocument, dpeFiscalDocument]
+      : []),
   ]
 
   return (
