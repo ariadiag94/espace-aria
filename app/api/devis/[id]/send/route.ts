@@ -96,13 +96,24 @@ export async function POST(
     return Response.json({ error: linesError.message }, { status: 500 })
   }
 
-  const recipient = String(dossier.contact_email || '').trim()
-  if (!recipient) {
+  const recipients = String(dossier.contact_email || '')
+    .split(/[;,\s]+/)
+    .map((email) => email.trim())
+    .filter(Boolean)
+  const invalidRecipient = recipients.find((email) => !/^\S+@\S+\.\S+$/.test(email))
+  if (!recipients.length) {
     return Response.json(
       { error: 'Aucune adresse e-mail n’est renseignée pour le donneur d’ordre.' },
       { status: 400 },
     )
   }
+  if (invalidRecipient) {
+    return Response.json(
+      { error: `Adresse e-mail invalide : ${invalidRecipient}` },
+      { status: 400 },
+    )
+  }
+  const recipient = recipients.join(', ')
 
   const contactName = escapeHtml(String(dossier.contact_name || 'Madame, Monsieur'))
   const rawPropertyAddress = String(
@@ -206,7 +217,7 @@ export async function POST(
     },
     body: JSON.stringify({
       from: 'ARIA Diagnostics <contact@aria-diagnostics.fr>',
-      to: [recipient],
+      to: recipients,
       reply_to: 'contact@aria-diagnostics.fr',
       subject: `Votre devis ARIA Diagnostics ${quote.quote_number}`,
       html,
