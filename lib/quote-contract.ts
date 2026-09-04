@@ -317,23 +317,50 @@ export const withdrawalDocument: ContractDocument = {
   ],
 }
 
-export const dpeDocument: ContractDocument = {
-  title: 'DPE — consentement et identifiant fiscal',
-  subtitle: 'Document à compléter lorsque la mission comprend un diagnostic de performance énergétique',
+export const dpeConsentDocument: ContractDocument = {
+  title: 'Formulaire de consentement au traitement des données personnelles',
+  subtitle:
+    'À l’attention du client commanditaire du diagnostic de performance énergétique (DPE), avant sa réalisation',
   blocks: [
     {
-      title: 'Consentement relatif aux coordonnées',
+      title: 'Information relative aux contrôles du diagnostiqueur',
       paragraphs: [
-        '□ OUI, je consens au traitement et à la transmission réglementaire de mes coordonnées dans le cadre du DPE.',
-        '□ NON, je refuse que mes coordonnées soient collectées à cette fin.',
-        'Nom : ________________________________________________',
-        'E-mail : ______________________________________________',
-        'Téléphone : ____________________________________________',
-        'Date : ____________________    Signature : ______________________________',
+        'En application de la réglementation (2), le diagnostiqueur réalisant le DPE pour votre compte est soumis à des contrôles ayant pour objet de vérifier sa capacité à réaliser un diagnostic dans le respect des exigences réglementaires. Ces contrôles participent à l’amélioration de la qualité de la réalisation des DPE.',
+        'Afin de pouvoir organiser les modalités pratiques de ces contrôles, l’organisme (3) chargé de contrôler votre diagnostiqueur peut être amené à vous contacter. Pour cela, et sous réserve de votre consentement, vos données personnelles (nom, prénom, adresse mail et/ou numéro de téléphone) sont collectées et traitées par l’Ademe lors de la transmission du rapport DPE et transmises à l’organisme de contrôle.',
+        'Ces données seront stockées pour une durée de 1 an, et vous disposez d’un droit d’accès, de rectification, de portabilité, d’effacement ou de limitation du traitement de ces données. Plus d’informations sont disponibles dans la notice relative au traitement de ces données accessible à https://observatoire-dpe-audit.ademe.fr/ressources dans l’onglet « Traitement de vos données ».',
+        'Il est à noter que le consentement au traitement de vos données n’équivaut pas au consentement pour réaliser le contrôle dans le bien concerné ; votre accord pour l’organisation de ce contrôle vous sera demandé séparément.',
       ],
     },
     {
-      title: 'Identifiant fiscal du logement',
+      title: 'Choix du client commanditaire',
+      paragraphs: [
+        '□ Oui, je consens à ce que mes données personnelles (inscrites ci-dessous) soient traitées par l’Ademe et l’organisme de certification dans le cadre des missions de contrôle des compétences des diagnostiqueurs.',
+        '[Si oui] À REMPLIR :',
+        'NOM : ______________________________    PRÉNOM : ______________________________',
+        'ADRESSE MAIL : _______________________    N° TÉLÉPHONE : _______________________',
+        '□ Non, je refuse que mes données soient collectées.',
+        'Fait le ____________________ , à ______________________________',
+        'Signature : _____________________________________________________________',
+      ],
+    },
+    {
+      title: 'Références et information RGPD',
+      paragraphs: [
+        '(1) Si ce client est mandaté par un tiers, ce sont les données de ce tiers qui sont traitées, dès lors que le mandat l’autorise.',
+        '(2) Arrêté du 20 juillet 2023 définissant les critères de certification des diagnostiqueurs intervenant dans le domaine du diagnostic de performance énergétique, de leurs organismes de formation et les exigences applicables aux organismes de certification et modifiant l’arrêté du 24 décembre 2021 définissant les critères de certification des opérateurs de diagnostic technique et des organismes de formation et d’accréditation des organismes de certification, notamment le paragraphe 2.5.3 de son annexe 1.',
+        '(3) Il s’agit d’un organisme de certification, dont le nom est mentionné en première page du DPE.',
+        'Nota : par ailleurs, pour les propriétaires du bien au moment de la réalisation du DPE, dans le cadre du Règlement général sur la protection des données (RGPD), l’Ademe vous informe que vos données personnelles (Nom-Prénom-Adresse) sont stockées dans la base de données de l’observatoire DPE à des fins de contrôles ou en cas de contestations ou de procédures judiciaires. Ces données sont stockées jusqu’à la date de fin de validité du DPE. Vous disposez d’un droit d’accès, de rectification, de portabilité, d’effacement ou une limitation du traitement de ces données. Si vous souhaitez faire valoir votre droit, veuillez nous contacter à l’adresse mail indiquée à la page « Contacts » de l’Observatoire DPE (https://observatoire-dpe.ademe.fr/).',
+      ],
+    },
+  ],
+}
+
+export const dpeFiscalDocument: ContractDocument = {
+  title: 'DPE - identifiant fiscal du logement',
+  subtitle: 'Informations à transmettre à ARIA Diagnostics lorsque la mission comprend un DPE',
+  blocks: [
+    {
+      title: 'Comment retrouver l’identifiant fiscal',
       paragraphs: [
         '1. Connectez-vous à votre espace particulier sur impots.gouv.fr.',
         '2. Ouvrez la rubrique « Biens immobiliers ».',
