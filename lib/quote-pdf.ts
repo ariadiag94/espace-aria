@@ -1,4 +1,5 @@
 import { PDFDocument, PDFFont, PDFImage, PDFPage, StandardFonts, rgb } from 'pdf-lib'
+import { ARIA_LOGO_JPEG_BASE64 } from '@/lib/aria-logo-generated'
 import {
   ContractDocument,
   ContractLine,
@@ -99,15 +100,10 @@ const drawWrapped = (
   return y - lines.length * lineHeight
 }
 
-const loadAriaLogo = async (pdf: PDFDocument, origin?: string): Promise<PDFImage | null> => {
-  if (!origin) return null
+const loadAriaLogo = async (pdf: PDFDocument): Promise<PDFImage | null> => {
+  if (!ARIA_LOGO_JPEG_BASE64) return null
   try {
-    const response = await fetch(`${origin.replace(/\/$/, '')}/logo-aria.svg`, { cache: 'no-store' })
-    if (!response.ok) return null
-    const svg = await response.text()
-    const match = svg.match(/data:image\/jpeg;base64,([^"']+)/i)
-    if (!match?.[1]) return null
-    return await pdf.embedJpg(Buffer.from(match[1], 'base64'))
+    return await pdf.embedJpg(Buffer.from(ARIA_LOGO_JPEG_BASE64, 'base64'))
   } catch {
     return null
   }
@@ -117,7 +113,7 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   const pdf = await PDFDocument.create()
   const regular = await pdf.embedFont(StandardFonts.Helvetica)
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
-  const ariaLogo = await loadAriaLogo(pdf, input.origin)
+  const ariaLogo = await loadAriaLogo(pdf)
   const left = 42
   const right = 553
   const width = right - left
