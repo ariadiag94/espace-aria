@@ -1,5 +1,3 @@
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
 import { PDFDocument, PDFFont, PDFImage, PDFPage, StandardFonts, rgb } from 'pdf-lib'
 import {
   ContractDocument,
@@ -28,6 +26,7 @@ type QuotePdfInput = {
   notes?: string | null
   lines: QuotePdfLine[]
   diagnostics?: string[]
+  origin?: string
 }
 
 const euro = (value: number) =>
@@ -100,35 +99,15 @@ const drawWrapped = (
   return y - lines.length * lineHeight
 }
 
-const extractJpegBase64 = (svg: string) =>
-  svg.match(/data:image\/jpeg;base64,([^"']+)/i)?.[1] || ''
-
-const loadAriaLogo = async (pdf: PDFDocument): Promise<PDFImage | null> => {
-  let svg = ''
-
+const loadAriaLogo = async (pdf: PDFDocument, origin?: string): Promise<PDFImage | null> => {
+  if (!origin) return null
   try {
-    svg = await readFile(join(process.cwd(), 'public', 'logo-aria.svg'), 'utf8')
-  } catch {
-    // On Vercel, public assets are not always bundled inside the serverless function.
-  }
-
-  if (!extractJpegBase64(svg)) {
-    try {
-      const host = process.env.VERCEL_URL
-      if (host) {
-        const response = await fetch(`https://${host}/logo-aria.svg`, { cache: 'no-store' })
-        if (response.ok) svg = await response.text()
-      }
-    } catch {
-      // Keep the text fallback below if the asset cannot be loaded.
-    }
-  }
-
-  const base64 = extractJpegBase64(svg)
-  if (!base64) return null
-
-  try {
-    return await pdf.embedJpg(Buffer.from(base64, 'base64'))
+    const response = await fetch(`${origin.replace(/\/$/, '')}/logo-aria.svg`, { cache: 'no-store' })
+    if (!response.ok) return null
+    const svg = await response.text()
+    const match = svg.match(/data:image\/jpeg;base64,([^"']+)/i)
+    if (!match?.[1]) return null
+    return await pdf.embedJpg(Buffer.from(match[1], 'base64'))
   } catch {
     return null
   }
@@ -138,7 +117,7 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   const pdf = await PDFDocument.create()
   const regular = await pdf.embedFont(StandardFonts.Helvetica)
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
-  const ariaLogo = await loadAriaLogo(pdf)
+  const ariaLogo = await loadAriaLogo(pdf, input.origin)
   const left = 42
   const right = 553
   const width = right - left
@@ -253,7 +232,9 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   text('Conditions', left + 10, y - 15, 8.5, bold, midBlue)
   text('Paiement à réception. Validité du devis : 30 jours à compter de sa date d’émission.', left + 10, y - 31, 7, regular, gray)
   text('Le devis, l’ordre de mission, les CGV, les CGI et les annexes forment l’ensemble contractuel.', left + 10, y - 44, 7, regular, gray)
-  if (input.notes) text(`Précisions : ${String(input.notes).slice(0, 90)}`, left + 10, y - 61, 7, regular, gray)
+  if (input.notes) {
+    drawWrapped(firstPage, `Précisions : ${String(input.notes)}`, left + 10, y - 58, 298, regular, 6.6, gray, 7.5)
+  }
 
   box(right - 176, y - 76, 176, 76)
   text('Total HT', right - 164, y - 18, 8, regular, gray)
