@@ -1,4 +1,6 @@
-import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'pdf-lib'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { PDFDocument, PDFFont, PDFImage, PDFPage, StandardFonts, rgb } from 'pdf-lib'
 import {
   ContractDocument,
   ContractLine,
@@ -72,7 +74,6 @@ const wrapText = (value: string, font: PDFFont, size: number, maxWidth: number) 
       current = candidate
       continue
     }
-
     if (current) lines.push(current)
     current = word
   }
@@ -99,10 +100,22 @@ const drawWrapped = (
   return y - lines.length * lineHeight
 }
 
+const loadAriaLogo = async (pdf: PDFDocument): Promise<PDFImage | null> => {
+  try {
+    const svg = await readFile(join(process.cwd(), 'public', 'logo-aria.svg'), 'utf8')
+    const match = svg.match(/data:image\/jpeg;base64,([^"']+)/i)
+    if (!match?.[1]) return null
+    return await pdf.embedJpg(Buffer.from(match[1], 'base64'))
+  } catch {
+    return null
+  }
+}
+
 export async function generateQuotePdf(input: QuotePdfInput) {
   const pdf = await PDFDocument.create()
   const regular = await pdf.embedFont(StandardFonts.Helvetica)
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
+  const ariaLogo = await loadAriaLogo(pdf)
   const left = 42
   const right = 553
   const width = right - left
@@ -133,17 +146,21 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     })
   }
 
-  text('ARIA DIAGNOSTICS', left, y, 18, bold, blue)
-  text('18 rue de Budapest · 94140 Alfortville', left, y - 17, 8, regular, gray)
-  text('06 15 70 36 70 · contact@aria-diagnostics.fr', left, y - 29, 8, regular, gray)
+  if (ariaLogo) {
+    firstPage.drawImage(ariaLogo, { x: left, y: 764, width: 140, height: 52 })
+  } else {
+    text('ARIA DIAGNOSTICS', left, y, 18, bold, blue)
+  }
+  text('18 rue de Budapest · 94140 Alfortville', left, 750, 8, regular, gray)
+  text('06 15 70 36 70 · contact@aria-diagnostics.fr', left, 738, 8, regular, gray)
 
   text('DEVIS', right - 85, y, 15, regular, blue)
   text(input.quoteNumber, right - 120, y - 18, 9, bold, blue)
   text(`Émis le ${dateFr(input.createdAt)}`, right - 120, y - 31, 8, regular, gray)
   text('Validité : 30 jours', right - 120, y - 43, 8, regular, gray)
 
-  firstPage.drawRectangle({ x: left, y: y - 56, width, height: 2.5, color: midBlue })
-  y -= 82
+  firstPage.drawRectangle({ x: left, y: 726, width, height: 2.5, color: midBlue })
+  y = 704
 
   const cardGap = 12
   const cardW = (width - cardGap) / 2
@@ -199,23 +216,9 @@ export async function generateQuotePdf(input: QuotePdfInput) {
       thickness: 0.7,
     })
     text(String(line.label || 'Prestation').slice(0, 65), cols[0] + 6, y - 12, 7.5, regular, blue)
-    text(
-      String(Number(line.quantity || 0).toLocaleString('fr-FR')),
-      cols[1] + 6,
-      y - 12,
-      7.5,
-      regular,
-      blue,
-    )
+    text(String(Number(line.quantity || 0).toLocaleString('fr-FR')), cols[1] + 6, y - 12, 7.5, regular, blue)
     text(euro(Number(line.unit_ttc || 0)), cols[2] + 6, y - 12, 7.5, regular, blue)
-    text(
-      euro(Number(line.quantity || 0) * Number(line.unit_ttc || 0)),
-      cols[3] + 6,
-      y - 12,
-      7.5,
-      bold,
-      blue,
-    )
+    text(euro(Number(line.quantity || 0) * Number(line.unit_ttc || 0)), cols[3] + 6, y - 12, 7.5, bold, blue)
     y -= rowH
   }
 
@@ -225,22 +228,8 @@ export async function generateQuotePdf(input: QuotePdfInput) {
 
   box(left, y - 76, 318, 76)
   text('Conditions', left + 10, y - 15, 8.5, bold, midBlue)
-  text(
-    'Paiement à réception. Validité du devis : 30 jours à compter de sa date d’émission.',
-    left + 10,
-    y - 31,
-    7,
-    regular,
-    gray,
-  )
-  text(
-    'Le devis, l’ordre de mission, les CGV, les CGI et les annexes forment l’ensemble contractuel.',
-    left + 10,
-    y - 44,
-    7,
-    regular,
-    gray,
-  )
+  text('Paiement à réception. Validité du devis : 30 jours à compter de sa date d’émission.', left + 10, y - 31, 7, regular, gray)
+  text('Le devis, l’ordre de mission, les CGV, les CGI et les annexes forment l’ensemble contractuel.', left + 10, y - 44, 7, regular, gray)
   if (input.notes) text(`Précisions : ${String(input.notes).slice(0, 90)}`, left + 10, y - 61, 7, regular, gray)
 
   box(right - 176, y - 76, 176, 76)
@@ -248,158 +237,81 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   text(euro(totalHt), right - 78, y - 18, 8, bold)
   text('TVA 20 %', right - 164, y - 35, 8, regular, gray)
   text(euro(vat), right - 78, y - 35, 8, bold)
-  firstPage.drawLine({
-    start: { x: right - 164, y: y - 47 },
-    end: { x: right - 12, y: y - 47 },
-    color: blue,
-    thickness: 1,
-  })
+  firstPage.drawLine({ start: { x: right - 164, y: y - 47 }, end: { x: right - 12, y: y - 47 }, color: blue, thickness: 1 })
   text('Total TTC', right - 164, y - 63, 8, bold)
   text(euro(calculatedTotal), right - 78, y - 63, 8, bold)
 
   y -= 96
   box(left, y - 106, width, 106)
   text('Bon pour accord', left + 10, y - 16, 8.5, bold, midBlue)
-  text(
-    'Je reconnais avoir pris connaissance du devis et de ses annexes et en accepter les conditions.',
-    left + 10,
-    y - 31,
-    7,
-    regular,
-    gray,
-  )
+  text('Je reconnais avoir pris connaissance du devis et de ses annexes et en accepter les conditions.', left + 10, y - 31, 7, regular, gray)
   text('Date', left + 10, y - 52, 7, regular, gray)
-  firstPage.drawLine({
-    start: { x: left + 10, y: y - 68 },
-    end: { x: left + 180, y: y - 68 },
-    color: border,
-    thickness: 1,
-  })
+  firstPage.drawLine({ start: { x: left + 10, y: y - 68 }, end: { x: left + 180, y: y - 68 }, color: border, thickness: 1 })
   text('Nom / qualité', left + 205, y - 52, 7, regular, gray)
-  firstPage.drawLine({
-    start: { x: left + 205, y: y - 68 },
-    end: { x: left + 375, y: y - 68 },
-    color: border,
-    thickness: 1,
-  })
+  firstPage.drawLine({ start: { x: left + 205, y: y - 68 }, end: { x: left + 375, y: y - 68 }, color: border, thickness: 1 })
   text('Signature précédée de la mention « Bon pour accord »', left + 10, y - 87, 7, regular, gray)
-  firstPage.drawRectangle({
-    x: left + 285,
-    y: y - 98,
-    width: 210,
-    height: 28,
-    borderColor: border,
-    borderWidth: 1,
-  })
+  firstPage.drawRectangle({ x: left + 285, y: y - 98, width: 210, height: 28, borderColor: border, borderWidth: 1 })
 
   const documents: ContractDocument[] = [
-    missionDocument(
-      input.quoteNumber,
-      input.propertyAddress,
-      input.contactName,
-      input.lines,
-      input.diagnostics || [],
-    ),
+    missionDocument(input.quoteNumber, input.propertyAddress, input.contactName, input.lines, input.diagnostics || []),
     generalTerms,
     interventionTerms(input.lines, input.diagnostics || []),
     withdrawalDocument,
   ]
-  if (hasDpe(input.lines, input.diagnostics || [])) {
-    documents.push(dpeConsentDocument, dpeFiscalDocument)
-  }
+  if (hasDpe(input.lines, input.diagnostics || [])) documents.push(dpeConsentDocument, dpeFiscalDocument)
 
   const addContractDocument = (document: ContractDocument) => {
     let page = pdf.addPage([595.28, 841.89])
-    let currentY = 770
+    let currentY = 765
+    const isCompactTerms = /conditions générales/i.test(document.title)
+    const bodySize = isCompactTerms ? 7.35 : 8
+    const bodyLineHeight = isCompactTerms ? 8.55 : 10.5
+    const paragraphGap = isCompactTerms ? 2.5 : 6
+    const blockGap = isCompactTerms ? 1.5 : 4
+    const headingSize = isCompactTerms ? 9.2 : 10
+    const headingLineHeight = isCompactTerms ? 10.8 : 13
+    const headingGap = isCompactTerms ? 2.5 : 5
+    const pageBottom = 62
 
     const drawHeader = () => {
-      page.drawText('ARIA DIAGNOSTICS', { x: left, y: 805, size: 8, font: bold, color: blue })
-      page.drawText(pdfSafe(input.quoteNumber), {
-        x: right - 110,
-        y: 805,
-        size: 7,
-        font: regular,
-        color: gray,
-      })
-      page.drawRectangle({ x: left, y: 796, width, height: 1.5, color: midBlue })
+      if (ariaLogo) {
+        page.drawImage(ariaLogo, { x: left, y: 799, width: 76, height: 28 })
+      } else {
+        page.drawText('ARIA DIAGNOSTICS', { x: left, y: 807, size: 8, font: bold, color: blue })
+      }
+      page.drawText(pdfSafe(input.quoteNumber), { x: right - 110, y: 807, size: 7, font: regular, color: gray })
+      page.drawRectangle({ x: left, y: 791, width, height: 1.5, color: midBlue })
     }
 
     const newPage = () => {
       page = pdf.addPage([595.28, 841.89])
-      currentY = 770
+      currentY = 765
       drawHeader()
     }
 
     drawHeader()
-    currentY = drawWrapped(
-      page,
-      document.title,
-      left,
-      currentY,
-      width,
-      bold,
-      17,
-      blue,
-      20,
-    )
+    currentY = drawWrapped(page, document.title, left, currentY, width, bold, 17, blue, 20)
     currentY -= 3
 
     if (document.subtitle) {
-      currentY = drawWrapped(
-        page,
-        document.subtitle,
-        left,
-        currentY,
-        width,
-        regular,
-        8.5,
-        gray,
-        11,
-      )
-      currentY -= 10
+      currentY = drawWrapped(page, document.subtitle, left, currentY, width, regular, 8.5, gray, 11)
+      currentY -= isCompactTerms ? 5 : 10
     }
 
     for (const block of document.blocks) {
-      if (currentY < 105) newPage()
+      if (currentY < (isCompactTerms ? 82 : 105)) newPage()
 
-      page.drawRectangle({
-        x: left,
-        y: currentY - 4,
-        width: 3,
-        height: 14,
-        color: midBlue,
-      })
-      currentY = drawWrapped(
-        page,
-        block.title,
-        left + 9,
-        currentY,
-        width - 9,
-        bold,
-        10,
-        blue,
-        13,
-      )
-      currentY -= 5
+      page.drawRectangle({ x: left, y: currentY - 4, width: 3, height: 14, color: midBlue })
+      currentY = drawWrapped(page, block.title, left + 9, currentY, width - 9, bold, headingSize, blue, headingLineHeight)
+      currentY -= headingGap
 
       for (const paragraph of block.paragraphs) {
-        const estimatedLines = wrapText(paragraph, regular, 8, width).length
-        if (currentY - estimatedLines * 10.5 < 62) newPage()
-
-        currentY = drawWrapped(
-          page,
-          paragraph,
-          left,
-          currentY,
-          width,
-          regular,
-          8,
-          gray,
-          10.5,
-        )
-        currentY -= 6
+        const estimatedLines = wrapText(paragraph, regular, bodySize, width).length
+        if (currentY - estimatedLines * bodyLineHeight < pageBottom) newPage()
+        currentY = drawWrapped(page, paragraph, left, currentY, width, regular, bodySize, gray, bodyLineHeight)
+        currentY -= paragraphGap
       }
-      currentY -= 4
+      currentY -= blockGap
     }
   }
 
@@ -408,30 +320,15 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   const pages = pdf.getPages()
   pages.forEach((page, index) => {
     page.drawRectangle({ x: left, y: 38, width, height: 2, color: rgb(0.345, 0.765, 0.898) })
-    page.drawText(
-      'ARIA Diagnostics · 18 rue de Budapest, 94140 Alfortville · contact@aria-diagnostics.fr',
-      { x: left, y: 23, size: 6.3, font: regular, color: gray },
-    )
+    page.drawText('ARIA Diagnostics · 18 rue de Budapest, 94140 Alfortville · contact@aria-diagnostics.fr', { x: left, y: 23, size: 6.3, font: regular, color: gray })
     const pageLabel = `Devis ${input.quoteNumber} · page ${index + 1}/${pages.length}`
-    page.drawText(pdfSafe(pageLabel), {
-      x: right - bold.widthOfTextAtSize(pageLabel, 6.3),
-      y: 23,
-      size: 6.3,
-      font: bold,
-      color: gray,
-    })
+    page.drawText(pdfSafe(pageLabel), { x: right - bold.widthOfTextAtSize(pageLabel, 6.3), y: 23, size: 6.3, font: bold, color: gray })
   })
 
   const finalPage = pages[pages.length - 1]
   const noticeLines = wrapText(mediatorNotice, regular, 6.2, width)
   noticeLines.slice(0, 3).forEach((line, index) => {
-    finalPage.drawText(line, {
-      x: left,
-      y: 48 + (noticeLines.length - index) * 7.5,
-      size: 6.2,
-      font: regular,
-      color: gray,
-    })
+    finalPage.drawText(line, { x: left, y: 48 + (noticeLines.length - index) * 7.5, size: 6.2, font: regular, color: gray })
   })
 
   return pdf.save()
