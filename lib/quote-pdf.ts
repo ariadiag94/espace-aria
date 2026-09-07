@@ -100,12 +100,35 @@ const drawWrapped = (
   return y - lines.length * lineHeight
 }
 
+const extractJpegBase64 = (svg: string) =>
+  svg.match(/data:image\/jpeg;base64,([^"']+)/i)?.[1] || ''
+
 const loadAriaLogo = async (pdf: PDFDocument): Promise<PDFImage | null> => {
+  let svg = ''
+
   try {
-    const svg = await readFile(join(process.cwd(), 'public', 'logo-aria.svg'), 'utf8')
-    const match = svg.match(/data:image\/jpeg;base64,([^"']+)/i)
-    if (!match?.[1]) return null
-    return await pdf.embedJpg(Buffer.from(match[1], 'base64'))
+    svg = await readFile(join(process.cwd(), 'public', 'logo-aria.svg'), 'utf8')
+  } catch {
+    // On Vercel, public assets are not always bundled inside the serverless function.
+  }
+
+  if (!extractJpegBase64(svg)) {
+    try {
+      const host = process.env.VERCEL_URL
+      if (host) {
+        const response = await fetch(`https://${host}/logo-aria.svg`, { cache: 'no-store' })
+        if (response.ok) svg = await response.text()
+      }
+    } catch {
+      // Keep the text fallback below if the asset cannot be loaded.
+    }
+  }
+
+  const base64 = extractJpegBase64(svg)
+  if (!base64) return null
+
+  try {
+    return await pdf.embedJpg(Buffer.from(base64, 'base64'))
   } catch {
     return null
   }
