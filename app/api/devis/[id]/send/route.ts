@@ -194,6 +194,7 @@ export async function POST(
       propertySize: quote.property_size,
       notes: quote.notes,
       diagnostics,
+      origin: new URL(request.url).origin,
       lines: (lines || []).map((line) => ({
         label: String(line.label || 'Prestation'),
         quantity: Number(line.quantity || 0),
