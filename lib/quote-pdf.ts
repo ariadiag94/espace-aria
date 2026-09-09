@@ -103,8 +103,9 @@ const drawWrapped = (
 const loadAriaLogo = async (pdf: PDFDocument): Promise<PDFImage | null> => {
   if (!ARIA_LOGO_JPEG_BASE64) return null
   try {
-    return await pdf.embedJpg(Buffer.from(ARIA_LOGO_JPEG_BASE64, 'base64'))
-  } catch {
+    return await pdf.embedJpg(`data:image/jpeg;base64,${ARIA_LOGO_JPEG_BASE64}`)
+  } catch (error) {
+    console.error('ARIA logo embedding failed', error)
     return null
   }
 }
