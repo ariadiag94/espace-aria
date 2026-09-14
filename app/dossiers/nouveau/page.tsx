@@ -46,6 +46,11 @@ const diagnosticChoices = [
 const normalizeEmails = (value: string) =>
   value.split(/[;,\s]+/).map((email) => email.trim()).filter(Boolean)
 
+const parseAddressParts = (address: string) => {
+  const match = address.match(/(\d{5})\s+(.+)$/)
+  return match ? { postalCode: match[1], city: match[2].trim() } : { postalCode: null, city: null }
+}
+
 export default function NewDossierPage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -129,16 +134,18 @@ export default function NewDossierPage() {
         if (propertyColumns.has(name)) propertyPayload[name] = value
       })
     }
-    assignKnown(['address', 'property_address', 'full_address', 'address_line1', 'street_address'], form.property_address.trim())
-    assignKnown(['city', 'town'], 'Alfortville')
-    assignKnown(['postal_code', 'zip_code', 'postcode'], '94140')
+    const trimmedAddress = form.property_address.trim()
+    const { postalCode, city } = parseAddressParts(trimmedAddress)
+    assignKnown(['address', 'property_address', 'full_address', 'address_line1', 'street_address'], trimmedAddress)
+    if (city) assignKnown(['city', 'town'], city)
+    if (postalCode) assignKnown(['postal_code', 'zip_code', 'postcode'], postalCode)
     assignKnown(['property_type', 'type'], form.property_type)
     assignKnown(['name', 'title', 'property_name'], form.dossier_name.trim())
+
+    const { data: { user } } = await supabase.auth.getUser()
     const identityColumns = ['created_by', 'user_id', 'owner_id']
     identityColumns.forEach((name) => {
-      if (propertyColumns.has(name) && propertySource[name] != null) {
-        propertyPayload[name] = propertySource[name]
-      }
+      if (propertyColumns.has(name) && user?.id) propertyPayload[name] = user.id
     })
 
     const { data: property, error: propertyError } = await supabase
