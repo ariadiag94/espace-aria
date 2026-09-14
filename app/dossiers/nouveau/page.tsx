@@ -1,12 +1,24 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { supabase } from '@/lib/supabase'
 
+type ClientAccount = {
+  id: string
+  company_name: string | null
+  first_name: string | null
+  last_name: string | null
+  account_type: string | null
+}
+
+const accountLabel = (account: ClientAccount) =>
+  account.company_name || [account.first_name, account.last_name].filter(Boolean).join(' ') || 'Compte sans nom'
+
 type FormState = {
+  account_id: string
   dossier_name: string
   purpose: string
   property_type: 'apartment' | 'house'
@@ -34,11 +46,18 @@ const diagnosticChoices = [
 const normalizeEmails = (value: string) =>
   value.split(/[;,\s]+/).map((email) => email.trim()).filter(Boolean)
 
+const parseAddressParts = (address: string) => {
+  const match = address.match(/(\d{5})\s+(.+)$/)
+  return match ? { postalCode: match[1], city: match[2].trim() } : { postalCode: null, city: null }
+}
+
 export default function NewDossierPage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [accounts, setAccounts] = useState<ClientAccount[]>([])
   const [form, setForm] = useState<FormState>({
+    account_id: '',
     dossier_name: '',
     purpose: 'sale',
     property_type: 'house',
@@ -48,6 +67,21 @@ export default function NewDossierPage() {
     contact_emails: '',
     diagnostics: [],
   })
+
+  useEffect(() => {
+    void (async () => {
+      const { data, error: accountsError } = await supabase
+        .from('client_accounts')
+        .select('id, company_name, first_name, last_name, account_type')
+        .eq('active', true)
+      if (accountsError) {
+        setError(accountsError.message)
+        return
+      }
+      const sorted = [...(data || [])].sort((a, b) => accountLabel(a).localeCompare(accountLabel(b), 'fr'))
+      setAccounts(sorted)
+    })()
+  }, [])
 
   const setField = (field: keyof Omit<FormState, 'diagnostics'>, value: string) =>
     setForm((current) => ({ ...current, [field]: value }))
@@ -64,6 +98,11 @@ export default function NewDossierPage() {
     setError('')
     const emails = normalizeEmails(form.contact_emails)
 
+    if (!form.account_id) {
+      setError('Choisis le compte client rattaché à ce dossier.')
+      return
+    }
+
     if (!form.dossier_name.trim() || !form.property_address.trim() || !form.contact_name.trim()) {
       setError('Renseigne le nom du dossier, l’adresse du bien et le donneur d’ordre.')
       return
@@ -75,23 +114,10 @@ export default function NewDossierPage() {
     }
 
     setSaving(true)
-    const { data: accountSource, error: accountError } = await supabase
-      .from('dossiers')
-      .select('*')
-      .not('account_id', 'is', null)
-      .limit(1)
-      .maybeSingle()
-
-    if (accountError || !accountSource?.account_id) {
-      setError(accountError?.message || 'Impossible d’identifier le compte ARIA associé au dossier.')
-      setSaving(false)
-      return
-    }
-
     const { data: propertySource, error: propertySourceError } = await supabase
       .from('properties')
       .select('*')
-      .eq('id', accountSource.property_id)
+      .limit(1)
       .maybeSingle()
 
     if (propertySourceError || !propertySource) {
@@ -101,22 +127,24 @@ export default function NewDossierPage() {
     }
 
     const propertyColumns = new Set(Object.keys(propertySource))
-    const propertyPayload: Record<string, unknown> = { account_id: accountSource.account_id }
+    const propertyPayload: Record<string, unknown> = { account_id: form.account_id }
     const assignKnown = (names: string[], value: unknown) => {
       names.forEach((name) => {
         if (propertyColumns.has(name)) propertyPayload[name] = value
       })
     }
-    assignKnown(['address', 'property_address', 'full_address', 'address_line1', 'street_address'], form.property_address.trim())
-    assignKnown(['city', 'town'], 'Alfortville')
-    assignKnown(['postal_code', 'zip_code', 'postcode'], '94140')
+    const trimmedAddress = form.property_address.trim()
+    const { postalCode, city } = parseAddressParts(trimmedAddress)
+    assignKnown(['address', 'property_address', 'full_address', 'address_line1', 'street_address'], trimmedAddress)
+    if (city) assignKnown(['city', 'town'], city)
+    if (postalCode) assignKnown(['postal_code', 'zip_code', 'postcode'], postalCode)
     assignKnown(['property_type', 'type'], form.property_type)
     assignKnown(['name', 'title', 'property_name'], form.dossier_name.trim())
+
+    const { data: { user } } = await supabase.auth.getUser()
     const identityColumns = ['created_by', 'user_id', 'owner_id']
     identityColumns.forEach((name) => {
-      if (propertyColumns.has(name) && propertySource[name] != null) {
-        propertyPayload[name] = propertySource[name]
-      }
+      if (propertyColumns.has(name) && user?.id) propertyPayload[name] = user.id
     })
 
     const { data: property, error: propertyError } = await supabase
@@ -134,7 +162,7 @@ export default function NewDossierPage() {
     const { data, error: insertError } = await supabase
       .from('dossiers')
       .insert({
-        account_id: accountSource.account_id,
+        account_id: form.account_id,
         property_id: property.id,
         dossier_name: form.dossier_name.trim(),
         status: 'draft',
@@ -172,6 +200,15 @@ export default function NewDossierPage() {
         <section className="card" style={{ padding: 22 }}>
           {error && <div className="error">{error}</div>}
           <div className="edit-grid">
+            <label className="edit-field wide">
+              <span>Compte client *</span>
+              <select value={form.account_id} onChange={(event) => setField('account_id', event.target.value)}>
+                <option value="">Choisir un compte…</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>{accountLabel(account)}</option>
+                ))}
+              </select>
+            </label>
             <label className="edit-field">
               <span>Nom du dossier *</span>
               <input value={form.dossier_name} onChange={(event) => setField('dossier_name', event.target.value)} placeholder="Ex. Succession Dupont" />
