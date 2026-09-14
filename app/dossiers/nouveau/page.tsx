@@ -80,7 +80,6 @@ export default function NewDossierPage() {
       }
       const sorted = [...(data || [])].sort((a, b) => accountLabel(a).localeCompare(accountLabel(b), 'fr'))
       setAccounts(sorted)
-      setForm((current) => ({ ...current, account_id: current.account_id || sorted[0]?.id || '' }))
     })()
   }, [])
 
