@@ -1,4 +1,4 @@
--- 009_promo_codes.sql
+-- 008_promo_codes.sql
 -- Codes promo applicables aux devis, réservés à l'usage professionnel.
 
 create table if not exists public.promo_codes (
@@ -26,13 +26,13 @@ for select to authenticated using (
 );
 
 -- Écriture (créer/modifier/désactiver un code) : réservée au staff ARIA.
--- Repose sur public.is_aria_staff(), défini par la migration 008
--- (accounts_and_scoped_access), qui doit donc être appliquée avant celle-ci.
+-- Repose sur public.is_internal(), déjà en place (même fonction que la
+-- policy dossiers_internal_write sur public.dossiers).
 drop policy if exists promo_codes_staff_write on public.promo_codes;
 create policy promo_codes_staff_write on public.promo_codes
 for all to authenticated
-using (public.is_aria_staff())
-with check (public.is_aria_staff());
+using (public.is_internal())
+with check (public.is_internal());
 
 -- Un premier code de démonstration, à remplacer par vos vrais codes.
 insert into public.promo_codes (code, label, discount_type, discount_value)
