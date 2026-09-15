@@ -22,6 +22,7 @@ type FormState = {
   dossier_name: string
   purpose: string
   property_type: 'apartment' | 'house'
+  construction_year: string
   property_address: string
   contact_name: string
   contact_phone: string
@@ -51,6 +52,19 @@ const parseAddressParts = (address: string) => {
   return match ? { postalCode: match[1], city: match[2].trim() } : { postalCode: null, city: null }
 }
 
+const constructionYearAlerts = (value: string): string[] => {
+  const year = Number(value)
+  if (!value.trim() || !Number.isInteger(year)) return []
+  const alerts: string[] = []
+  if (year < 1949) alerts.push('Bien antérieur à 1949 — le diagnostic plomb (CREP) est obligatoire pour ce type de bien en cas de vente ou location')
+  else if (year < 1997) alerts.push('Bien antérieur à 1997 — un diagnostic amiante est obligatoire en cas de vente, ou en cas de travaux')
+  if (new Date().getFullYear() - year >= 15) {
+    alerts.push('Installation électrique potentiellement âgée de plus de 15 ans — le diagnostic électricité est obligatoire en cas de vente ou location si l’installation a plus de 15 ans (à vérifier sur place, une rénovation récente peut changer la donne)')
+    alerts.push('Installation gaz potentiellement âgée de plus de 15 ans — le diagnostic gaz est obligatoire en cas de vente ou location si l’installation a plus de 15 ans (à vérifier sur place, une rénovation récente peut changer la donne)')
+  }
+  return alerts
+}
+
 export default function NewDossierPage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -61,6 +75,7 @@ export default function NewDossierPage() {
     dossier_name: '',
     purpose: 'sale',
     property_type: 'house',
+    construction_year: '',
     property_address: '',
     contact_name: '',
     contact_phone: '',
@@ -85,6 +100,8 @@ export default function NewDossierPage() {
 
   const setField = (field: keyof Omit<FormState, 'diagnostics'>, value: string) =>
     setForm((current) => ({ ...current, [field]: value }))
+
+  const yearAlerts = constructionYearAlerts(form.construction_year)
 
   const toggleDiagnostic = (diagnostic: string) =>
     setForm((current) => ({
@@ -167,6 +184,7 @@ export default function NewDossierPage() {
         dossier_name: form.dossier_name.trim(),
         status: 'draft',
         purpose: form.purpose || null,
+        construction_year: form.construction_year.trim() ? Number(form.construction_year) : null,
         property_address: form.property_address.trim(),
         contact_name: form.contact_name.trim(),
         contact_phone: form.contact_phone.trim() || null,
@@ -229,6 +247,17 @@ export default function NewDossierPage() {
                 <option value="apartment">Appartement</option>
               </select>
             </label>
+            <label className="edit-field">
+              <span>Année de construction du bien</span>
+              <input type="number" value={form.construction_year} onChange={(event) => setField('construction_year', event.target.value)} placeholder="Ex. 1965" />
+            </label>
+            {yearAlerts.length > 0 && (
+              <div className="wide" style={{ padding: '12px 14px', border: '1px solid #f0c76a', borderRadius: 12, background: '#fff8e6', color: '#7a5612', fontSize: 13 }}>
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {yearAlerts.map((alert) => <li key={alert}>{alert}</li>)}
+                </ul>
+              </div>
+            )}
             <label className="edit-field wide">
               <span>Adresse complète du bien *</span>
               <input value={form.property_address} onChange={(event) => setField('property_address', event.target.value)} placeholder="Numéro, rue, code postal et ville" />
