@@ -1,5 +1,25 @@
 export type QuotePropertyType = 'apartment' | 'house'
 
+// Seule source de vérité pour les tranches de surface maison : app/devis/page.tsx
+// dérive son houseLabels de ce tableau plutôt que de dupliquer les bornes,
+// pour que la grille tarifaire et la suggestion IA ne puissent plus diverger.
+// La dernière tranche (maxSurface: null) correspond à "> 250 m²", sans prix
+// calculé — évaluation personnalisée requise.
+export const HOUSE_SIZE_TIERS: { label: string; maxSurface: number | null }[] = [
+  { label: '≤ 70 m²', maxSurface: 70 },
+  { label: '71–100 m²', maxSurface: 100 },
+  { label: '101–130 m²', maxSurface: 130 },
+  { label: '131–160 m²', maxSurface: 160 },
+  { label: '161–200 m²', maxSurface: 200 },
+  { label: '201–250 m²', maxSurface: 250 },
+  { label: '> 250 m²', maxSurface: null },
+]
+
+const houseSizeKeyFromSurface = (surface: number) => {
+  const index = HOUSE_SIZE_TIERS.findIndex(tier => tier.maxSurface === null || surface <= tier.maxSurface)
+  return String(index === -1 ? HOUSE_SIZE_TIERS.length - 1 : index)
+}
+
 export type QuoteAssistantDossier = {
   purpose?: string | null
   diagnostics?: string[] | string | null
@@ -56,13 +76,7 @@ const inferSizeKey = (dossier: QuoteAssistantDossier, propertyType: QuotePropert
   if (propertyType === 'apartment' && rooms) return String(Math.max(0, Math.min(4, Math.round(rooms) - 1)))
 
   const surface = parseNumber(dossier.surface ?? dossier.property_size)
-  if (propertyType === 'house' && surface !== null) {
-    if (surface <= 70) return '0'
-    if (surface <= 100) return '1'
-    if (surface <= 120) return '2'
-    if (surface <= 150) return '3'
-    return '4'
-  }
+  if (propertyType === 'house' && surface !== null) return houseSizeKeyFromSurface(surface)
 
   return null
 }
@@ -98,7 +112,8 @@ export const buildQuoteSuggestion = (dossier: QuoteAssistantDossier): QuoteSugge
 
   if (!diagnostics.length) warnings.push('Aucun diagnostic n’est renseigné : vérifier le nombre de missions.')
   if (!inferPropertyType(dossier)) warnings.push('Type de bien absent : Appartement a été proposé par défaut.')
-  if (!inferSizeKey(dossier, propertyType)) warnings.push(propertyType === 'house' ? 'Surface absente : la tranche ≤ 70 m² a été proposée.' : 'Typologie absente : T1 a été proposé.')
+  if (!inferSizeKey(dossier, propertyType)) warnings.push(propertyType === 'house' ? `Surface absente : la tranche ${HOUSE_SIZE_TIERS[0].label} a été proposée.` : 'Typologie absente : T1 a été proposé.')
+  if (propertyType === 'house' && sizeKey === String(HOUSE_SIZE_TIERS.length - 1)) warnings.push('Surface supérieure à 250 m² : aucun prix de pack ne s’applique, une évaluation personnalisée est nécessaire.')
   if (dossier.dependencies?.trim()) warnings.push('Les dépendances peuvent nécessiter une ligne ou une majoration manuelle.')
 
   return { propertyType, sizeKey, packCount, boutin, assainissement, proximity, diagnostics, reasons, warnings }
