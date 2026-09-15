@@ -49,7 +49,7 @@ const normalize = (value: string) => value
   .replace(/[\u0300-\u036f]/g, '')
   .replace(/[^a-z0-9]/g, '')
 
-const splitDiagnostics = (raw: QuoteAssistantDossier['diagnostics']) => {
+export const splitDiagnostics = (raw: QuoteAssistantDossier['diagnostics']) => {
   if (Array.isArray(raw)) return raw.map(String).map(value => value.trim()).filter(Boolean)
   if (!raw) return []
   return String(raw).split(/[,;|\n]+/).map(value => value.trim()).filter(Boolean)
