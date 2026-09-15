@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
-import { buildQuoteSuggestion, QuoteSuggestion } from '@/lib/quote-assistant'
+import { buildQuoteSuggestion, HOUSE_SIZE_TIERS, QuoteSuggestion } from '@/lib/quote-assistant'
 import { supabase } from '@/lib/supabase'
 
 type Dossier={id:string;dossier_name:string;purpose?:string|null;diagnostics?:string[]|string|null;property_address?:string|null;property_type?:string|null;property_size?:string|number|null;surface?:string|number|null;rooms?:string|number|null;dependencies?:string|null;contact_name?:string|null;contact_phone?:string|null;contact_email?:string|null}
@@ -17,7 +17,10 @@ const apartmentPacks:Record<number,number[]>={2:[150,170,190,210,230],3:[180,200
 const housePacks:Record<number,number[]>={2:[200,230,260,290,330,380],3:[240,270,300,330,370,420],4:[280,310,340,370,410,460],5:[320,350,380,410,450,500],6:[350,380,410,440,480,530]}
 const boutinHouse=[90,110,130,150,170,190]
 const apartmentLabels=['T1','T2','T3','T4','T5']
-const houseLabels=['≤ 70 m²','71–100 m²','101–130 m²','131–160 m²','161–200 m²','201–250 m²','> 250 m²']
+// Dérivé de lib/quote-assistant.ts (HOUSE_SIZE_TIERS) plutôt que dupliqué ici,
+// pour que la grille tarifaire et la suggestion IA partagent les mêmes 7
+// tranches de surface maison et ne puissent plus diverger.
+const houseLabels=HOUSE_SIZE_TIERS.map(tier=>tier.label)
 // Tranche partagée par la grille principale ET par la Loi Boutin : une seule
 // source de vérité pour "cette surface nécessite un devis personnalisé",
 // dérivée de houseLabels plutôt que dupliquée en dur à deux endroits.
