@@ -17,7 +17,7 @@ export default function Home() {
         <section style={{ width: '100%', maxWidth: 1020, display: 'grid', gridTemplateColumns: 'minmax(0,1.1fr) minmax(320px,.9fr)', background: '#fff', border: '1px solid #dbe7f2', borderRadius: 30, overflow: 'hidden', boxShadow: '0 24px 70px rgba(6,43,89,.14)' }}>
           <div style={{ padding: '64px 56px', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'linear-gradient(155deg,#f9fcff 0%,#edf6fd 100%)' }}>
             <Image src="/logo-aria.svg" alt="ARIA Diagnostics" width={390} height={144} priority style={{ width: 'min(70vw,390px)', height: 'auto', objectFit: 'contain' }} />
-            <h1 style={{ margin: '28px 0 10px', color: '#062b59', fontSize: 'clamp(34px,5vw,54px)', lineHeight: 1, letterSpacing: '-.04em' }}>Espace ARIA</h1>
+            <h1 style={{ margin: '24px 0 10px', color: '#062b59', fontSize: 'clamp(24px,2.6vw,32px)', lineHeight: 1.1, letterSpacing: '-.03em' }}>Espace ARIA</h1>
             <p style={{ margin: 0, color: '#63768a', fontSize: 16, lineHeight: 1.6 }}>Dossiers, devis, agenda et outils métier ARIA Diagnostics dans un seul espace sécurisé.</p>
           </div>
           <div style={{ padding: '58px 44px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
