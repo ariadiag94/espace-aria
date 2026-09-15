@@ -1,9 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { generateQuotePdf } from '@/lib/quote-pdf'
 
-const euro = (value: number) =>
-  Number(value || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
-
 const escapeHtml = (value: string) =>
   value
     .replaceAll('&', '&amp;')
@@ -128,20 +125,6 @@ export async function POST(
     ) * 100,
   ) / 100
 
-  const rows = (lines || [])
-    .map((line) => {
-      const quantity = Number(line.quantity || 0)
-      const unitTtc = Number(line.unit_ttc || 0)
-      const lineTotal = quantity * unitTtc
-      return `<tr>
-        <td style="padding:7px 8px;border-bottom:1px solid #e5ecf3">${escapeHtml(String(line.label || 'Prestation'))}</td>
-        <td style="padding:7px 8px;border-bottom:1px solid #e5ecf3;text-align:center">${quantity.toLocaleString('fr-FR')}</td>
-        <td style="padding:7px 8px;border-bottom:1px solid #e5ecf3;text-align:right">${euro(unitTtc)}</td>
-        <td style="padding:7px 8px;border-bottom:1px solid #e5ecf3;text-align:right;font-weight:700">${euro(lineTotal)}</td>
-      </tr>`
-    })
-    .join('')
-
   const html = `
     <div style="font-family:Arial,Helvetica,sans-serif;color:#24374c;line-height:1.5;max-width:680px;margin:auto">
       <div style="border-bottom:3px solid #0b6cb8;padding-bottom:14px;margin-bottom:22px">
@@ -149,22 +132,7 @@ export async function POST(
         <div style="font-size:13px;color:#66788c">18 rue de Budapest · 94140 Alfortville · 06 15 70 36 70</div>
       </div>
       <p>Bonjour ${contactName},</p>
-      <p>Veuillez trouver ci-joint le devis <strong>${escapeHtml(quote.quote_number)}</strong> concernant <strong>${propertyAddress}</strong>.</p>
-      <table style="width:100%;border-collapse:collapse;margin:18px 0;font-size:13px">
-        <thead>
-          <tr style="background:#dff4fd;color:#062b59">
-            <th style="padding:8px;text-align:left">Prestation</th>
-            <th style="padding:8px;text-align:center">Qté</th>
-            <th style="padding:8px;text-align:right">Prix unitaire TTC</th>
-            <th style="padding:8px;text-align:right">Total TTC</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <div style="text-align:right;font-size:16px;color:#062b59;margin:16px 0 24px">
-        Total TTC : <strong>${euro(calculatedTotal)}</strong>
-      </div>
-      <p>Le devis complet est joint à cet e-mail au format PDF.</p>
+      <p>Veuillez trouver ci-joint le devis <strong>${escapeHtml(quote.quote_number)}</strong> concernant <strong>${propertyAddress}</strong>, au format PDF.</p>
       <p>Nous restons à votre disposition pour toute question concernant ce devis.</p>
       <p style="margin-top:24px">Cordialement,<br><strong>ARIA Diagnostics</strong><br>06 15 70 36 70<br>contact@aria-diagnostics.fr</p>
     </div>`
