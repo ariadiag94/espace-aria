@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import Script from 'next/script'
 
 export default function Home() {
   return (
@@ -30,6 +31,17 @@ export default function Home() {
           </div>
         </section>
       </div>
+
+      <section className="avis-clients" style={{ padding: '60px 20px', textAlign: 'center' }}>
+        <h2 style={{ color: '#062b59', marginBottom: '12px' }}>Ce que disent nos clients</h2>
+        <p style={{ color: '#555', maxWidth: '600px', margin: '0 auto 20px' }}>
+          La satisfaction de nos clients est au cœur de notre activité. Découvrez
+          les avis laissés après leurs interventions avec ARIA Diagnostics.
+        </p>
+        <div id="avis-clients" style={{ margin: '30px 0' }}>
+          <Script defer strategy="afterInteractive" src="https://cdn.trustindex.io/loader.js?b559cd170fb0098f50767e4f916" />
+        </div>
+      </section>
     </main>
   )
 }
