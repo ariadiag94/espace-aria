@@ -57,7 +57,7 @@ export const computeDiagnostics = ({
     }
     toConfirm.push({ id: 'termites', label: 'Termites', detail: 'À confirmer selon la commune (zones à risque déclarées par arrêté préfectoral).' })
     const assainissementPrice = propertyType === 'apartment' ? APARTMENT_ASSAINISSEMENT_PRICE : HOUSE_ASSAINISSEMENT_PRICE
-    toConfirm.push({ id: 'assainissement', label: 'Assainissement', detail: `À confirmer si le bien n’est pas raccordé au tout-à-l’égout (+ ${assainissementPrice} € si confirmé).` })
+    toConfirm.push({ id: 'assainissement', label: 'Assainissement', detail: `Contrôle du raccordement au réseau d’eaux usées. Dans certaines communes, il est réservé au service public : à vérifier auprès de votre mairie. Si nous le réalisons : + ${assainissementPrice} €` })
     if (propertyType === 'apartment') {
       if (isCoowned) {
         options.push({ id: 'carrez', label: 'Mesurage loi Carrez' })
