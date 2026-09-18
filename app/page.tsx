@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import Script from 'next/script'
+import { TrustindexWidget } from '@/components/TrustindexWidget'
 
 export default function Home() {
   return (
@@ -57,9 +57,7 @@ export default function Home() {
           La satisfaction de nos clients est au cœur de notre activité. Découvrez
           les avis laissés après leurs interventions avec ARIA Diagnostics.
         </p>
-        <div id="avis-clients" style={{ margin: '30px 0', maxHeight: '420px', overflowY: 'auto', borderRadius: '12px' }}>
-          <Script defer strategy="afterInteractive" src="https://cdn.trustindex.io/loader.js?b559cd170fb0098f50767e4f916" />
-        </div>
+        <TrustindexWidget />
       </section>
     </main>
   )
