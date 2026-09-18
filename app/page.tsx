@@ -35,7 +35,7 @@ export default function Home() {
           </div>
 
           <div style={{ textAlign: 'center', maxWidth: 640, margin: '36px auto 0' }}>
-            <Image src="/logo-aria-white.png" alt="ARIA Diagnostics" width={1040} height={384} priority className="hero-logo" style={{ height: 230, width: 'auto', margin: '0 auto' }} />
+            <Image src="/logo-aria-white.png" alt="ARIA Diagnostics" width={2596} height={1036} priority className="hero-logo" style={{ height: 230, width: 'auto', margin: '0 auto' }} />
             <h1 className="hero-title" style={{ color: '#fff', fontWeight: 900, fontSize: 'clamp(30px,5vw,46px)', margin: '28px 0 0', letterSpacing: '-.02em' }}>DiagAssist</h1>
             <div style={{ width: 56, height: 3, background: '#4db3e6', borderRadius: 2, margin: '14px auto 18px' }} />
             <p className="hero-subtitle" style={{ color: '#fff', fontWeight: 600, fontSize: 16, margin: '0 0 10px' }}>L’assistant qui identifie vos diagnostics obligatoires</p>
