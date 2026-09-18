@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import Script from 'next/script'
+import { TrustindexWidget } from '@/components/TrustindexWidget'
 
 export default function Home() {
   return (
@@ -29,9 +29,9 @@ export default function Home() {
 
         <div style={{ position: 'relative' }}>
           <div className="hero-top-row" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', gap: 16 }}>
-            <Link href="#" className="hero-top-link">Espace pro</Link>
+            <Link href="/login" className="hero-top-link">Espace pro</Link>
             <span style={{ width: 1, height: 14, background: 'rgba(77,179,230,.5)' }} />
-            <Link href="#" className="hero-top-link">Déjà client ? Suivre mon dossier →</Link>
+            <Link href="/login" className="hero-top-link">Déjà client ? Suivre mon dossier →</Link>
           </div>
 
           <div style={{ textAlign: 'center', maxWidth: 640, margin: '36px auto 0' }}>
@@ -57,9 +57,7 @@ export default function Home() {
           La satisfaction de nos clients est au cœur de notre activité. Découvrez
           les avis laissés après leurs interventions avec ARIA Diagnostics.
         </p>
-        <div id="avis-clients" style={{ margin: '30px 0', maxHeight: '420px', overflowY: 'auto', borderRadius: '12px' }}>
-          <Script defer strategy="afterInteractive" src="https://cdn.trustindex.io/loader.js?b559cd170fb0098f50767e4f916" />
-        </div>
+        <TrustindexWidget />
       </section>
     </main>
   )
