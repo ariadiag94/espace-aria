@@ -1,0 +1,193 @@
+'use client'
+
+import Link from 'next/link'
+import { useState } from 'react'
+import { constructionYearAlerts } from '@/lib/property-alerts'
+import {
+  APARTMENT_PACK_PRICES,
+  APARTMENT_SIZE_LABELS,
+  HOUSE_PACK_PRICES,
+  HOUSE_QUOTE_ON_REQUEST_INDEX,
+  HOUSE_SIZE_LABELS,
+} from '@/lib/property-pricing'
+
+const NAVY = '#062b59'
+const SKY = '#4db3e6'
+const LIGHT = '#eef1f5'
+
+const euro = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
+
+type Purpose = 'sale' | 'rental'
+type PropertyType = 'apartment' | 'house'
+
+const currentYear = new Date().getFullYear()
+const YEAR_BRACKETS = [
+  { label: 'Avant 1949', year: 1930 },
+  { label: '1949 – 1996', year: 1970 },
+  { label: `1997 – ${currentYear - 15}`, year: currentYear - 15 },
+  { label: `${currentYear - 14} à aujourd’hui`, year: currentYear },
+]
+
+const TOTAL_STEPS = 5
+
+export default function AssistantPage() {
+  const [step, setStep] = useState(0)
+  const [purpose, setPurpose] = useState<Purpose | null>(null)
+  const [propertyType, setPropertyType] = useState<PropertyType | null>(null)
+  const [yearIndex, setYearIndex] = useState<number | null>(null)
+  const [sizeIndex, setSizeIndex] = useState<number | null>(null)
+
+  const sizeLabels = propertyType === 'apartment' ? APARTMENT_SIZE_LABELS : HOUSE_SIZE_LABELS
+  const maxPack = propertyType === 'house' ? 6 : 7
+  const quoteOnRequest = propertyType === 'house' && sizeIndex === HOUSE_QUOTE_ON_REQUEST_INDEX
+
+  const goBack = () => setStep((s) => Math.max(0, s - 1))
+  const restart = () => {
+    setStep(0)
+    setPurpose(null)
+    setPropertyType(null)
+    setYearIndex(null)
+    setSizeIndex(null)
+  }
+
+  const selectPurpose = (p: Purpose) => {
+    setPurpose(p)
+    setStep(1)
+  }
+  const selectPropertyType = (t: PropertyType) => {
+    setPropertyType(t)
+    setSizeIndex(null)
+    setStep(2)
+  }
+  const selectYear = (i: number) => {
+    setYearIndex(i)
+    setStep(3)
+  }
+  const selectSize = (i: number) => {
+    setSizeIndex(i)
+    setStep(4)
+  }
+
+  const yearAlerts = yearIndex !== null ? constructionYearAlerts(YEAR_BRACKETS[yearIndex].year) : []
+  const diagnosticsCount = yearAlerts.length
+  const effectivePack = Math.max(2, Math.min(maxPack, diagnosticsCount || 2))
+  const price =
+    propertyType && sizeIndex !== null && !quoteOnRequest
+      ? (propertyType === 'apartment' ? APARTMENT_PACK_PRICES : HOUSE_PACK_PRICES)[effectivePack]?.[sizeIndex] ?? null
+      : null
+
+  return (
+    <main style={{ minHeight: '100vh', background: LIGHT, fontFamily: 'Arial,Helvetica,sans-serif', padding: '28px 16px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <style>{`
+        .diagassist-choice { display: block; width: 100%; text-align: left; padding: 16px 18px; border-radius: 14px; border: 2px solid #dbe7f2; background: #fff; color: ${NAVY}; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .diagassist-choice:hover { border-color: ${SKY}; }
+        .diagassist-back { background: none; border: none; color: #6f7d90; font-weight: 700; font-size: 13px; cursor: pointer; padding: 0; margin-top: 22px; font-family: inherit; }
+        .diagassist-back:hover { color: ${NAVY}; }
+        .diagassist-restart { background: none; border: none; color: ${NAVY}; font-weight: 700; font-size: 13px; cursor: pointer; padding: 0; text-decoration: underline; font-family: inherit; }
+      `}</style>
+
+      <div style={{ width: '100%', maxWidth: 560 }}>
+        <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: NAVY, textDecoration: 'none', fontWeight: 700, fontSize: 13, marginBottom: 18 }}>
+          ← Retour à l’accueil
+        </Link>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 18 }}>
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+            <div key={i} style={{ width: 10, height: 10, borderRadius: 999, background: i <= step ? NAVY : '#d7dee6' }} />
+          ))}
+        </div>
+
+        <div style={{ background: '#fff', borderRadius: 24, overflow: 'hidden', boxShadow: '0 20px 50px rgba(6,43,89,.10)' }}>
+          <div style={{ height: 6, background: `linear-gradient(90deg, ${NAVY}, ${SKY})` }} />
+          <div style={{ padding: '30px 26px' }}>
+            <div style={{ color: SKY, fontWeight: 900, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+              DIAGASSIST · ÉTAPE {Math.min(step + 1, TOTAL_STEPS)}/{TOTAL_STEPS}
+            </div>
+
+            {step === 0 && (
+              <>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Votre projet concerne...</h1>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <button className="diagassist-choice" onClick={() => selectPurpose('sale')}>Une vente</button>
+                  <button className="diagassist-choice" onClick={() => selectPurpose('rental')}>Une location</button>
+                </div>
+              </>
+            )}
+
+            {step === 1 && (
+              <>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Quel est le type de bien ?</h1>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <button className="diagassist-choice" onClick={() => selectPropertyType('apartment')}>Appartement</button>
+                  <button className="diagassist-choice" onClick={() => selectPropertyType('house')}>Maison</button>
+                </div>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>De quand date la construction ?</h1>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {YEAR_BRACKETS.map((bracket, i) => (
+                    <button key={bracket.label} className="diagassist-choice" onClick={() => selectYear(i)}>{bracket.label}</button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {step === 3 && propertyType && (
+              <>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>
+                  {propertyType === 'apartment' ? 'Combien de pièces principales ?' : 'Quelle est la surface habitable ?'}
+                </h1>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {sizeLabels.map((label, i) => (
+                    <button key={label} className="diagassist-choice" onClick={() => selectSize(i)}>{label}</button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {step === 4 && propertyType && sizeIndex !== null && (
+              <div>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre estimation</h1>
+                <p style={{ color: '#6f7d90', fontSize: 14, margin: '0 0 22px' }}>
+                  {propertyType === 'apartment' ? 'Appartement' : 'Maison'} · {sizeLabels[sizeIndex]} · {purpose === 'rental' ? 'Location' : 'Vente'}
+                </p>
+
+                <div style={{ marginBottom: 22 }}>
+                  <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Diagnostics potentiellement obligatoires détectés</div>
+                  {yearAlerts.length === 0 ? (
+                    <p style={{ color: '#52657a', fontSize: 14, margin: 0 }}>Notre outil n’a détecté aucune obligation liée à l’ancienneté du bien pour ces réponses.</p>
+                  ) : (
+                    <ul style={{ margin: 0, paddingLeft: 20, color: '#315a48', fontSize: 14, lineHeight: 1.6 }}>
+                      {yearAlerts.map((alert) => <li key={alert}>{alert}</li>)}
+                    </ul>
+                  )}
+                </div>
+
+                <div style={{ padding: '18px 20px', borderRadius: 16, background: quoteOnRequest || price === null ? '#fff8e6' : LIGHT, border: `1px solid ${quoteOnRequest || price === null ? '#f0c76a' : '#dbe7f2'}`, marginBottom: 20 }}>
+                  {quoteOnRequest || price === null ? (
+                    <div style={{ color: '#7a5612', fontWeight: 900, fontSize: 17 }}>Nous vous répondons avec un devis personnalisé</div>
+                  ) : (
+                    <div style={{ color: NAVY, fontWeight: 900, fontSize: 22 }}>À partir de {euro(price)} TTC</div>
+                  )}
+                </div>
+
+                <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f5f7fa', border: '1px solid #e2e8ef', color: '#52657a', fontSize: 12, lineHeight: 1.6, marginBottom: 22 }}>
+                  Estimation indicative, établie à partir des informations que vous avez déclarées. Elle ne constitue ni un devis ni un engagement. Les diagnostics obligatoires dépendent de la situation réelle du bien et de la réglementation en vigueur : ARIA Diagnostics les confirme après vérification. Le prix définitif peut différer si les informations sont inexactes ou incomplètes (surface, nombre de lots, dépendances, accès, etc.). Aucun devis n’est envoyé avant cette vérification.
+                </div>
+
+                <button className="diagassist-restart" onClick={restart}>Recommencer</button>
+              </div>
+            )}
+
+            {step > 0 && step < 4 && (
+              <button className="diagassist-back" onClick={goBack}>← Question précédente</button>
+            )}
+          </div>
+        </div>
+      </div>
+    </main>
+  )
+}
