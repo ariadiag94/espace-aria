@@ -26,10 +26,11 @@ export const HOUSE_PACK_PRICES: Record<number, number[]> = {
   6: [350, 380, 410, 440, 480, 530],
 }
 
-// Prix de l'option "mesurage loi Boutin", repris à l'identique de
-// app/devis/page.tsx (boutinHouse) — maison uniquement, par tranche de
-// surface (index 0 à 5, hors tranche ">250 m²" qui est déjà sur devis).
+// Prix de l'option "mesurage (surface habitable)" maison, lu depuis
+// HOUSE_SIZE_TIERS (lib/quote-assistant.ts) — seule source de vérité, pour
+// vente comme pour location. `null` correspond à ">250 m²" (sur devis, déjà
+// couvert par le seuil HOUSE_QUOTE_ON_REQUEST_INDEX qui masque les options).
 // Aucun prix équivalent n'existe pour l'appartement dans le moteur existant
 // (la Boutin y est comprise dans le pack) : sans entrée ici, l'option
 // s'affiche "selon devis" côté page.
-export const HOUSE_BOUTIN_PRICES = [90, 110, 130, 150, 170, 190]
+export const HOUSE_MEASUREMENT_PRICES = HOUSE_SIZE_TIERS.map((tier) => tier.measurementPrice)

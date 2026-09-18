@@ -6,7 +6,7 @@ import { computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
 import {
   APARTMENT_PACK_PRICES,
   APARTMENT_SIZE_LABELS,
-  HOUSE_BOUTIN_PRICES,
+  HOUSE_MEASUREMENT_PRICES,
   HOUSE_PACK_PRICES,
   HOUSE_QUOTE_ON_REQUEST_INDEX,
   HOUSE_SIZE_LABELS,
@@ -94,8 +94,11 @@ export default function AssistantPage() {
   // ne s'applique : signalée telle quelle plutôt que d'inventer un prix.
   const noPackMatch = !quoteOnRequest && packPrice === null && diagnostics !== null && sizeIndex !== null
 
+  // Carrez, Boutin (appartement) et DAPP n'ont aucun prix dans le moteur
+  // existant : "selon devis" plutôt qu'un tarif inventé. Le mesurage maison
+  // est le seul avec un prix, lu depuis HOUSE_SIZE_TIERS (source commune).
   const optionPrice = (id: PricedOptionId): number | null => {
-    if (id === 'boutin' && propertyType === 'house' && sizeIndex !== null) return HOUSE_BOUTIN_PRICES[sizeIndex] ?? null
+    if (id === 'measurement' && propertyType === 'house' && sizeIndex !== null) return HOUSE_MEASUREMENT_PRICES[sizeIndex] ?? null
     return null
   }
 

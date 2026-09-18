@@ -2,7 +2,7 @@ export type Purpose = 'sale' | 'rental'
 export type PropertyType = 'apartment' | 'house'
 
 export type DiagnosticItem = { id: string; label: string; detail: string }
-export type PricedOptionId = 'carrez' | 'boutin' | 'dapp'
+export type PricedOptionId = 'carrez' | 'boutin' | 'dapp' | 'measurement'
 export type PricedOption = { id: PricedOptionId; label: string }
 
 export type DiagnosticsResult = {
@@ -55,13 +55,23 @@ export const computeDiagnostics = ({
     }
     toConfirm.push({ id: 'termites', label: 'Termites', detail: 'À confirmer selon la commune (zones à risque déclarées par arrêté préfectoral).' })
     toConfirm.push({ id: 'assainissement', label: 'Assainissement', detail: 'À confirmer si le bien n’est pas raccordé au tout-à-l’égout.' })
-    if (propertyType === 'apartment' && isCoowned) {
-      options.push({ id: 'carrez', label: 'Mesurage loi Carrez' })
+    if (propertyType === 'apartment') {
+      if (isCoowned) {
+        options.push({ id: 'carrez', label: 'Mesurage loi Carrez' })
+      }
+    } else {
+      options.push({ id: 'measurement', label: 'Mesurage (surface habitable)' })
     }
   } else {
-    options.push({ id: 'boutin', label: 'Mesurage loi Boutin' })
-    if (propertyType === 'apartment' && isCoowned && isBefore1997) {
-      options.push({ id: 'dapp', label: 'DAPP (dossier amiante parties privatives)' })
+    if (propertyType === 'apartment') {
+      options.push({ id: 'boutin', label: 'Mesurage loi Boutin' })
+      // DAPP ne dépend plus de la copropriété : tout appartement construit
+      // avant 1997, en location, qu'il soit en copropriété ou non.
+      if (isBefore1997) {
+        options.push({ id: 'dapp', label: 'DAPP (dossier amiante parties privatives)' })
+      }
+    } else {
+      options.push({ id: 'measurement', label: 'Mesurage (surface habitable)' })
     }
   }
 
