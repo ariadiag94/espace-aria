@@ -1,15 +1,69 @@
-// Règle déjà codée dans app/dossiers/nouveau/page.tsx (constructionYearAlerts),
-// reprise ici à l'identique (même texte, même seuils, même logique) pour
-// app/assistant/page.tsx, sans modifier cette page existante. Si les seuils
-// changent un jour, il faudra les répercuter aux deux endroits.
-export const constructionYearAlerts = (year: number): string[] => {
-  if (!Number.isInteger(year)) return []
-  const alerts: string[] = []
-  if (year < 1949) alerts.push('Bien antérieur à 1949 — le diagnostic plomb (CREP) est obligatoire pour ce type de bien en cas de vente ou location')
-  else if (year < 1997) alerts.push('Bien antérieur à 1997 — un diagnostic amiante est obligatoire en cas de vente, ou en cas de travaux')
-  if (new Date().getFullYear() - year >= 15) {
-    alerts.push('Installation électrique potentiellement âgée de plus de 15 ans — le diagnostic électricité est obligatoire en cas de vente ou location si l’installation a plus de 15 ans (à vérifier sur place, une rénovation récente peut changer la donne)')
-    alerts.push('Installation gaz potentiellement âgée de plus de 15 ans — le diagnostic gaz est obligatoire en cas de vente ou location si l’installation a plus de 15 ans (à vérifier sur place, une rénovation récente peut changer la donne)')
+export type Purpose = 'sale' | 'rental'
+export type PropertyType = 'apartment' | 'house'
+
+export type DiagnosticItem = { id: string; label: string; detail: string }
+export type PricedOptionId = 'carrez' | 'boutin' | 'dapp'
+export type PricedOption = { id: PricedOptionId; label: string }
+
+export type DiagnosticsResult = {
+  mandatory: DiagnosticItem[]
+  toConfirm: DiagnosticItem[]
+  options: PricedOption[]
+}
+
+// Seuils électricité/gaz (installation de plus de 15 ans, approximée depuis
+// l'année de construction) et plomb (< 1949) repris tels quels de la règle
+// déjà codée dans app/dossiers/nouveau/page.tsx (constructionYearAlerts).
+// Le reste (DPE/ERP systématiques, amiante vente, termites/assainissement à
+// confirmer, Carrez/Boutin/DAPP) est la règle demandée pour ce parcours
+// public, appliquée ici à l'identique de ce qui a été spécifié — rien
+// d'autre n'est déduit ou approximé au-delà de ce qui est listé.
+export const computeDiagnostics = ({
+  purpose,
+  propertyType,
+  constructionYear,
+  isCoowned,
+}: {
+  purpose: Purpose
+  propertyType: PropertyType
+  constructionYear: number
+  isCoowned: boolean
+}): DiagnosticsResult => {
+  const age = new Date().getFullYear() - constructionYear
+  const isOldInstallation = age >= 15
+  const isBefore1949 = constructionYear < 1949
+  const isBefore1997 = constructionYear < 1997
+
+  const mandatory: DiagnosticItem[] = [
+    { id: 'dpe', label: 'DPE', detail: 'Diagnostic de performance énergétique, obligatoire pour toute vente ou location.' },
+    { id: 'erp', label: 'ERP', detail: 'État des risques et pollutions, obligatoire pour toute vente ou location.' },
+  ]
+  if (isOldInstallation) {
+    mandatory.push({ id: 'elec', label: 'Électricité', detail: 'Installation électrique de plus de 15 ans (approximé depuis l’année de construction, une rénovation récente peut changer la donne).' })
+    mandatory.push({ id: 'gaz', label: 'Gaz', detail: 'Installation gaz de plus de 15 ans (approximé depuis l’année de construction, une rénovation récente peut changer la donne).' })
   }
-  return alerts
+  if (isBefore1949) {
+    mandatory.push({ id: 'plomb', label: 'Plomb (CREP)', detail: 'Bien construit avant 1949.' })
+  }
+
+  const toConfirm: DiagnosticItem[] = []
+  const options: PricedOption[] = []
+
+  if (purpose === 'sale') {
+    if (isBefore1997) {
+      mandatory.push({ id: 'amiante', label: 'Amiante', detail: 'Bien construit avant 1997.' })
+    }
+    toConfirm.push({ id: 'termites', label: 'Termites', detail: 'À confirmer selon la commune (zones à risque déclarées par arrêté préfectoral).' })
+    toConfirm.push({ id: 'assainissement', label: 'Assainissement', detail: 'À confirmer si le bien n’est pas raccordé au tout-à-l’égout.' })
+    if (propertyType === 'apartment' && isCoowned) {
+      options.push({ id: 'carrez', label: 'Mesurage loi Carrez' })
+    }
+  } else {
+    options.push({ id: 'boutin', label: 'Mesurage loi Boutin' })
+    if (propertyType === 'apartment' && isCoowned && isBefore1997) {
+      options.push({ id: 'dapp', label: 'DAPP (dossier amiante parties privatives)' })
+    }
+  }
+
+  return { mandatory, toConfirm, options }
 }

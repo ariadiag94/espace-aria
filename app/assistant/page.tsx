@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import { constructionYearAlerts } from '@/lib/property-alerts'
+import { useMemo, useState } from 'react'
+import { computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
 import {
   APARTMENT_PACK_PRICES,
   APARTMENT_SIZE_LABELS,
+  HOUSE_BOUTIN_PRICES,
   HOUSE_PACK_PRICES,
   HOUSE_QUOTE_ON_REQUEST_INDEX,
   HOUSE_SIZE_LABELS,
@@ -19,6 +20,7 @@ const euro = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', curre
 
 type Purpose = 'sale' | 'rental'
 type PropertyType = 'apartment' | 'house'
+type Heating = 'collective' | 'individual'
 
 const currentYear = new Date().getFullYear()
 const YEAR_BRACKETS = [
@@ -28,53 +30,74 @@ const YEAR_BRACKETS = [
   { label: `${currentYear - 14} à aujourd’hui`, year: currentYear },
 ]
 
-const TOTAL_STEPS = 5
+type Screen = 'purpose' | 'propertyType' | 'coownership' | 'heating' | 'year' | 'size' | 'result'
 
 export default function AssistantPage() {
   const [step, setStep] = useState(0)
   const [purpose, setPurpose] = useState<Purpose | null>(null)
   const [propertyType, setPropertyType] = useState<PropertyType | null>(null)
+  const [coowned, setCoowned] = useState<boolean | null>(null)
+  const [heating, setHeating] = useState<Heating | null>(null)
   const [yearIndex, setYearIndex] = useState<number | null>(null)
   const [sizeIndex, setSizeIndex] = useState<number | null>(null)
 
-  const sizeLabels = propertyType === 'apartment' ? APARTMENT_SIZE_LABELS : HOUSE_SIZE_LABELS
-  const maxPack = propertyType === 'house' ? 6 : 7
-  const quoteOnRequest = propertyType === 'house' && sizeIndex === HOUSE_QUOTE_ON_REQUEST_INDEX
+  // Parcours dynamique : la copropriété n'est demandée que pour un
+  // appartement, et le chauffage que si le bien est en copropriété.
+  const screens: Screen[] = useMemo(() => {
+    const s: Screen[] = ['purpose', 'propertyType']
+    if (propertyType === 'apartment') {
+      s.push('coownership')
+      if (coowned) s.push('heating')
+    }
+    s.push('year', 'size', 'result')
+    return s
+  }, [propertyType, coowned])
+
+  const currentScreen = screens[Math.min(step, screens.length - 1)]
 
   const goBack = () => setStep((s) => Math.max(0, s - 1))
+  const advance = () => setStep((s) => s + 1)
   const restart = () => {
     setStep(0)
     setPurpose(null)
     setPropertyType(null)
+    setCoowned(null)
+    setHeating(null)
     setYearIndex(null)
     setSizeIndex(null)
   }
 
-  const selectPurpose = (p: Purpose) => {
-    setPurpose(p)
-    setStep(1)
-  }
-  const selectPropertyType = (t: PropertyType) => {
-    setPropertyType(t)
-    setSizeIndex(null)
-    setStep(2)
-  }
-  const selectYear = (i: number) => {
-    setYearIndex(i)
-    setStep(3)
-  }
-  const selectSize = (i: number) => {
-    setSizeIndex(i)
-    setStep(4)
-  }
+  const selectPurpose = (p: Purpose) => { setPurpose(p); advance() }
+  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setCoowned(null); setHeating(null); setSizeIndex(null); advance() }
+  const selectCoowned = (v: boolean) => { setCoowned(v); if (!v) setHeating(null); advance() }
+  const selectHeating = (h: Heating) => { setHeating(h); advance() }
+  const selectYear = (i: number) => { setYearIndex(i); advance() }
+  const selectSize = (i: number) => { setSizeIndex(i); advance() }
 
-  const yearAlerts = yearIndex !== null ? constructionYearAlerts(YEAR_BRACKETS[yearIndex].year) : []
-  const diagnosticsCount = yearAlerts.length
-  const effectivePack = Math.max(2, Math.min(maxPack, diagnosticsCount || 2))
-  const price =
-    propertyType && sizeIndex !== null && !quoteOnRequest
-      ? (propertyType === 'apartment' ? APARTMENT_PACK_PRICES : HOUSE_PACK_PRICES)[effectivePack]?.[sizeIndex] ?? null
-      : null
+  const sizeLabels = propertyType === 'apartment' ? APARTMENT_SIZE_LABELS : HOUSE_SIZE_LABELS
+  const maxPack = propertyType === 'house' ? 6 : 7
+  const constructionYear = yearIndex !== null ? YEAR_BRACKETS[yearIndex].year : null
+
+  const diagnostics = purpose && propertyType && constructionYear !== null
+    ? computeDiagnostics({ purpose, propertyType, constructionYear, isCoowned: !!coowned })
+    : null
+
+  const houseOver250 = propertyType === 'house' && sizeIndex === HOUSE_QUOTE_ON_REQUEST_INDEX
+  const collectiveHeating = propertyType === 'apartment' && !!coowned && heating === 'collective'
+  const quoteOnRequest = houseOver250 || collectiveHeating
+
+  const packCount = diagnostics ? Math.max(2, Math.min(maxPack, diagnostics.mandatory.length)) : null
+  const packPrice = diagnostics && packCount !== null && sizeIndex !== null
+    ? (propertyType === 'apartment' ? APARTMENT_PACK_PRICES : HOUSE_PACK_PRICES)[packCount]?.[sizeIndex] ?? null
+    : null
+  // Combinaison sans tarif dans la grille alors qu'aucun cas "sur devis" connu
+  // ne s'applique : signalée telle quelle plutôt que d'inventer un prix.
+  const noPackMatch = !quoteOnRequest && packPrice === null && diagnostics !== null && sizeIndex !== null
+
+  const optionPrice = (id: PricedOptionId): number | null => {
+    if (id === 'boutin' && propertyType === 'house' && sizeIndex !== null) return HOUSE_BOUTIN_PRICES[sizeIndex] ?? null
+    return null
+  }
 
   return (
     <main style={{ minHeight: '100vh', background: LIGHT, fontFamily: 'Arial,Helvetica,sans-serif', padding: '28px 16px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -92,8 +115,8 @@ export default function AssistantPage() {
         </Link>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 18 }}>
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <div key={i} style={{ width: 10, height: 10, borderRadius: 999, background: i <= step ? NAVY : '#d7dee6' }} />
+          {screens.map((s, i) => (
+            <div key={s} style={{ width: 10, height: 10, borderRadius: 999, background: i <= step ? NAVY : '#d7dee6' }} />
           ))}
         </div>
 
@@ -101,10 +124,10 @@ export default function AssistantPage() {
           <div style={{ height: 6, background: `linear-gradient(90deg, ${NAVY}, ${SKY})` }} />
           <div style={{ padding: '30px 26px' }}>
             <div style={{ color: SKY, fontWeight: 900, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-              DIAGASSIST · ÉTAPE {Math.min(step + 1, TOTAL_STEPS)}/{TOTAL_STEPS}
+              DIAGASSIST · ÉTAPE {Math.min(step + 1, screens.length)}/{screens.length}
             </div>
 
-            {step === 0 && (
+            {currentScreen === 'purpose' && (
               <>
                 <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Votre projet concerne...</h1>
                 <div style={{ display: 'grid', gap: 12 }}>
@@ -114,7 +137,7 @@ export default function AssistantPage() {
               </>
             )}
 
-            {step === 1 && (
+            {currentScreen === 'propertyType' && (
               <>
                 <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Quel est le type de bien ?</h1>
                 <div style={{ display: 'grid', gap: 12 }}>
@@ -124,7 +147,27 @@ export default function AssistantPage() {
               </>
             )}
 
-            {step === 2 && (
+            {currentScreen === 'coownership' && (
+              <>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Le bien est-il en copropriété ?</h1>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <button className="diagassist-choice" onClick={() => selectCoowned(true)}>Oui</button>
+                  <button className="diagassist-choice" onClick={() => selectCoowned(false)}>Non</button>
+                </div>
+              </>
+            )}
+
+            {currentScreen === 'heating' && (
+              <>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Le chauffage est-il collectif ou individuel ?</h1>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <button className="diagassist-choice" onClick={() => selectHeating('collective')}>Collectif</button>
+                  <button className="diagassist-choice" onClick={() => selectHeating('individual')}>Individuel</button>
+                </div>
+              </>
+            )}
+
+            {currentScreen === 'year' && (
               <>
                 <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>De quand date la construction ?</h1>
                 <div style={{ display: 'grid', gap: 12 }}>
@@ -135,7 +178,7 @@ export default function AssistantPage() {
               </>
             )}
 
-            {step === 3 && propertyType && (
+            {currentScreen === 'size' && propertyType && (
               <>
                 <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>
                   {propertyType === 'apartment' ? 'Combien de pièces principales ?' : 'Quelle est la surface habitable ?'}
@@ -148,29 +191,51 @@ export default function AssistantPage() {
               </>
             )}
 
-            {step === 4 && propertyType && sizeIndex !== null && (
+            {currentScreen === 'result' && propertyType && sizeIndex !== null && diagnostics && (
               <div>
                 <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre estimation</h1>
                 <p style={{ color: '#6f7d90', fontSize: 14, margin: '0 0 22px' }}>
                   {propertyType === 'apartment' ? 'Appartement' : 'Maison'} · {sizeLabels[sizeIndex]} · {purpose === 'rental' ? 'Location' : 'Vente'}
+                  {propertyType === 'apartment' && coowned ? ' · Copropriété' : ''}
                 </p>
 
-                <div style={{ marginBottom: 22 }}>
-                  <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Diagnostics potentiellement obligatoires détectés</div>
-                  {yearAlerts.length === 0 ? (
-                    <p style={{ color: '#52657a', fontSize: 14, margin: 0 }}>Notre outil n’a détecté aucune obligation liée à l’ancienneté du bien pour ces réponses.</p>
-                  ) : (
-                    <ul style={{ margin: 0, paddingLeft: 20, color: '#315a48', fontSize: 14, lineHeight: 1.6 }}>
-                      {yearAlerts.map((alert) => <li key={alert}>{alert}</li>)}
-                    </ul>
-                  )}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Diagnostics obligatoires</div>
+                  <ul style={{ margin: 0, paddingLeft: 20, color: '#315a48', fontSize: 14, lineHeight: 1.6 }}>
+                    {diagnostics.mandatory.map((item) => (
+                      <li key={item.id}><b>{item.label}</b> — {item.detail}</li>
+                    ))}
+                  </ul>
                 </div>
 
-                <div style={{ padding: '18px 20px', borderRadius: 16, background: quoteOnRequest || price === null ? '#fff8e6' : LIGHT, border: `1px solid ${quoteOnRequest || price === null ? '#f0c76a' : '#dbe7f2'}`, marginBottom: 20 }}>
-                  {quoteOnRequest || price === null ? (
+                {diagnostics.toConfirm.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>À confirmer</div>
+                    <ul style={{ margin: 0, paddingLeft: 20, color: '#7a5612', fontSize: 14, lineHeight: 1.6 }}>
+                      {diagnostics.toConfirm.map((item) => (
+                        <li key={item.id}><b>{item.label}</b> — {item.detail}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {diagnostics.options.length > 0 && !quoteOnRequest && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Options liées à votre situation</div>
+                    <ul style={{ margin: 0, paddingLeft: 20, color: '#315a48', fontSize: 14, lineHeight: 1.6 }}>
+                      {diagnostics.options.map((option) => {
+                        const price = optionPrice(option.id)
+                        return <li key={option.id}><b>{option.label}</b> — {price !== null ? euro(price) : 'selon devis'}</li>
+                      })}
+                    </ul>
+                  </div>
+                )}
+
+                <div style={{ padding: '18px 20px', borderRadius: 16, background: quoteOnRequest || noPackMatch ? '#fff8e6' : LIGHT, border: `1px solid ${quoteOnRequest || noPackMatch ? '#f0c76a' : '#dbe7f2'}`, marginBottom: 20 }}>
+                  {quoteOnRequest || noPackMatch ? (
                     <div style={{ color: '#7a5612', fontWeight: 900, fontSize: 17 }}>Nous vous répondons avec un devis personnalisé</div>
                   ) : (
-                    <div style={{ color: NAVY, fontWeight: 900, fontSize: 22 }}>À partir de {euro(price)} TTC</div>
+                    <div style={{ color: NAVY, fontWeight: 900, fontSize: 22 }}>À partir de {euro(packPrice as number)} TTC</div>
                   )}
                 </div>
 
@@ -182,7 +247,7 @@ export default function AssistantPage() {
               </div>
             )}
 
-            {step > 0 && step < 4 && (
+            {currentScreen !== 'purpose' && currentScreen !== 'result' && (
               <button className="diagassist-back" onClick={goBack}>← Question précédente</button>
             )}
           </div>
