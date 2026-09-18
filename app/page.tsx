@@ -29,9 +29,9 @@ export default function Home() {
 
         <div style={{ position: 'relative' }}>
           <div className="hero-top-row" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', gap: 16 }}>
-            <Link href="#" className="hero-top-link">Espace pro</Link>
+            <Link href="/login" className="hero-top-link">Espace pro</Link>
             <span style={{ width: 1, height: 14, background: 'rgba(77,179,230,.5)' }} />
-            <Link href="#" className="hero-top-link">Déjà client ? Suivre mon dossier →</Link>
+            <Link href="/login" className="hero-top-link">Déjà client ? Suivre mon dossier →</Link>
           </div>
 
           <div style={{ textAlign: 'center', maxWidth: 640, margin: '36px auto 0' }}>
