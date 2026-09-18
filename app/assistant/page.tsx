@@ -219,6 +219,7 @@ export default function AssistantPage() {
                         <li key={item.id}><b>{item.label}</b> — {item.detail}</li>
                       ))}
                     </ul>
+                    <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Si confirmés, ces diagnostics s’ajoutent au prix ci-dessus.</p>
                   </div>
                 )}
 
@@ -231,6 +232,7 @@ export default function AssistantPage() {
                         return <li key={option.id}><b>{option.label}</b> — {price !== null ? euro(price) : 'selon devis'}</li>
                       })}
                     </ul>
+                    <p style={{ color: '#6f7d90', fontSize: 12, margin: '8px 0 0' }}>Options en supplément, non incluses dans le prix ci-dessus.</p>
                   </div>
                 )}
 

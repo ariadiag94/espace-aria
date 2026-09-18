@@ -1,3 +1,5 @@
+import { APARTMENT_ASSAINISSEMENT_PRICE, HOUSE_ASSAINISSEMENT_PRICE } from './quote-assistant'
+
 export type Purpose = 'sale' | 'rental'
 export type PropertyType = 'apartment' | 'house'
 
@@ -54,7 +56,8 @@ export const computeDiagnostics = ({
       mandatory.push({ id: 'amiante', label: 'Amiante', detail: 'Bien construit avant 1997.' })
     }
     toConfirm.push({ id: 'termites', label: 'Termites', detail: 'À confirmer selon la commune (zones à risque déclarées par arrêté préfectoral).' })
-    toConfirm.push({ id: 'assainissement', label: 'Assainissement', detail: 'À confirmer si le bien n’est pas raccordé au tout-à-l’égout.' })
+    const assainissementPrice = propertyType === 'apartment' ? APARTMENT_ASSAINISSEMENT_PRICE : HOUSE_ASSAINISSEMENT_PRICE
+    toConfirm.push({ id: 'assainissement', label: 'Assainissement', detail: `À confirmer si le bien n’est pas raccordé au tout-à-l’égout (+ ${assainissementPrice} € si confirmé).` })
     if (propertyType === 'apartment') {
       if (isCoowned) {
         options.push({ id: 'carrez', label: 'Mesurage loi Carrez' })

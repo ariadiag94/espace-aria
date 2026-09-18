@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
-import { buildQuoteSuggestion, HOUSE_SIZE_TIERS, QuoteSuggestion, splitDiagnostics } from '@/lib/quote-assistant'
+import { APARTMENT_ASSAINISSEMENT_PRICE, buildQuoteSuggestion, HOUSE_ASSAINISSEMENT_PRICE, HOUSE_SIZE_TIERS, QuoteSuggestion, splitDiagnostics } from '@/lib/quote-assistant'
 import { supabase } from '@/lib/supabase'
 
 type Dossier={id:string;dossier_name:string;purpose?:string|null;diagnostics?:string[]|string|null;property_address?:string|null;property_type?:string|null;property_size?:string|number|null;surface?:string|number|null;rooms?:string|number|null;dependencies?:string|null;contact_name?:string|null;contact_phone?:string|null;contact_email?:string|null}
@@ -43,7 +43,7 @@ export default function DevisPage(){
  const quoteOnRequest=form.propertyType==='house'&&sizeIndex===HOUSE_QUOTE_ON_REQUEST_INDEX
  const selectedDossier=dossiers.find(d=>d.id===form.dossier_id)
  const hasContactInfo=!!(selectedDossier?.contact_phone||selectedDossier?.contact_email)
- const base=quoteOnRequest?0:packTable[effectivePack]?.[sizeIndex]||0,measurement=form.propertyType==='house'&&form.measurement!=='none'&&!quoteOnRequest?HOUSE_SIZE_TIERS[sizeIndex]?.measurementPrice||0:0,assainissement=form.assainissement?(form.propertyType==='apartment'?100:160):0,proximity=form.proximity?-10:0
+ const base=quoteOnRequest?0:packTable[effectivePack]?.[sizeIndex]||0,measurement=form.propertyType==='house'&&form.measurement!=='none'&&!quoteOnRequest?HOUSE_SIZE_TIERS[sizeIndex]?.measurementPrice||0:0,assainissement=form.assainissement?(form.propertyType==='apartment'?APARTMENT_ASSAINISSEMENT_PRICE:HOUSE_ASSAINISSEMENT_PRICE):0,proximity=form.proximity?-10:0
  const promoDiscount=!quoteOnRequest&&promo?(promo.discount_type==='percent'?Math.round((base+measurement+assainissement)*promo.discount_value)/100:Math.min(promo.discount_value,base+measurement+assainissement)):0
  const totalTtc=quoteOnRequest?0:Math.max(0,base+measurement+assainissement+proximity-promoDiscount),totalHt=quoteOnRequest?0:Math.round(totalTtc/1.2*100)/100,vat=quoteOnRequest?0:Math.round((totalTtc-totalHt)*100)/100
  const lines=useMemo(()=>{if(quoteOnRequest)return [{label:QUOTE_ON_REQUEST_MESSAGE,ttc:0}];const out=[{label:`Pack ${effectivePack} diagnostics – ${form.propertyType==='apartment'?apartmentLabels[sizeIndex]:houseLabels[sizeIndex]}`,ttc:base}];if(form.propertyType==='house'&&form.measurement==='boutin')out.push({label:'Mesurage (surface habitable)',ttc:measurement});if(form.propertyType==='house'&&form.measurement==='attestation')out.push({label:'Attestation de mesurage',ttc:measurement});if(form.assainissement)out.push({label:'Contrôle de l’assainissement',ttc:assainissement});if(form.proximity)out.push({label:'Remise proximité Alfortville / Maisons-Alfort',ttc:-10});if(promo)out.push({label:`Code pro ${promo.code}${promo.label?' – '+promo.label:''}`,ttc:-promoDiscount});return out},[base,measurement,assainissement,form.measurement,form.assainissement,form.proximity,form.propertyType,sizeIndex,effectivePack,promo,promoDiscount,quoteOnRequest])
