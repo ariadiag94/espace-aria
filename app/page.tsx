@@ -40,7 +40,7 @@ export default function Home() {
             <div style={{ width: 56, height: 3, background: '#4db3e6', borderRadius: 2, margin: '14px auto 18px' }} />
             <p className="hero-subtitle" style={{ color: '#fff', fontWeight: 600, fontSize: 16, margin: '0 0 10px' }}>L’assistant qui identifie vos diagnostics obligatoires</p>
             <p className="hero-tagline" style={{ color: '#c9d8e8', fontSize: 15, lineHeight: 1.6, maxWidth: 520, margin: '0 auto 28px' }}>Votre bien, votre projet, vos diagnostics obligatoires — identifiés en quelques minutes, devis gratuit inclus.</p>
-            <Link href="#" className="hero-cta">Commencer →</Link>
+            <Link href="/assistant" className="hero-cta">Commencer →</Link>
             <div style={{ marginTop: 22 }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 999, background: 'rgba(77,179,230,.12)', border: '1px solid rgba(77,179,230,.35)', color: '#fff', fontSize: 13, fontWeight: 700 }}>
                 <span style={{ color: '#f5c542', letterSpacing: 2 }}>★★★★★</span>
