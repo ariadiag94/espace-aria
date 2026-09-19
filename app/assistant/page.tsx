@@ -119,7 +119,6 @@ export default function AssistantPage() {
     : null
 
   const houseOver250 = propertyType === 'house' && sizeIndex === HOUSE_QUOTE_ON_REQUEST_INDEX
-  const collectiveHeating = propertyType === 'apartment' && heating === 'collective'
   // Nombre de diagnostics obligatoires qui comptent réellement pour choisir
   // le pack (l'ERP offert, en mission minimale + "Non", en est exclu : le
   // prix réutilise directement le pack 2, sans compter l'ERP comme un 3e
@@ -132,8 +131,11 @@ export default function AssistantPage() {
   // la grille de packs (surtout pour les maisons, dont la grille s'arrête à
   // 6) : on le détecte sur le nombre NON plafonné, pour ne jamais afficher
   // le prix d'un pack à côté qui ne couvre pas tout ce qui est obligatoire.
+  // Le chauffage collectif/individuel n'entre plus dans ce calcul : la
+  // question reste posée (utile pour Gaz/DAPP et de futurs besoins de
+  // documents), mais n'a aucun rapport avec le prix du pack.
   const packOverflow = packMandatoryCount !== null && packMandatoryCount > maxPack
-  const quoteOnRequest = houseOver250 || collectiveHeating || packOverflow
+  const quoteOnRequest = houseOver250 || packOverflow
 
   const packCount = packMandatoryCount !== null ? Math.max(2, Math.min(maxPack, packMandatoryCount)) : null
   // Mission minimale + attestation "Oui" : le seul diagnostic facturé est le
