@@ -5,11 +5,12 @@ export type Purpose = 'sale' | 'rental'
 export type PropertyType = 'apartment' | 'house'
 
 // countsTowardPack : false pour un item obligatoire qui ne doit PAS
-// augmenter le nombre de diagnostics utilisé pour choisir le pack (ex.
-// mesurage maison, dont le prix par tranche est déjà distinct du prix de
-// pack). Par défaut (undefined), un item obligatoire compte dans le pack.
+// augmenter le nombre de diagnostics utilisé pour choisir le pack (ex. ERP
+// offert en mission minimale + attestation "Non", dont le prix vient de la
+// réutilisation directe du pack 2, pas d'un 3e diagnostic compté). Par
+// défaut (undefined), un item obligatoire compte dans le pack.
 export type DiagnosticItem = { id: string; label: string; detail: string; countsTowardPack?: boolean }
-export type PricedOptionId = 'measurement'
+export type PricedOptionId = 'measurement' | 'erp'
 export type PricedOption = { id: PricedOptionId; label: string }
 
 export type DiagnosticsResult = {
@@ -20,6 +21,12 @@ export type DiagnosticsResult = {
   // (Carrez / Boutin / surface habitable selon le cas) : le diagnostic de
   // mesurage correspondant n'est alors ni obligatoire ni facturé.
   surfaceAttestationNote: string | null
+  // "Mission minimale" : le seul diagnostic obligatoire réel est le DPE
+  // (aucun électricité/gaz/plomb/amiante/termites-entière/DAPP). L'ERP et le
+  // diagnostic de surface suivent alors une règle différente du pack complet
+  // (voir plus bas) ; exposé pour que les pages n'aient pas à redupliquer ce
+  // seuil.
+  isMinimalMission: boolean
 }
 
 // Seuils électricité/gaz (installation de plus de 15 ans, approximée depuis
@@ -47,10 +54,64 @@ export const computeDiagnostics = ({
   const isBefore1949 = constructionYear < 1949
   const isBefore1997 = constructionYear < 1997
 
+  const toConfirm: DiagnosticItem[] = []
+  const options: PricedOption[] = []
+  let surfaceAttestationNote: string | null = null
+  // Le DPE a besoin d'une surface pour être calculé : si le client a déjà
+  // une attestation de surface (Carrez / Boutin / surface habitable selon
+  // le cas), le diagnostic de mesurage correspondant n'est ni obligatoire
+  // ni facturé — sinon il redevient obligatoire.
+  const SURFACE_ATTESTATION_NOTE = 'Vous devrez nous transmettre cette attestation avant notre intervention.'
+
+  // Termites : jamais en location (uniquement calculé pour purpose==='sale').
+  // La couverture de la commune (lib/commune-rules.ts) détermine si le
+  // diagnostic est obligatoire (compte dans le pack et dans le seuil
+  // "mission minimale"), à confirmer selon la zone exacte, ou simplement à
+  // vérifier auprès de la mairie.
+  const communeCoverage = purpose === 'sale' ? getCommuneCoverage(communeSlug) : null
+  const termitesMandatory = purpose === 'sale' && communeCoverage === 'entiere'
+  // DAPP : uniquement pour un appartement en location construit avant 1997,
+  // indépendamment de l'attestation de surface. Jamais pour une maison,
+  // jamais pour un bien construit en 1997 ou après, jamais en vente.
+  const dappMandatory = purpose === 'rental' && propertyType === 'apartment' && isBefore1997
+  const amianteMandatory = purpose === 'sale' && isBefore1997
+
+  // "Mission minimale" = le seul diagnostic obligatoire réel est le DPE :
+  // aucun électricité/gaz, plomb, amiante, termites (commune "entière") ni
+  // DAPP. L'ERP n'entre jamais dans ce calcul de seuil (voir règle ERP plus
+  // bas) ; le diagnostic de surface (Carrez/Boutin/Mesurage) non plus, sa
+  // propre règle dépend du résultat de ce seuil.
+  const isMinimalMission = !isOldInstallation && !isBefore1949 && !amianteMandatory && !termitesMandatory && !dappMandatory
+
+  // Libellé/détail du diagnostic de surface selon le type de bien et l'objet,
+  // partagés par les deux branches ("mission minimale" et "pack complet")
+  // ci-dessous pour ne pas dupliquer les textes.
+  const surfaceItem = propertyType === 'apartment'
+    ? (purpose === 'sale'
+        ? { id: 'carrez', label: 'Mesurage loi Carrez', detail: 'Surface privative à mentionner dans l’acte de vente d’un lot de copropriété.' }
+        : { id: 'boutin', label: 'Mesurage loi Boutin', detail: 'Surface habitable à mentionner dans le bail.' })
+    : { id: 'measurement', label: 'Mesurage (surface habitable)', detail: 'Mesure de la surface habitable, nécessaire notamment pour le DPE.' }
+
+  // Règle ERP : en mission minimale, si le client a déjà une attestation de
+  // surface, le seul diagnostic facturé est le DPE (1) — l'ERP devient une
+  // option à cocher (+25 €), non incluse par défaut. Dans tous les autres
+  // cas (mission minimale + pas d'attestation → DPE + surface = 2 ; ou pack
+  // complet), l'ERP est inclus automatiquement et gratuitement, mais reste
+  // une ligne visible du récapitulatif ("25 € offert").
+  const erpIncludedFree = !(isMinimalMission && hasSurfaceAttestation)
+
   const mandatory: DiagnosticItem[] = [
     { id: 'dpe', label: 'DPE', detail: 'Diagnostic de performance énergétique, obligatoire pour toute vente ou location.' },
-    { id: 'erp', label: 'ERP', detail: 'État des risques et pollutions, obligatoire pour toute vente ou location.' },
   ]
+  if (erpIncludedFree) {
+    // countsTowardPack: false uniquement en mission minimale + "Non" (le
+    // prix réutilise directement le pack 2 existant : DPE + surface = 2,
+    // l'ERP ne doit pas pousser ce compte à 3). En pack complet, l'ERP
+    // compte dans le pack comme avant cette règle.
+    mandatory.push({ id: 'erp', label: 'ERP', detail: 'État des risques et pollutions — 25 € offert, inclus automatiquement.', countsTowardPack: isMinimalMission ? false : undefined })
+  } else {
+    options.push({ id: 'erp', label: 'ERP (état des risques et pollutions)' })
+  }
   if (isOldInstallation) {
     mandatory.push({ id: 'elec', label: 'Électricité', detail: 'Installation électrique de plus de 15 ans (approximé depuis l’année de construction, une rénovation récente peut changer la donne).' })
     mandatory.push({ id: 'gaz', label: 'Gaz', detail: 'Installation gaz de plus de 15 ans (approximé depuis l’année de construction, une rénovation récente peut changer la donne).' })
@@ -59,25 +120,11 @@ export const computeDiagnostics = ({
     mandatory.push({ id: 'plomb', label: 'Plomb (CREP)', detail: 'Bien construit avant 1949.' })
   }
 
-  const toConfirm: DiagnosticItem[] = []
-  const options: PricedOption[] = []
-  let surfaceAttestationNote: string | null = null
-  // Le DPE a besoin d'une surface pour être calculé : si le client a déjà
-  // une attestation de surface (Carrez / Boutin / surface habitable selon
-  // le cas), le diagnostic de mesurage correspondant n'est ni obligatoire
-  // ni facturé — sinon il redevient obligatoire, comme avant cette règle.
-  const SURFACE_ATTESTATION_NOTE = 'Vous devrez nous transmettre cette attestation avant notre intervention.'
-
   if (purpose === 'sale') {
-    if (isBefore1997) {
+    if (amianteMandatory) {
       mandatory.push({ id: 'amiante', label: 'Amiante', detail: 'Bien construit avant 1997.' })
     }
 
-    // Termites : jamais en location (branche purpose === 'sale' uniquement).
-    // La couverture de la commune (lib/commune-rules.ts) détermine si le
-    // diagnostic est obligatoire (compte dans le pack), à confirmer selon la
-    // zone exacte, ou simplement à vérifier auprès de la mairie.
-    const communeCoverage = getCommuneCoverage(communeSlug)
     if (communeCoverage === 'entiere') {
       mandatory.push({ id: 'termites', label: 'Termites', detail: 'Obligatoire pour une vente dans votre commune (arrêté préfectoral).' })
     } else if (communeCoverage === 'partielle') {
@@ -98,52 +145,33 @@ export const computeDiagnostics = ({
         ? 'Contrôle du raccordement au réseau d’eaux usées, réalisé par le service public dans votre commune (pas de prix chez ARIA).'
         : `Contrôle du raccordement au réseau d’eaux usées. Dans certaines communes, il est réservé au service public : à vérifier auprès de votre mairie. Si nous le réalisons : + ${assainissementPrice} €`
     toConfirm.push({ id: 'assainissement', label: 'Assainissement', detail: assainissementDetail })
-    if (propertyType === 'apartment') {
-      // Mesurage loi Carrez : obligatoire pour une vente d'appartement (et
-      // compte dans le pack) sauf si le client a déjà une attestation de
-      // surface Carrez.
-      if (hasSurfaceAttestation) {
-        surfaceAttestationNote = SURFACE_ATTESTATION_NOTE
-      } else {
-        mandatory.push({ id: 'carrez', label: 'Mesurage loi Carrez', detail: 'Surface privative à mentionner dans l’acte de vente d’un lot de copropriété.' })
-      }
-    } else {
-      // Mesurage (surface habitable) pour une maison : obligatoire (mais ne
-      // compte pas dans le pack, tarifé par tranche) sauf si le client a
-      // déjà une attestation de surface habitable.
-      if (hasSurfaceAttestation) {
-        surfaceAttestationNote = SURFACE_ATTESTATION_NOTE
-      } else {
-        mandatory.push({ id: 'measurement', label: 'Mesurage (surface habitable)', detail: 'Mesure de la surface habitable, nécessaire notamment pour le DPE.', countsTowardPack: false })
-      }
-    }
-  } else {
-    if (propertyType === 'apartment') {
-      // Mesurage loi Boutin : obligatoire (et compte dans le pack) pour tout
-      // appartement en location, sauf si le client a déjà une attestation
-      // de surface Boutin.
-      if (hasSurfaceAttestation) {
-        surfaceAttestationNote = SURFACE_ATTESTATION_NOTE
-      } else {
-        mandatory.push({ id: 'boutin', label: 'Mesurage loi Boutin', detail: 'Surface habitable à mentionner dans le bail.' })
-      }
-      // DAPP : obligatoire (et compte dans le pack) pour tout appartement
-      // construit avant 1997, en location, indépendamment de l'attestation
-      // de surface. Jamais pour une maison, jamais pour un bien construit
-      // en 1997 ou après.
-      if (isBefore1997) {
-        mandatory.push({ id: 'dapp', label: 'DAPP', detail: 'Dossier amiante parties privatives, pour un appartement construit avant 1997.' })
-      }
-    } else {
-      // Mesurage (surface habitable) pour une maison en location : même
-      // règle que pour une vente.
-      if (hasSurfaceAttestation) {
-        surfaceAttestationNote = SURFACE_ATTESTATION_NOTE
-      } else {
-        mandatory.push({ id: 'measurement', label: 'Mesurage (surface habitable)', detail: 'Mesure de la surface habitable, nécessaire notamment pour le DPE.', countsTowardPack: false })
-      }
-    }
   }
 
-  return { mandatory, toConfirm, options, surfaceAttestationNote }
+  // Diagnostic de surface (Carrez / Boutin / Mesurage) :
+  // - Mission minimale : question posée (portée par hasSurfaceAttestation,
+  //   déjà répondue au moment de cet appel). "Non" → obligatoire, compte
+  //   dans le pack (packCount = 2 : DPE + surface, réutilise le pack 2
+  //   existant). "Oui" → rien d'ajouté, note affichée.
+  // - Pack complet : pas de question (comportement d'avant la PR #27).
+  //   Appartement : Carrez (vente) / Boutin (location) toujours obligatoire
+  //   automatique, compte dans le pack, sans prix séparé. Maison : Mesurage
+  //   toujours une option chiffrée (HOUSE_MEASUREMENT_PRICES côté page),
+  //   jamais obligatoire.
+  if (isMinimalMission) {
+    if (hasSurfaceAttestation) {
+      surfaceAttestationNote = SURFACE_ATTESTATION_NOTE
+    } else {
+      mandatory.push({ id: surfaceItem.id, label: surfaceItem.label, detail: surfaceItem.detail })
+    }
+  } else if (propertyType === 'apartment') {
+    mandatory.push({ id: surfaceItem.id, label: surfaceItem.label, detail: surfaceItem.detail })
+  } else {
+    options.push({ id: 'measurement', label: surfaceItem.label })
+  }
+
+  if (dappMandatory) {
+    mandatory.push({ id: 'dapp', label: 'DAPP', detail: 'Dossier amiante parties privatives, pour un appartement construit avant 1997.' })
+  }
+
+  return { mandatory, toConfirm, options, surfaceAttestationNote, isMinimalMission }
 }
