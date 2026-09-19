@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { APARTMENT_ASSAINISSEMENT_PRICE, buildQuoteSuggestion, HOUSE_ASSAINISSEMENT_PRICE, HOUSE_SIZE_TIERS, QuoteSuggestion, splitDiagnostics } from '@/lib/quote-assistant'
+import { getPackPrice, PackPurpose } from '@/lib/property-pricing'
 import { supabase } from '@/lib/supabase'
 
 type Dossier={id:string;dossier_name:string;purpose?:string|null;diagnostics?:string[]|string|null;property_address?:string|null;property_type?:string|null;property_size?:string|number|null;surface?:string|number|null;rooms?:string|number|null;dependencies?:string|null;contact_name?:string|null;contact_phone?:string|null;contact_email?:string|null}
@@ -13,8 +14,6 @@ type PropertyType='apartment'|'house'
 type Measurement='none'|'boutin'|'attestation'
 type FormState={dossier_id:string;propertyType:PropertyType;sizeKey:string;packCount:number;measurement:Measurement;assainissement:boolean;proximity:boolean;notes:string}
 
-const apartmentPacks:Record<number,number[]>={2:[150,170,190,210,230],3:[180,200,220,240,260],4:[210,230,250,270,290],5:[240,260,280,300,320],6:[270,290,310,330,350],7:[290,310,325,360,380]}
-const housePacks:Record<number,number[]>={2:[200,230,260,290,330,380],3:[240,270,300,330,370,420],4:[280,310,340,370,410,460],5:[320,350,380,410,450,500],6:[350,380,410,440,480,530]}
 const apartmentLabels=['T1','T2','T3','T4','T5']
 // Dérivé de lib/quote-assistant.ts (HOUSE_SIZE_TIERS) plutôt que dupliqué ici,
 // pour que la grille tarifaire et la suggestion IA partagent les mêmes 7
@@ -39,11 +38,16 @@ export default function DevisPage(){
  const load=async()=>{const {data:{session}}=await supabase.auth.getSession();if(!session){router.replace('/login');return}const [d,q]=await Promise.all([supabase.from('dossiers').select('*').order('created_at',{ascending:false}),supabase.from('quotes').select('id,quote_number,status,total_ht,total_vat,total_ttc,created_at,dossier_id').order('created_at',{ascending:false}).limit(20)]);if(d.data){const requested=new URLSearchParams(window.location.search).get('dossier');setDossiers(d.data as Dossier[]);setForm(f=>({...f,dossier_id:f.dossier_id||d.data?.find(item=>item.id===requested)?.id||d.data?.[0]?.id||''}))}if(q.data)setQuotes(q.data as Quote[]);setLoading(false)}
  useEffect(()=>{void load()},[])
  const sizeLabels=form.propertyType==='apartment'?apartmentLabels:houseLabels
- const sizeIndex=Math.max(0,Math.min(sizeLabels.length-1,Number(form.sizeKey)||0)),packTable=form.propertyType==='apartment'?apartmentPacks:housePacks,allowedPacks=form.propertyType==='apartment'?[2,3,4,5,6,7]:[2,3,4,5,6],effectivePack=allowedPacks.includes(form.packCount)?form.packCount:allowedPacks[0]
+ const sizeIndex=Math.max(0,Math.min(sizeLabels.length-1,Number(form.sizeKey)||0)),allowedPacks=form.propertyType==='apartment'?[2,3,4,5,6,7]:[2,3,4,5,6],effectivePack=allowedPacks.includes(form.packCount)?form.packCount:allowedPacks[0]
  const quoteOnRequest=form.propertyType==='house'&&sizeIndex===HOUSE_QUOTE_ON_REQUEST_INDEX
  const selectedDossier=dossiers.find(d=>d.id===form.dossier_id)
  const hasContactInfo=!!(selectedDossier?.contact_phone||selectedDossier?.contact_email)
- const base=quoteOnRequest?0:packTable[effectivePack]?.[sizeIndex]||0,measurement=form.propertyType==='house'&&form.measurement!=='none'&&!quoteOnRequest?HOUSE_SIZE_TIERS[sizeIndex]?.measurementPrice||0:0,assainissement=form.assainissement?(form.propertyType==='apartment'?APARTMENT_ASSAINISSEMENT_PRICE:HOUSE_ASSAINISSEMENT_PRICE):0,proximity=form.proximity?-10:0
+ // Objet du dossier (Vente/Location) : source de la remise -10% sur le pack
+ // en location, calculée par lib/property-pricing.ts (seule source commune
+ // avec /assistant). Aucun dossier sélectionné, ou objet autre que
+ // vente/location (travaux, autre) : prix vente par défaut, non remisé.
+ const packPurpose:PackPurpose=selectedDossier?.purpose==='rental'?'rental':'sale'
+ const base=quoteOnRequest?0:getPackPrice(form.propertyType,effectivePack,sizeIndex,packPurpose)??0,measurement=form.propertyType==='house'&&form.measurement!=='none'&&!quoteOnRequest?HOUSE_SIZE_TIERS[sizeIndex]?.measurementPrice||0:0,assainissement=form.assainissement?(form.propertyType==='apartment'?APARTMENT_ASSAINISSEMENT_PRICE:HOUSE_ASSAINISSEMENT_PRICE):0,proximity=form.proximity?-10:0
  const promoDiscount=!quoteOnRequest&&promo?(promo.discount_type==='percent'?Math.round((base+measurement+assainissement)*promo.discount_value)/100:Math.min(promo.discount_value,base+measurement+assainissement)):0
  const totalTtc=quoteOnRequest?0:Math.max(0,base+measurement+assainissement+proximity-promoDiscount),totalHt=quoteOnRequest?0:Math.round(totalTtc/1.2*100)/100,vat=quoteOnRequest?0:Math.round((totalTtc-totalHt)*100)/100
  const lines=useMemo(()=>{if(quoteOnRequest)return [{label:QUOTE_ON_REQUEST_MESSAGE,ttc:0}];const out=[{label:`Pack ${effectivePack} diagnostics – ${form.propertyType==='apartment'?apartmentLabels[sizeIndex]:houseLabels[sizeIndex]}`,ttc:base}];if(form.propertyType==='house'&&form.measurement==='boutin')out.push({label:'Mesurage (surface habitable)',ttc:measurement});if(form.propertyType==='house'&&form.measurement==='attestation')out.push({label:'Attestation de mesurage',ttc:measurement});if(form.assainissement)out.push({label:'Contrôle de l’assainissement',ttc:assainissement});if(form.proximity)out.push({label:'Remise proximité Alfortville / Maisons-Alfort',ttc:-10});if(promo)out.push({label:`Code pro ${promo.code}${promo.label?' – '+promo.label:''}`,ttc:-promoDiscount});return out},[base,measurement,assainissement,form.measurement,form.assainissement,form.proximity,form.propertyType,sizeIndex,effectivePack,promo,promoDiscount,quoteOnRequest])

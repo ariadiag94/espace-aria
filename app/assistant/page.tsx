@@ -5,10 +5,9 @@ import { useMemo, useState } from 'react'
 import { computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
 import { COMMUNE_RULES, OTHER_COMMUNE_SLUG } from '@/lib/commune-rules'
 import {
-  APARTMENT_PACK_PRICES,
   APARTMENT_SIZE_LABELS,
+  getPackPrice,
   HOUSE_MEASUREMENT_PRICES,
-  HOUSE_PACK_PRICES,
   HOUSE_QUOTE_ON_REQUEST_INDEX,
   HOUSE_SIZE_LABELS,
 } from '@/lib/property-pricing'
@@ -94,8 +93,11 @@ export default function AssistantPage() {
   const quoteOnRequest = houseOver250 || collectiveHeating || packOverflow
 
   const packCount = diagnostics ? Math.max(2, Math.min(maxPack, diagnostics.mandatory.length)) : null
-  const packPrice = diagnostics && packCount !== null && sizeIndex !== null
-    ? (propertyType === 'apartment' ? APARTMENT_PACK_PRICES : HOUSE_PACK_PRICES)[packCount]?.[sizeIndex] ?? null
+  // Prix du pack : -10 % en location par rapport à la vente (même pack, même
+  // tranche de taille), calculé par la source commune lib/property-pricing.ts
+  // pour que /assistant et /devis ne puissent pas diverger.
+  const packPrice = diagnostics && packCount !== null && sizeIndex !== null && propertyType && purpose
+    ? getPackPrice(propertyType, packCount, sizeIndex, purpose)
     : null
   // Combinaison sans tarif dans la grille alors qu'aucun cas "sur devis" connu
   // ne s'applique : signalée telle quelle plutôt que d'inventer un prix.
