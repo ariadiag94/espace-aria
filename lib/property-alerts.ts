@@ -1,4 +1,5 @@
 import { APARTMENT_ASSAINISSEMENT_PRICE, HOUSE_ASSAINISSEMENT_PRICE } from './quote-assistant'
+import { getCommuneCoverage } from './commune-rules'
 
 export type Purpose = 'sale' | 'rental'
 export type PropertyType = 'apartment' | 'house'
@@ -25,11 +26,13 @@ export const computeDiagnostics = ({
   propertyType,
   constructionYear,
   isCoowned,
+  communeSlug,
 }: {
   purpose: Purpose
   propertyType: PropertyType
   constructionYear: number
   isCoowned: boolean
+  communeSlug: string | null
 }): DiagnosticsResult => {
   const age = new Date().getFullYear() - constructionYear
   const isOldInstallation = age >= 15
@@ -55,9 +58,32 @@ export const computeDiagnostics = ({
     if (isBefore1997) {
       mandatory.push({ id: 'amiante', label: 'Amiante', detail: 'Bien construit avant 1997.' })
     }
-    toConfirm.push({ id: 'termites', label: 'Termites', detail: 'À confirmer selon la commune (zones à risque déclarées par arrêté préfectoral).' })
+
+    // Termites : jamais en location (branche purpose === 'sale' uniquement).
+    // La couverture de la commune (lib/commune-rules.ts) détermine si le
+    // diagnostic est obligatoire (compte dans le pack), à confirmer selon la
+    // zone exacte, ou simplement à vérifier auprès de la mairie.
+    const communeCoverage = getCommuneCoverage(communeSlug)
+    if (communeCoverage === 'entiere') {
+      mandatory.push({ id: 'termites', label: 'Termites', detail: 'Obligatoire pour une vente dans votre commune (arrêté préfectoral).' })
+    } else if (communeCoverage === 'partielle') {
+      toConfirm.push({ id: 'termites', label: 'Termites', detail: 'Seule une partie de votre commune est classée en zone termitée (arrêté préfectoral) : obligatoire si votre bien se trouve dans cette zone. Nous le vérifions avec votre adresse.' })
+    } else if (communeCoverage === 'aucun') {
+      toConfirm.push({ id: 'termites', label: 'Termites', detail: 'Pas d’arrêté préfectoral recensé dans votre commune : en principe non obligatoire pour une vente. Un contrôle reste possible sur demande.' })
+    } else {
+      toConfirm.push({ id: 'termites', label: 'Termites', detail: 'À vérifier auprès de votre mairie.' })
+    }
+
     const assainissementPrice = propertyType === 'apartment' ? APARTMENT_ASSAINISSEMENT_PRICE : HOUSE_ASSAINISSEMENT_PRICE
-    toConfirm.push({ id: 'assainissement', label: 'Assainissement', detail: `Contrôle du raccordement au réseau d’eaux usées. Dans certaines communes, il est réservé au service public : à vérifier auprès de votre mairie. Si nous le réalisons : + ${assainissementPrice} €` })
+    // Alfortville et Maisons-Alfort ont un traitement particulier pour
+    // l'assainissement (respectivement réalisé par ARIA, et réservé au
+    // service public) ; toute autre commune garde le texte générique.
+    const assainissementDetail = communeSlug === 'alfortville'
+      ? `Contrôle du raccordement au réseau d’eaux usées, réalisé par ARIA Diagnostics : + ${assainissementPrice} €.`
+      : communeSlug === 'maisons-alfort'
+        ? 'Contrôle du raccordement au réseau d’eaux usées, réalisé par le service public dans votre commune (pas de prix chez ARIA).'
+        : `Contrôle du raccordement au réseau d’eaux usées. Dans certaines communes, il est réservé au service public : à vérifier auprès de votre mairie. Si nous le réalisons : + ${assainissementPrice} €`
+    toConfirm.push({ id: 'assainissement', label: 'Assainissement', detail: assainissementDetail })
     if (propertyType === 'apartment') {
       if (isCoowned) {
         options.push({ id: 'carrez', label: 'Mesurage loi Carrez' })

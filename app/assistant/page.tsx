@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
+import { COMMUNE_RULES, OTHER_COMMUNE_SLUG } from '@/lib/commune-rules'
 import {
   APARTMENT_PACK_PRICES,
   APARTMENT_SIZE_LABELS,
@@ -30,10 +31,11 @@ const YEAR_BRACKETS = [
   { label: `${currentYear - 14} à aujourd’hui`, year: currentYear },
 ]
 
-type Screen = 'purpose' | 'propertyType' | 'coownership' | 'heating' | 'year' | 'size' | 'result'
+type Screen = 'commune' | 'purpose' | 'propertyType' | 'coownership' | 'heating' | 'year' | 'size' | 'result'
 
 export default function AssistantPage() {
   const [step, setStep] = useState(0)
+  const [communeSlug, setCommuneSlug] = useState<string | null>(null)
   const [purpose, setPurpose] = useState<Purpose | null>(null)
   const [propertyType, setPropertyType] = useState<PropertyType | null>(null)
   const [coowned, setCoowned] = useState<boolean | null>(null)
@@ -41,10 +43,11 @@ export default function AssistantPage() {
   const [yearIndex, setYearIndex] = useState<number | null>(null)
   const [sizeIndex, setSizeIndex] = useState<number | null>(null)
 
-  // Parcours dynamique : la copropriété n'est demandée que pour un
-  // appartement, et le chauffage que si le bien est en copropriété.
+  // Parcours dynamique : la commune est demandée en premier, la copropriété
+  // n'est demandée que pour un appartement, et le chauffage que si le bien
+  // est en copropriété.
   const screens: Screen[] = useMemo(() => {
-    const s: Screen[] = ['purpose', 'propertyType']
+    const s: Screen[] = ['commune', 'purpose', 'propertyType']
     if (propertyType === 'apartment') {
       s.push('coownership')
       if (coowned) s.push('heating')
@@ -59,6 +62,7 @@ export default function AssistantPage() {
   const advance = () => setStep((s) => s + 1)
   const restart = () => {
     setStep(0)
+    setCommuneSlug(null)
     setPurpose(null)
     setPropertyType(null)
     setCoowned(null)
@@ -67,6 +71,7 @@ export default function AssistantPage() {
     setSizeIndex(null)
   }
 
+  const selectCommune = (slug: string) => { setCommuneSlug(slug); advance() }
   const selectPurpose = (p: Purpose) => { setPurpose(p); advance() }
   const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setCoowned(null); setHeating(null); setSizeIndex(null); advance() }
   const selectCoowned = (v: boolean) => { setCoowned(v); if (!v) setHeating(null); advance() }
@@ -79,12 +84,18 @@ export default function AssistantPage() {
   const constructionYear = yearIndex !== null ? YEAR_BRACKETS[yearIndex].year : null
 
   const diagnostics = purpose && propertyType && constructionYear !== null
-    ? computeDiagnostics({ purpose, propertyType, constructionYear, isCoowned: !!coowned })
+    ? computeDiagnostics({ purpose, propertyType, constructionYear, isCoowned: !!coowned, communeSlug })
     : null
 
   const houseOver250 = propertyType === 'house' && sizeIndex === HOUSE_QUOTE_ON_REQUEST_INDEX
   const collectiveHeating = propertyType === 'apartment' && !!coowned && heating === 'collective'
-  const quoteOnRequest = houseOver250 || collectiveHeating
+  // Un diagnostic obligatoire (ex. termites en commune "entière") peut
+  // pousser le nombre de diagnostics obligatoires au-delà de ce que couvre
+  // la grille de packs (surtout pour les maisons, dont la grille s'arrête à
+  // 6) : on le détecte sur le nombre NON plafonné, pour ne jamais afficher
+  // le prix d'un pack à côté qui ne couvre pas tout ce qui est obligatoire.
+  const packOverflow = diagnostics !== null && diagnostics.mandatory.length > maxPack
+  const quoteOnRequest = houseOver250 || collectiveHeating || packOverflow
 
   const packCount = diagnostics ? Math.max(2, Math.min(maxPack, diagnostics.mandatory.length)) : null
   const packPrice = diagnostics && packCount !== null && sizeIndex !== null
@@ -129,6 +140,23 @@ export default function AssistantPage() {
             <div style={{ color: SKY, fontWeight: 900, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>
               DIAGASSIST · ÉTAPE {Math.min(step + 1, screens.length)}/{screens.length}
             </div>
+
+            {currentScreen === 'commune' && (
+              <>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Dans quelle commune se trouve le bien ?</h1>
+                <select
+                  defaultValue=""
+                  onChange={(e) => { if (e.target.value) selectCommune(e.target.value) }}
+                  style={{ width: '100%', padding: '16px 18px', borderRadius: 14, border: '2px solid #dbe7f2', background: '#fff', color: NAVY, fontSize: 16, fontWeight: 700, fontFamily: 'inherit' }}
+                >
+                  <option value="" disabled>Sélectionnez une commune</option>
+                  {COMMUNE_RULES.map((c) => (
+                    <option key={c.slug} value={c.slug}>{c.name}</option>
+                  ))}
+                  <option value={OTHER_COMMUNE_SLUG}>Autre commune</option>
+                </select>
+              </>
+            )}
 
             {currentScreen === 'purpose' && (
               <>
@@ -252,7 +280,7 @@ export default function AssistantPage() {
               </div>
             )}
 
-            {currentScreen !== 'purpose' && currentScreen !== 'result' && (
+            {currentScreen !== 'commune' && currentScreen !== 'result' && (
               <button className="diagassist-back" onClick={goBack}>← Question précédente</button>
             )}
           </div>
