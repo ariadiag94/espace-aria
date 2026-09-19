@@ -26,6 +26,29 @@ export const HOUSE_PACK_PRICES: Record<number, number[]> = {
   6: [350, 380, 410, 440, 480, 530],
 }
 
+export type PackPropertyType = 'apartment' | 'house'
+export type PackPurpose = 'sale' | 'rental'
+
+// Remise de 10 % sur le prix du pack de diagnostics en location, par rapport
+// au même pack en vente (nombre de diagnostics et tranche de taille
+// identiques), arrondie à l'euro le plus proche. Ne s'applique qu'au prix du
+// pack : les options (mesurage, assainissement, DAPP...) gardent leur prix
+// actuel quel que soit l'objet. Source unique lue par /assistant et /devis,
+// pour que le prix en location ne puisse pas diverger entre les deux pages.
+export const RENTAL_PACK_DISCOUNT_RATE = 0.10
+
+export const getPackPrice = (
+  propertyType: PackPropertyType,
+  packCount: number,
+  sizeIndex: number,
+  purpose: PackPurpose
+): number | null => {
+  const table = propertyType === 'apartment' ? APARTMENT_PACK_PRICES : HOUSE_PACK_PRICES
+  const salePrice = table[packCount]?.[sizeIndex]
+  if (salePrice === undefined) return null
+  return purpose === 'rental' ? Math.round(salePrice * (1 - RENTAL_PACK_DISCOUNT_RATE)) : salePrice
+}
+
 // Prix de l'option "mesurage (surface habitable)" maison, lu depuis
 // HOUSE_SIZE_TIERS (lib/quote-assistant.ts) — seule source de vérité, pour
 // vente comme pour location. `null` correspond à ">250 m²" (sur devis, déjà
