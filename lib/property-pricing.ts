@@ -57,3 +57,18 @@ export const getPackPrice = (
 // (la Boutin y est comprise dans le pack) : sans entrée ici, l'option
 // s'affiche "selon devis" côté page.
 export const HOUSE_MEASUREMENT_PRICES = HOUSE_SIZE_TIERS.map((tier) => tier.measurementPrice)
+
+// Prix de l'ERP quand il n'est pas inclus automatiquement dans un pack :
+// uniquement pour une "mission minimale" (DPE seul, attestation de surface
+// déjà fournie — 1 seul diagnostic facturé). Dès qu'un 2e diagnostic
+// s'ajoute (pack complet, ou DPE + diagnostic de surface), l'ERP est inclus
+// automatiquement et gratuitement — ce prix ne s'applique plus.
+export const ERP_OPTION_PRICE = 25
+
+// Grille "DPE seul" (mission minimale, 1 seul diagnostic facturé, attestation
+// de surface déjà fournie par le client) : nouveau palier tarifaire, distinct
+// de APARTMENT_PACK_PRICES/HOUSE_PACK_PRICES qui commencent à 2 diagnostics.
+// `null` (maison, >250 m²) = sur devis, déjà couvert par
+// HOUSE_QUOTE_ON_REQUEST_INDEX.
+export const APARTMENT_DPE_ONLY_PRICES: number[] = [110, 130, 150, 170, 190]
+export const HOUSE_DPE_ONLY_PRICES: (number | null)[] = [150, 180, 210, 240, 270, 300, null]

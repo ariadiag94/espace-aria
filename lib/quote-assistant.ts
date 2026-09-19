@@ -46,6 +46,11 @@ export type QuoteSuggestion = {
   boutin: boolean
   assainissement: boolean
   proximity: boolean
+  // Mission minimale : la checklist ne contient que "DPE" (l'ERP, s'il est
+  // coché en plus, n'entre pas dans ce calcul — voir lib/property-alerts.ts).
+  // packCount garde une valeur de repli (2) mais n'est pas utilisé pour le
+  // prix dans ce cas : /devis calcule via la grille "DPE seul".
+  missionMinimale: boolean
   diagnostics: string[]
   reasons: string[]
   warnings: string[]
@@ -105,13 +110,20 @@ export const buildQuoteSuggestion = (dossier: QuoteAssistantDossier): QuoteSugge
     return true
   })
   const maxPack = propertyType === 'house' ? 6 : 7
-  const packCount = Math.max(2, Math.min(maxPack, pricedDiagnostics.length || 2))
+  // Mission minimale : la checklist ne contient réellement que le DPE, une
+  // fois l'ERP écarté (il n'entre jamais dans ce calcul de seuil, comme sur
+  // /assistant). Dans ce cas on ne plafonne pas à 2 : packCount garde une
+  // valeur de repli, /devis bascule sur la grille "DPE seul".
+  const realDiagnostics = pricedDiagnostics.filter(value => value !== 'erp')
+  const missionMinimale = realDiagnostics.length === 1 && realDiagnostics[0] === 'dpe'
+  const packCount = missionMinimale ? 2 : Math.max(2, Math.min(maxPack, pricedDiagnostics.length || 2))
   const address = normalize(String(dossier.property_address ?? ''))
   const proximity = address.includes('94140') || address.includes('94700') || address.includes('alfortville') || address.includes('maisonsalfort')
   const reasons: string[] = []
   const warnings: string[] = []
 
   if (diagnostics.length) reasons.push(`${diagnostics.length} mission(s) détectée(s) dans le dossier`)
+  if (missionMinimale) reasons.push('Mission minimale détectée : DPE seul (le nombre de diagnostics n’est pas plafonné à 2)')
   if (boutin) reasons.push('Option Loi Boutin détectée pour la maison')
   if (propertyType === 'apartment' && hasBoutin) reasons.push('Loi Boutin comprise dans le pack appartement')
   if (assainissement) reasons.push('Option assainissement détectée')
@@ -124,5 +136,5 @@ export const buildQuoteSuggestion = (dossier: QuoteAssistantDossier): QuoteSugge
   if (propertyType === 'house' && sizeKey === String(HOUSE_SIZE_TIERS.length - 1)) warnings.push('Surface supérieure à 250 m² : aucun prix de pack ne s’applique, une évaluation personnalisée est nécessaire.')
   if (dossier.dependencies?.trim()) warnings.push('Les dépendances peuvent nécessiter une ligne ou une majoration manuelle.')
 
-  return { propertyType, sizeKey, packCount, boutin, assainissement, proximity, diagnostics, reasons, warnings }
+  return { propertyType, sizeKey, packCount, boutin, assainissement, proximity, missionMinimale, diagnostics, reasons, warnings }
 }

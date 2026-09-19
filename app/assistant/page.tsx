@@ -5,8 +5,11 @@ import { useMemo, useState } from 'react'
 import { computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
 import { COMMUNE_RULES, OTHER_COMMUNE_SLUG } from '@/lib/commune-rules'
 import {
+  APARTMENT_DPE_ONLY_PRICES,
   APARTMENT_SIZE_LABELS,
+  ERP_OPTION_PRICE,
   getPackPrice,
+  HOUSE_DPE_ONLY_PRICES,
   HOUSE_MEASUREMENT_PRICES,
   HOUSE_QUOTE_ON_REQUEST_INDEX,
   HOUSE_SIZE_LABELS,
@@ -42,20 +45,34 @@ export default function AssistantPage() {
   const [yearIndex, setYearIndex] = useState<number | null>(null)
   const [sizeIndex, setSizeIndex] = useState<number | null>(null)
 
+  const constructionYear = yearIndex !== null ? YEAR_BRACKETS[yearIndex].year : null
+  // Seuil "mission minimale" (DPE seul) : ne dépend pas de la réponse à
+  // l'attestation de surface, donc calculable dès que l'année est connue,
+  // avant même de poser la question — nécessaire pour savoir si l'écran
+  // 'surfaceAttestation' doit apparaître dans le parcours (pack complet :
+  // pas de question du tout).
+  const isMinimalMission = purpose && propertyType && constructionYear !== null
+    ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: false }).isMinimalMission
+    : false
+
   // Parcours dynamique : la commune est demandée en premier. Un appartement
   // est toujours en copropriété (pas de question dédiée) : le chauffage est
   // donc demandé pour tout appartement, vente comme location. La question
   // d'attestation de surface (Carrez / Boutin / surface habitable selon le
-  // cas) est posée pour tout bien, une fois le type de bien et l'objet
-  // connus, avant le résultat.
+  // cas) n'est posée qu'en mission minimale, une fois l'année connue (le
+  // seuil en dépend) ; en pack complet elle n'apparaît pas du tout.
   const screens: Screen[] = useMemo(() => {
     const s: Screen[] = ['commune', 'purpose', 'propertyType']
     if (propertyType === 'apartment') {
       s.push('heating')
     }
-    s.push('surfaceAttestation', 'year', 'size', 'result')
+    s.push('year')
+    if (isMinimalMission) {
+      s.push('surfaceAttestation')
+    }
+    s.push('size', 'result')
     return s
-  }, [propertyType])
+  }, [propertyType, isMinimalMission])
 
   const currentScreen = screens[Math.min(step, screens.length - 1)]
 
@@ -80,7 +97,11 @@ export default function AssistantPage() {
   const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHeating(null); setHasSurfaceAttestation(null); setSizeIndex(null); advance() }
   const selectHeating = (h: Heating) => { setHeating(h); advance() }
   const selectSurfaceAttestation = (v: boolean) => { setHasSurfaceAttestation(v); advance() }
-  const selectYear = (i: number) => { setYearIndex(i); advance() }
+  // Changer l'année peut faire basculer le seuil mission minimale / pack
+  // complet, ce qui change si la question d'attestation doit être posée :
+  // on réinitialise la réponse précédente pour ne pas en garder une qui ne
+  // correspond plus au bon parcours.
+  const selectYear = (i: number) => { setYearIndex(i); setHasSurfaceAttestation(null); advance() }
   const selectSize = (i: number) => { setSizeIndex(i); advance() }
 
   // Fragment inséré dans "Avez-vous déjà une attestation de surface {X} ?" :
@@ -92,7 +113,6 @@ export default function AssistantPage() {
 
   const sizeLabels = propertyType === 'apartment' ? APARTMENT_SIZE_LABELS : HOUSE_SIZE_LABELS
   const maxPack = propertyType === 'house' ? 6 : 7
-  const constructionYear = yearIndex !== null ? YEAR_BRACKETS[yearIndex].year : null
 
   const diagnostics = purpose && propertyType && constructionYear !== null
     ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: !!hasSurfaceAttestation })
@@ -101,8 +121,9 @@ export default function AssistantPage() {
   const houseOver250 = propertyType === 'house' && sizeIndex === HOUSE_QUOTE_ON_REQUEST_INDEX
   const collectiveHeating = propertyType === 'apartment' && heating === 'collective'
   // Nombre de diagnostics obligatoires qui comptent réellement pour choisir
-  // le pack (le mesurage maison, quand il est obligatoire, en est exclu :
-  // il a son propre tarif par tranche, ajouté séparément au total).
+  // le pack (l'ERP offert, en mission minimale + "Non", en est exclu : le
+  // prix réutilise directement le pack 2, sans compter l'ERP comme un 3e
+  // diagnostic — voir countsTowardPack dans lib/property-alerts.ts).
   const packMandatoryCount = diagnostics
     ? diagnostics.mandatory.filter((item) => item.countsTowardPack !== false).length
     : null
@@ -115,29 +136,34 @@ export default function AssistantPage() {
   const quoteOnRequest = houseOver250 || collectiveHeating || packOverflow
 
   const packCount = packMandatoryCount !== null ? Math.max(2, Math.min(maxPack, packMandatoryCount)) : null
+  // Mission minimale + attestation "Oui" : le seul diagnostic facturé est le
+  // DPE, sur une grille dédiée (aucun rapport avec le pack, qui commence à
+  // 2 diagnostics). Dans tous les autres cas (mission minimale + "Non", qui
+  // réutilise directement le pack 2 existant ; ou pack complet), le prix
+  // vient de la grille de pack habituelle.
+  const isDpeOnly = !!diagnostics?.isMinimalMission && !!hasSurfaceAttestation
   // Prix du pack : -10 % en location par rapport à la vente (même pack, même
   // tranche de taille), calculé par la source commune lib/property-pricing.ts
   // pour que /assistant et /devis ne puissent pas diverger.
-  const packPrice = diagnostics && packCount !== null && sizeIndex !== null && propertyType && purpose
+  const packPrice = !isDpeOnly && diagnostics && packCount !== null && sizeIndex !== null && propertyType && purpose
     ? getPackPrice(propertyType, packCount, sizeIndex, purpose)
     : null
-  // Mesurage maison obligatoire (pas d'attestation de surface fournie) :
-  // son tarif par tranche s'ajoute au prix du pack, sans influer sur le
-  // choix du pack lui-même (voir packMandatoryCount ci-dessus).
-  const houseMeasurementMandatory = diagnostics?.mandatory.some((item) => item.id === 'measurement') ?? false
-  const houseMeasurementPrice = houseMeasurementMandatory && sizeIndex !== null ? HOUSE_MEASUREMENT_PRICES[sizeIndex] ?? 0 : 0
-  const totalPrice = packPrice !== null ? packPrice + houseMeasurementPrice : null
+  const dpeOnlyPrice = isDpeOnly && sizeIndex !== null
+    ? (propertyType === 'apartment' ? APARTMENT_DPE_ONLY_PRICES[sizeIndex] : HOUSE_DPE_ONLY_PRICES[sizeIndex]) ?? null
+    : null
+  const totalPrice = isDpeOnly ? dpeOnlyPrice : packPrice
   // Combinaison sans tarif dans la grille alors qu'aucun cas "sur devis" connu
   // ne s'applique : signalée telle quelle plutôt que d'inventer un prix.
-  const noPackMatch = !quoteOnRequest && packPrice === null && diagnostics !== null && sizeIndex !== null
+  const noPackMatch = !quoteOnRequest && totalPrice === null && diagnostics !== null && sizeIndex !== null
 
-  // Le mesurage maison est la seule option avec un prix, lu depuis
-  // HOUSE_SIZE_TIERS (source commune) — aucun prix équivalent n'existe pour
-  // l'appartement. Carrez, Boutin et DAPP sont désormais des diagnostics
-  // obligatoires sans prix propre, pas des options : "options" ne contient
-  // plus jamais d'entrée pour un appartement.
+  // Mesurage maison (pack complet uniquement — en mission minimale il est
+  // soit obligatoire et inclus dans le prix, soit absent) et ERP (mission
+  // minimale + attestation "Oui" uniquement) sont les deux seules options
+  // avec un prix. Carrez, Boutin et DAPP restent des diagnostics obligatoires
+  // sans prix propre, jamais des options.
   const optionPrice = (id: PricedOptionId): number | null => {
     if (id === 'measurement' && propertyType === 'house' && sizeIndex !== null) return HOUSE_MEASUREMENT_PRICES[sizeIndex] ?? null
+    if (id === 'erp') return ERP_OPTION_PRICE
     return null
   }
 
