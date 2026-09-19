@@ -72,3 +72,82 @@ export const ERP_OPTION_PRICE = 25
 // HOUSE_QUOTE_ON_REQUEST_INDEX.
 export const APARTMENT_DPE_ONLY_PRICES: number[] = [110, 130, 150, 170, 190]
 export const HOUSE_DPE_ONLY_PRICES: (number | null)[] = [150, 180, 210, 240, 270, 300, null]
+
+// Grilles unitaires du mode "Diagnostics à la carte" : prix d'un seul
+// diagnostic choisi librement, hors DPE (déjà couvert par
+// APARTMENT_DPE_ONLY_PRICES/HOUSE_DPE_ONLY_PRICES ci-dessus) et hors ERP
+// (déjà couvert par ERP_OPTION_PRICE, prix fixe quelle que soit la taille).
+// "surface" = Carrez/Boutin pour un appartement, Boutin/Mesurage pour une
+// maison : un seul item, un seul prix, quel que soit l'objet (vente ou
+// location), puisque ce mode n'a pas de notion d'objet.
+export const APARTMENT_CARREZ_BOUTIN_UNIT_PRICES: number[] = [90, 100, 110, 120, 130]
+export const APARTMENT_PLOMB_UNIT_PRICES: number[] = [120, 130, 150, 170, 190]
+export const APARTMENT_AMIANTE_UNIT_PRICES: number[] = [90, 100, 120, 130, 140]
+export const APARTMENT_ELEC_UNIT_PRICES: number[] = [90, 100, 120, 130, 140]
+export const APARTMENT_GAZ_UNIT_PRICES: number[] = [90, 100, 120, 130, 140]
+export const APARTMENT_TERMITES_UNIT_PRICES: number[] = [100, 110, 120, 140, 160]
+
+export const HOUSE_BOUTIN_MESURAGE_UNIT_PRICES: (number | null)[] = [120, 150, 180, 210, 240, 270, null]
+export const HOUSE_PLOMB_UNIT_PRICES: (number | null)[] = [150, 180, 210, 240, 270, 300, null]
+export const HOUSE_AMIANTE_UNIT_PRICES: (number | null)[] = [120, 150, 180, 210, 240, 270, null]
+export const HOUSE_ELEC_UNIT_PRICES: (number | null)[] = [120, 150, 180, 210, 240, 270, null]
+export const HOUSE_GAZ_UNIT_PRICES: (number | null)[] = [120, 150, 180, 210, 240, 270, null]
+export const HOUSE_TERMITES_UNIT_PRICES: (number | null)[] = [130, 160, 190, 220, 250, 280, null]
+
+// Identifiants des 8 diagnostics sélectionnables en mode "à la carte", dans
+// l'ordre d'affichage. L'assainissement n'en fait jamais partie (reste un
+// item à part, jamais compté dans ce calcul).
+export type ALaCarteItemId = 'dpe' | 'erp' | 'surface' | 'plomb' | 'amiante' | 'elec' | 'gaz' | 'termites'
+export const ALACARTE_ITEM_IDS: ALaCarteItemId[] = ['dpe', 'erp', 'surface', 'plomb', 'amiante', 'elec', 'gaz', 'termites']
+
+const ALACARTE_UNIT_TABLES: Record<PackPropertyType, Record<Exclude<ALaCarteItemId, 'dpe' | 'erp'>, (number | null)[]>> = {
+  apartment: {
+    surface: APARTMENT_CARREZ_BOUTIN_UNIT_PRICES,
+    plomb: APARTMENT_PLOMB_UNIT_PRICES,
+    amiante: APARTMENT_AMIANTE_UNIT_PRICES,
+    elec: APARTMENT_ELEC_UNIT_PRICES,
+    gaz: APARTMENT_GAZ_UNIT_PRICES,
+    termites: APARTMENT_TERMITES_UNIT_PRICES,
+  },
+  house: {
+    surface: HOUSE_BOUTIN_MESURAGE_UNIT_PRICES,
+    plomb: HOUSE_PLOMB_UNIT_PRICES,
+    amiante: HOUSE_AMIANTE_UNIT_PRICES,
+    elec: HOUSE_ELEC_UNIT_PRICES,
+    gaz: HOUSE_GAZ_UNIT_PRICES,
+    termites: HOUSE_TERMITES_UNIT_PRICES,
+  },
+}
+
+// Prix d'un seul diagnostic (mode "à la carte", 1 seul item coché).
+export const getALaCarteUnitPrice = (
+  propertyType: PackPropertyType,
+  itemId: ALaCarteItemId,
+  sizeIndex: number
+): number | null => {
+  if (itemId === 'erp') return ERP_OPTION_PRICE
+  if (itemId === 'dpe') {
+    const table = propertyType === 'apartment' ? APARTMENT_DPE_ONLY_PRICES : HOUSE_DPE_ONLY_PRICES
+    return table[sizeIndex] ?? null
+  }
+  return ALACARTE_UNIT_TABLES[propertyType][itemId]?.[sizeIndex] ?? null
+}
+
+// Prix du mode "à la carte" pour un ensemble de diagnostics cochés : 1 seul
+// coché -> prix unitaire ci-dessus ; 2 ou plus (jusqu'au maximum du pack, 7
+// pour un appartement, 6 pour une maison) -> prix du pack existant
+// correspondant au nombre coché, peu importe lesquels ; au-delà du maximum,
+// ou 0 coché -> `null` (l'appelant affiche "devis personnalisé" ou rien).
+export const getALaCartePrice = (
+  propertyType: PackPropertyType,
+  checkedIds: ALaCarteItemId[],
+  sizeIndex: number
+): number | null => {
+  const count = checkedIds.length
+  if (count === 0) return null
+  if (count === 1) return getALaCarteUnitPrice(propertyType, checkedIds[0], sizeIndex)
+  const maxPack = propertyType === 'apartment' ? 7 : 6
+  if (count > maxPack) return null
+  const table = propertyType === 'apartment' ? APARTMENT_PACK_PRICES : HOUSE_PACK_PRICES
+  return table[count]?.[sizeIndex] ?? null
+}
