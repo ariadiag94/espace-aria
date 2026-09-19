@@ -30,7 +30,7 @@ const YEAR_BRACKETS = [
   { label: `${currentYear - 14} à aujourd’hui`, year: currentYear },
 ]
 
-type Screen = 'commune' | 'purpose' | 'propertyType' | 'heating' | 'year' | 'size' | 'result'
+type Screen = 'commune' | 'purpose' | 'propertyType' | 'heating' | 'surfaceAttestation' | 'year' | 'size' | 'result'
 
 export default function AssistantPage() {
   const [step, setStep] = useState(0)
@@ -38,18 +38,22 @@ export default function AssistantPage() {
   const [purpose, setPurpose] = useState<Purpose | null>(null)
   const [propertyType, setPropertyType] = useState<PropertyType | null>(null)
   const [heating, setHeating] = useState<Heating | null>(null)
+  const [hasSurfaceAttestation, setHasSurfaceAttestation] = useState<boolean | null>(null)
   const [yearIndex, setYearIndex] = useState<number | null>(null)
   const [sizeIndex, setSizeIndex] = useState<number | null>(null)
 
   // Parcours dynamique : la commune est demandée en premier. Un appartement
   // est toujours en copropriété (pas de question dédiée) : le chauffage est
-  // donc demandé pour tout appartement, vente comme location.
+  // donc demandé pour tout appartement, vente comme location. La question
+  // d'attestation de surface (Carrez / Boutin / surface habitable selon le
+  // cas) est posée pour tout bien, une fois le type de bien et l'objet
+  // connus, avant le résultat.
   const screens: Screen[] = useMemo(() => {
     const s: Screen[] = ['commune', 'purpose', 'propertyType']
     if (propertyType === 'apartment') {
       s.push('heating')
     }
-    s.push('year', 'size', 'result')
+    s.push('surfaceAttestation', 'year', 'size', 'result')
     return s
   }, [propertyType])
 
@@ -63,42 +67,66 @@ export default function AssistantPage() {
     setPurpose(null)
     setPropertyType(null)
     setHeating(null)
+    setHasSurfaceAttestation(null)
     setYearIndex(null)
     setSizeIndex(null)
   }
 
   const selectCommune = (slug: string) => { setCommuneSlug(slug); advance() }
-  const selectPurpose = (p: Purpose) => { setPurpose(p); advance() }
-  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHeating(null); setSizeIndex(null); advance() }
+  // Le libellé de la question d'attestation dépend de l'objet (Carrez en
+  // vente, Boutin en location) : si l'objet change, la réponse précédente
+  // ne s'applique plus au bon libellé, donc on la réinitialise.
+  const selectPurpose = (p: Purpose) => { setPurpose(p); setHasSurfaceAttestation(null); advance() }
+  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHeating(null); setHasSurfaceAttestation(null); setSizeIndex(null); advance() }
   const selectHeating = (h: Heating) => { setHeating(h); advance() }
+  const selectSurfaceAttestation = (v: boolean) => { setHasSurfaceAttestation(v); advance() }
   const selectYear = (i: number) => { setYearIndex(i); advance() }
   const selectSize = (i: number) => { setSizeIndex(i); advance() }
+
+  // Fragment inséré dans "Avez-vous déjà une attestation de surface {X} ?" :
+  // "Carrez" en vente d'appartement, "Boutin" en location, "habitable" pour
+  // une maison (donne "...de surface habitable", sans doublon).
+  const surfaceAttestationFragment = propertyType === 'apartment'
+    ? (purpose === 'sale' ? 'Carrez' : 'Boutin')
+    : 'habitable'
 
   const sizeLabels = propertyType === 'apartment' ? APARTMENT_SIZE_LABELS : HOUSE_SIZE_LABELS
   const maxPack = propertyType === 'house' ? 6 : 7
   const constructionYear = yearIndex !== null ? YEAR_BRACKETS[yearIndex].year : null
 
   const diagnostics = purpose && propertyType && constructionYear !== null
-    ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug })
+    ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: !!hasSurfaceAttestation })
     : null
 
   const houseOver250 = propertyType === 'house' && sizeIndex === HOUSE_QUOTE_ON_REQUEST_INDEX
   const collectiveHeating = propertyType === 'apartment' && heating === 'collective'
+  // Nombre de diagnostics obligatoires qui comptent réellement pour choisir
+  // le pack (le mesurage maison, quand il est obligatoire, en est exclu :
+  // il a son propre tarif par tranche, ajouté séparément au total).
+  const packMandatoryCount = diagnostics
+    ? diagnostics.mandatory.filter((item) => item.countsTowardPack !== false).length
+    : null
   // Un diagnostic obligatoire (ex. termites en commune "entière") peut
   // pousser le nombre de diagnostics obligatoires au-delà de ce que couvre
   // la grille de packs (surtout pour les maisons, dont la grille s'arrête à
   // 6) : on le détecte sur le nombre NON plafonné, pour ne jamais afficher
   // le prix d'un pack à côté qui ne couvre pas tout ce qui est obligatoire.
-  const packOverflow = diagnostics !== null && diagnostics.mandatory.length > maxPack
+  const packOverflow = packMandatoryCount !== null && packMandatoryCount > maxPack
   const quoteOnRequest = houseOver250 || collectiveHeating || packOverflow
 
-  const packCount = diagnostics ? Math.max(2, Math.min(maxPack, diagnostics.mandatory.length)) : null
+  const packCount = packMandatoryCount !== null ? Math.max(2, Math.min(maxPack, packMandatoryCount)) : null
   // Prix du pack : -10 % en location par rapport à la vente (même pack, même
   // tranche de taille), calculé par la source commune lib/property-pricing.ts
   // pour que /assistant et /devis ne puissent pas diverger.
   const packPrice = diagnostics && packCount !== null && sizeIndex !== null && propertyType && purpose
     ? getPackPrice(propertyType, packCount, sizeIndex, purpose)
     : null
+  // Mesurage maison obligatoire (pas d'attestation de surface fournie) :
+  // son tarif par tranche s'ajoute au prix du pack, sans influer sur le
+  // choix du pack lui-même (voir packMandatoryCount ci-dessus).
+  const houseMeasurementMandatory = diagnostics?.mandatory.some((item) => item.id === 'measurement') ?? false
+  const houseMeasurementPrice = houseMeasurementMandatory && sizeIndex !== null ? HOUSE_MEASUREMENT_PRICES[sizeIndex] ?? 0 : 0
+  const totalPrice = packPrice !== null ? packPrice + houseMeasurementPrice : null
   // Combinaison sans tarif dans la grille alors qu'aucun cas "sur devis" connu
   // ne s'applique : signalée telle quelle plutôt que d'inventer un prix.
   const noPackMatch = !quoteOnRequest && packPrice === null && diagnostics !== null && sizeIndex !== null
@@ -188,6 +216,18 @@ export default function AssistantPage() {
               </>
             )}
 
+            {currentScreen === 'surfaceAttestation' && (
+              <>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>
+                  Avez-vous déjà une attestation de surface {surfaceAttestationFragment} (acte notarié, permis de construire, ancien diagnostic) ?
+                </h1>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <button className="diagassist-choice" onClick={() => selectSurfaceAttestation(true)}>Oui</button>
+                  <button className="diagassist-choice" onClick={() => selectSurfaceAttestation(false)}>Non</button>
+                </div>
+              </>
+            )}
+
             {currentScreen === 'year' && (
               <>
                 <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>De quand date la construction ?</h1>
@@ -228,6 +268,12 @@ export default function AssistantPage() {
                   </ul>
                 </div>
 
+                {diagnostics.surfaceAttestationNote && (
+                  <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f5f9fd', border: '1px solid #cbddea', color: '#315a48', fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
+                    {diagnostics.surfaceAttestationNote}
+                  </div>
+                )}
+
                 {diagnostics.toConfirm.length > 0 && (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>À confirmer</div>
@@ -257,7 +303,7 @@ export default function AssistantPage() {
                   {quoteOnRequest || noPackMatch ? (
                     <div style={{ color: '#7a5612', fontWeight: 900, fontSize: 17 }}>Nous vous répondons avec un devis personnalisé</div>
                   ) : (
-                    <div style={{ color: NAVY, fontWeight: 900, fontSize: 22 }}>À partir de {euro(packPrice as number)} TTC</div>
+                    <div style={{ color: NAVY, fontWeight: 900, fontSize: 22 }}>À partir de {euro(totalPrice as number)} TTC</div>
                   )}
                 </div>
 
