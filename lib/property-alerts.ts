@@ -5,7 +5,7 @@ export type Purpose = 'sale' | 'rental'
 export type PropertyType = 'apartment' | 'house'
 
 export type DiagnosticItem = { id: string; label: string; detail: string }
-export type PricedOptionId = 'dapp' | 'measurement'
+export type PricedOptionId = 'measurement'
 export type PricedOption = { id: PricedOptionId; label: string }
 
 export type DiagnosticsResult = {
@@ -25,13 +25,11 @@ export const computeDiagnostics = ({
   purpose,
   propertyType,
   constructionYear,
-  isCoowned,
   communeSlug,
 }: {
   purpose: Purpose
   propertyType: PropertyType
   constructionYear: number
-  isCoowned: boolean
   communeSlug: string | null
 }): DiagnosticsResult => {
   const age = new Date().getFullYear() - constructionYear
@@ -85,25 +83,24 @@ export const computeDiagnostics = ({
         : `Contrôle du raccordement au réseau d’eaux usées. Dans certaines communes, il est réservé au service public : à vérifier auprès de votre mairie. Si nous le réalisons : + ${assainissementPrice} €`
     toConfirm.push({ id: 'assainissement', label: 'Assainissement', detail: assainissementDetail })
     if (propertyType === 'apartment') {
-      // Mesurage loi Carrez : obligatoire (et compte dans le pack) pour un
-      // appartement en copropriété vendu ; hors copropriété, aucun mesurage
-      // n'est requis. "Mesurage (surface habitable)" (maison) n'apparaît
-      // jamais pour un appartement.
-      if (isCoowned) {
-        mandatory.push({ id: 'carrez', label: 'Mesurage loi Carrez', detail: 'Surface privative à mentionner dans l’acte de vente d’un lot de copropriété.' })
-      }
+      // Un appartement est toujours en copropriété (plus de question dédiée) :
+      // Mesurage loi Carrez systématiquement obligatoire pour une vente, et
+      // compte dans le pack. "Mesurage (surface habitable)" (maison)
+      // n'apparaît jamais pour un appartement.
+      mandatory.push({ id: 'carrez', label: 'Mesurage loi Carrez', detail: 'Surface privative à mentionner dans l’acte de vente d’un lot de copropriété.' })
     } else {
       options.push({ id: 'measurement', label: 'Mesurage (surface habitable)' })
     }
   } else {
     if (propertyType === 'apartment') {
       // Mesurage loi Boutin : obligatoire (et compte dans le pack) pour tout
-      // appartement en location, qu'il soit en copropriété ou non.
+      // appartement en location.
       mandatory.push({ id: 'boutin', label: 'Mesurage loi Boutin', detail: 'Surface habitable à mentionner dans le bail.' })
-      // DAPP ne dépend pas de la copropriété : tout appartement construit
-      // avant 1997, en location, qu'il soit en copropriété ou non.
+      // DAPP : obligatoire (et compte dans le pack) pour tout appartement
+      // construit avant 1997, en location. Jamais pour une maison, jamais
+      // pour un bien construit en 1997 ou après.
       if (isBefore1997) {
-        options.push({ id: 'dapp', label: 'DAPP (dossier amiante parties privatives)' })
+        mandatory.push({ id: 'dapp', label: 'DAPP', detail: 'Dossier amiante parties privatives, pour un appartement construit avant 1997.' })
       }
     } else {
       options.push({ id: 'measurement', label: 'Mesurage (surface habitable)' })
