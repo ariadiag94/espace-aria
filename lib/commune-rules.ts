@@ -32,13 +32,12 @@ export const COMMUNE_RULES: CommuneRule[] = [
   { slug: 'boissy-saint-leger', name: 'Boissy-Saint-Léger', coverage: 'aucun', arreteRefs: [] },
   { slug: 'bonneuil-sur-marne', name: 'Bonneuil-sur-Marne', coverage: 'aucun', arreteRefs: [] },
   { slug: 'bry-sur-marne', name: 'Bry-sur-Marne', coverage: 'aucun', arreteRefs: [] },
-  // termite.com.fr indique "aucun arrêté" pour Cachan, mais un récapitulatif
-  // officiel (juri-logement.org, liste des arrêtés "termites" par département)
-  // cite un arrêté du 16/10/2000 n°2000/3785 pour Cachan "aux adresses
-  // indiquées" (zone délimitée) — donc potentiellement "partielle" en réalité.
-  // Classé "inconnu" à la demande explicite (2026-09-19) en attendant
-  // confirmation ; référence conservée ci-dessous pour ne pas la perdre.
-  { slug: 'cachan', name: 'Cachan', coverage: 'inconnu', arreteRefs: ['16/10/2000 - n°2000/3785 (référence trouvée hors termite.com.fr, à confirmer)'] },
+  // termite.com.fr indique "aucun arrêté" pour Cachan, mais la référence
+  // ci-dessous vient d'un récapitulatif national officiel des arrêtés
+  // "termites" (source : juri-logement.org, relevé le 19/09/2026), qui cite
+  // un arrêté du 16/10/2000 n°2000/3785 pour Cachan "aux adresses indiquées"
+  // (zone délimitée). Classé "partielle" sur cette base (2026-09-19).
+  { slug: 'cachan', name: 'Cachan', coverage: 'partielle', arreteRefs: ['16/10/2000 - n°2000/3785 (zone délimitée, aux adresses indiquées)'] },
   { slug: 'champigny-sur-marne', name: 'Champigny-sur-Marne', coverage: 'aucun', arreteRefs: [] },
   { slug: 'charenton-le-pont', name: 'Charenton-le-Pont', coverage: 'aucun', arreteRefs: [] },
   { slug: 'chennevieres-sur-marne', name: 'Chennevières-sur-Marne', coverage: 'aucun', arreteRefs: [] },
