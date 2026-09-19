@@ -31,30 +31,28 @@ const YEAR_BRACKETS = [
   { label: `${currentYear - 14} à aujourd’hui`, year: currentYear },
 ]
 
-type Screen = 'commune' | 'purpose' | 'propertyType' | 'coownership' | 'heating' | 'year' | 'size' | 'result'
+type Screen = 'commune' | 'purpose' | 'propertyType' | 'heating' | 'year' | 'size' | 'result'
 
 export default function AssistantPage() {
   const [step, setStep] = useState(0)
   const [communeSlug, setCommuneSlug] = useState<string | null>(null)
   const [purpose, setPurpose] = useState<Purpose | null>(null)
   const [propertyType, setPropertyType] = useState<PropertyType | null>(null)
-  const [coowned, setCoowned] = useState<boolean | null>(null)
   const [heating, setHeating] = useState<Heating | null>(null)
   const [yearIndex, setYearIndex] = useState<number | null>(null)
   const [sizeIndex, setSizeIndex] = useState<number | null>(null)
 
-  // Parcours dynamique : la commune est demandée en premier, la copropriété
-  // n'est demandée que pour un appartement, et le chauffage que si le bien
-  // est en copropriété.
+  // Parcours dynamique : la commune est demandée en premier. Un appartement
+  // est toujours en copropriété (pas de question dédiée) : le chauffage est
+  // donc demandé pour tout appartement, vente comme location.
   const screens: Screen[] = useMemo(() => {
     const s: Screen[] = ['commune', 'purpose', 'propertyType']
     if (propertyType === 'apartment') {
-      s.push('coownership')
-      if (coowned) s.push('heating')
+      s.push('heating')
     }
     s.push('year', 'size', 'result')
     return s
-  }, [propertyType, coowned])
+  }, [propertyType])
 
   const currentScreen = screens[Math.min(step, screens.length - 1)]
 
@@ -65,7 +63,6 @@ export default function AssistantPage() {
     setCommuneSlug(null)
     setPurpose(null)
     setPropertyType(null)
-    setCoowned(null)
     setHeating(null)
     setYearIndex(null)
     setSizeIndex(null)
@@ -73,8 +70,7 @@ export default function AssistantPage() {
 
   const selectCommune = (slug: string) => { setCommuneSlug(slug); advance() }
   const selectPurpose = (p: Purpose) => { setPurpose(p); advance() }
-  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setCoowned(null); setHeating(null); setSizeIndex(null); advance() }
-  const selectCoowned = (v: boolean) => { setCoowned(v); if (!v) setHeating(null); advance() }
+  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHeating(null); setSizeIndex(null); advance() }
   const selectHeating = (h: Heating) => { setHeating(h); advance() }
   const selectYear = (i: number) => { setYearIndex(i); advance() }
   const selectSize = (i: number) => { setSizeIndex(i); advance() }
@@ -84,11 +80,11 @@ export default function AssistantPage() {
   const constructionYear = yearIndex !== null ? YEAR_BRACKETS[yearIndex].year : null
 
   const diagnostics = purpose && propertyType && constructionYear !== null
-    ? computeDiagnostics({ purpose, propertyType, constructionYear, isCoowned: !!coowned, communeSlug })
+    ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug })
     : null
 
   const houseOver250 = propertyType === 'house' && sizeIndex === HOUSE_QUOTE_ON_REQUEST_INDEX
-  const collectiveHeating = propertyType === 'apartment' && !!coowned && heating === 'collective'
+  const collectiveHeating = propertyType === 'apartment' && heating === 'collective'
   // Un diagnostic obligatoire (ex. termites en commune "entière") peut
   // pousser le nombre de diagnostics obligatoires au-delà de ce que couvre
   // la grille de packs (surtout pour les maisons, dont la grille s'arrête à
@@ -105,10 +101,11 @@ export default function AssistantPage() {
   // ne s'applique : signalée telle quelle plutôt que d'inventer un prix.
   const noPackMatch = !quoteOnRequest && packPrice === null && diagnostics !== null && sizeIndex !== null
 
-  // DAPP n'a aucun prix dans le moteur existant : "selon devis" plutôt qu'un
-  // tarif inventé. Le mesurage maison est le seul avec un prix, lu depuis
-  // HOUSE_SIZE_TIERS (source commune). Carrez et Boutin (appartement) sont
-  // désormais des diagnostics obligatoires sans prix propre, pas des options.
+  // Le mesurage maison est la seule option avec un prix, lu depuis
+  // HOUSE_SIZE_TIERS (source commune) — aucun prix équivalent n'existe pour
+  // l'appartement. Carrez, Boutin et DAPP sont désormais des diagnostics
+  // obligatoires sans prix propre, pas des options : "options" ne contient
+  // plus jamais d'entrée pour un appartement.
   const optionPrice = (id: PricedOptionId): number | null => {
     if (id === 'measurement' && propertyType === 'house' && sizeIndex !== null) return HOUSE_MEASUREMENT_PRICES[sizeIndex] ?? null
     return null
@@ -179,16 +176,6 @@ export default function AssistantPage() {
               </>
             )}
 
-            {currentScreen === 'coownership' && (
-              <>
-                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Le bien est-il en copropriété ?</h1>
-                <div style={{ display: 'grid', gap: 12 }}>
-                  <button className="diagassist-choice" onClick={() => selectCoowned(true)}>Oui</button>
-                  <button className="diagassist-choice" onClick={() => selectCoowned(false)}>Non</button>
-                </div>
-              </>
-            )}
-
             {currentScreen === 'heating' && (
               <>
                 <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Le chauffage est-il collectif ou individuel ?</h1>
@@ -228,7 +215,6 @@ export default function AssistantPage() {
                 <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre estimation</h1>
                 <p style={{ color: '#6f7d90', fontSize: 14, margin: '0 0 22px' }}>
                   {propertyType === 'apartment' ? 'Appartement' : 'Maison'} · {sizeLabels[sizeIndex]} · {purpose === 'rental' ? 'Location' : 'Vente'}
-                  {propertyType === 'apartment' && coowned ? ' · Copropriété' : ''}
                 </p>
 
                 <div style={{ marginBottom: 20 }}>
