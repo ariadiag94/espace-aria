@@ -29,6 +29,20 @@ export type DiagnosticsResult = {
   isMinimalMission: boolean
 }
 
+// Texte de l'item assainissement, partagé par le moteur guidé (vente) et par
+// le mode "Diagnostics à la carte" (où l'assainissement reste affiché mais
+// hors du calcul de prix) : Alfortville et Maisons-Alfort ont un traitement
+// particulier (respectivement réalisé par ARIA, et réservé au service
+// public) ; toute autre commune garde le texte générique.
+export const buildAssainissementDetail = (propertyType: PropertyType, communeSlug: string | null): string => {
+  const assainissementPrice = propertyType === 'apartment' ? APARTMENT_ASSAINISSEMENT_PRICE : HOUSE_ASSAINISSEMENT_PRICE
+  return communeSlug === 'alfortville'
+    ? `Contrôle du raccordement au réseau d’eaux usées, réalisé par ARIA Diagnostics : + ${assainissementPrice} €.`
+    : communeSlug === 'maisons-alfort'
+      ? 'Contrôle du raccordement au réseau d’eaux usées, réalisé par le service public dans votre commune (pas de prix chez ARIA).'
+      : `Contrôle du raccordement au réseau d’eaux usées. Dans certaines communes, il est réservé au service public : à vérifier auprès de votre mairie. Si nous le réalisons : + ${assainissementPrice} €`
+}
+
 // Seuils électricité/gaz (installation de plus de 15 ans, approximée depuis
 // l'année de construction) et plomb (< 1949) repris tels quels de la règle
 // déjà codée dans app/dossiers/nouveau/page.tsx (constructionYearAlerts).
@@ -135,16 +149,7 @@ export const computeDiagnostics = ({
       toConfirm.push({ id: 'termites', label: 'Termites', detail: 'À vérifier auprès de votre mairie.' })
     }
 
-    const assainissementPrice = propertyType === 'apartment' ? APARTMENT_ASSAINISSEMENT_PRICE : HOUSE_ASSAINISSEMENT_PRICE
-    // Alfortville et Maisons-Alfort ont un traitement particulier pour
-    // l'assainissement (respectivement réalisé par ARIA, et réservé au
-    // service public) ; toute autre commune garde le texte générique.
-    const assainissementDetail = communeSlug === 'alfortville'
-      ? `Contrôle du raccordement au réseau d’eaux usées, réalisé par ARIA Diagnostics : + ${assainissementPrice} €.`
-      : communeSlug === 'maisons-alfort'
-        ? 'Contrôle du raccordement au réseau d’eaux usées, réalisé par le service public dans votre commune (pas de prix chez ARIA).'
-        : `Contrôle du raccordement au réseau d’eaux usées. Dans certaines communes, il est réservé au service public : à vérifier auprès de votre mairie. Si nous le réalisons : + ${assainissementPrice} €`
-    toConfirm.push({ id: 'assainissement', label: 'Assainissement', detail: assainissementDetail })
+    toConfirm.push({ id: 'assainissement', label: 'Assainissement', detail: buildAssainissementDetail(propertyType, communeSlug) })
   }
 
   // Diagnostic de surface (Carrez / Boutin / Mesurage) :

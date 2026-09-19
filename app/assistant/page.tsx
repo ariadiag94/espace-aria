@@ -2,12 +2,15 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
+import { buildAssainissementDetail, computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
 import { COMMUNE_RULES, OTHER_COMMUNE_SLUG } from '@/lib/commune-rules'
 import {
+  ALACARTE_ITEM_IDS,
+  ALaCarteItemId,
   APARTMENT_DPE_ONLY_PRICES,
   APARTMENT_SIZE_LABELS,
   ERP_OPTION_PRICE,
+  getALaCartePrice,
   getPackPrice,
   HOUSE_DPE_ONLY_PRICES,
   HOUSE_MEASUREMENT_PRICES,
@@ -21,7 +24,10 @@ const LIGHT = '#eef1f5'
 
 const euro = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
 
-type Purpose = 'sale' | 'rental'
+// 'alaCarte' est un 3e choix au même niveau que vente/location, pas une
+// variante du moteur guidé : computeDiagnostics() (lib/property-alerts.ts)
+// n'est jamais appelé avec cette valeur, uniquement avec 'sale' | 'rental'.
+type Purpose = 'sale' | 'rental' | 'alaCarte'
 type PropertyType = 'apartment' | 'house'
 type Heating = 'collective' | 'individual'
 
@@ -33,7 +39,22 @@ const YEAR_BRACKETS = [
   { label: `${currentYear - 14} à aujourd’hui`, year: currentYear },
 ]
 
-type Screen = 'commune' | 'purpose' | 'propertyType' | 'heating' | 'surfaceAttestation' | 'year' | 'size' | 'result'
+// Libellé de chaque diagnostic sélectionnable en mode "à la carte" ;
+// "surface" dépend du type de bien (pas d'objet vente/location dans ce mode).
+const alaCarteItemLabel = (id: ALaCarteItemId, propertyType: PropertyType | null): string => {
+  switch (id) {
+    case 'dpe': return 'DPE'
+    case 'erp': return 'ERP'
+    case 'surface': return propertyType === 'house' ? 'Boutin/Mesurage' : 'Carrez/Boutin'
+    case 'plomb': return 'Plomb (CREP)'
+    case 'amiante': return 'Amiante'
+    case 'elec': return 'Électricité'
+    case 'gaz': return 'Gaz'
+    case 'termites': return 'Termites'
+  }
+}
+
+type Screen = 'commune' | 'purpose' | 'propertyType' | 'heating' | 'surfaceAttestation' | 'year' | 'checklist' | 'size' | 'result'
 
 export default function AssistantPage() {
   const [step, setStep] = useState(0)
@@ -44,25 +65,35 @@ export default function AssistantPage() {
   const [hasSurfaceAttestation, setHasSurfaceAttestation] = useState<boolean | null>(null)
   const [yearIndex, setYearIndex] = useState<number | null>(null)
   const [sizeIndex, setSizeIndex] = useState<number | null>(null)
+  const [checkedItems, setCheckedItems] = useState<Set<ALaCarteItemId>>(new Set())
 
   const constructionYear = yearIndex !== null ? YEAR_BRACKETS[yearIndex].year : null
   // Seuil "mission minimale" (DPE seul) : ne dépend pas de la réponse à
   // l'attestation de surface, donc calculable dès que l'année est connue,
   // avant même de poser la question — nécessaire pour savoir si l'écran
   // 'surfaceAttestation' doit apparaître dans le parcours (pack complet :
-  // pas de question du tout).
-  const isMinimalMission = purpose && propertyType && constructionYear !== null
+  // pas de question du tout). Sans objet en mode "à la carte" (purpose ===
+  // 'alaCarte') : le moteur guidé n'est jamais appelé dans ce cas.
+  const isMinimalMission = (purpose === 'sale' || purpose === 'rental') && propertyType && constructionYear !== null
     ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: false }).isMinimalMission
     : false
 
-  // Parcours dynamique : la commune est demandée en premier. Un appartement
-  // est toujours en copropriété (pas de question dédiée) : le chauffage est
-  // donc demandé pour tout appartement, vente comme location. La question
-  // d'attestation de surface (Carrez / Boutin / surface habitable selon le
-  // cas) n'est posée qu'en mission minimale, une fois l'année connue (le
-  // seuil en dépend) ; en pack complet elle n'apparaît pas du tout.
+  // Parcours dynamique : la commune est demandée en premier. Le mode "à la
+  // carte" (3e choix sur l'écran "objet") saute directement à la sélection
+  // libre des diagnostics, sans année, chauffage, ni question d'attestation
+  // — ces notions n'ont pas de sens quand le client choisit lui-même.
+  // Pour vente/location : un appartement est toujours en copropriété (pas de
+  // question dédiée), le chauffage est donc demandé pour tout appartement.
+  // La question d'attestation de surface n'est posée qu'en mission minimale,
+  // une fois l'année connue (le seuil en dépend) ; en pack complet elle
+  // n'apparaît pas du tout.
   const screens: Screen[] = useMemo(() => {
-    const s: Screen[] = ['commune', 'purpose', 'propertyType']
+    const s: Screen[] = ['commune', 'purpose']
+    if (purpose === 'alaCarte') {
+      s.push('propertyType', 'size', 'checklist', 'result')
+      return s
+    }
+    s.push('propertyType')
     if (propertyType === 'apartment') {
       s.push('heating')
     }
@@ -72,7 +103,7 @@ export default function AssistantPage() {
     }
     s.push('size', 'result')
     return s
-  }, [propertyType, isMinimalMission])
+  }, [propertyType, isMinimalMission, purpose])
 
   const currentScreen = screens[Math.min(step, screens.length - 1)]
 
@@ -87,14 +118,16 @@ export default function AssistantPage() {
     setHasSurfaceAttestation(null)
     setYearIndex(null)
     setSizeIndex(null)
+    setCheckedItems(new Set())
   }
 
   const selectCommune = (slug: string) => { setCommuneSlug(slug); advance() }
   // Le libellé de la question d'attestation dépend de l'objet (Carrez en
   // vente, Boutin en location) : si l'objet change, la réponse précédente
-  // ne s'applique plus au bon libellé, donc on la réinitialise.
-  const selectPurpose = (p: Purpose) => { setPurpose(p); setHasSurfaceAttestation(null); advance() }
-  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHeating(null); setHasSurfaceAttestation(null); setSizeIndex(null); advance() }
+  // ne s'applique plus au bon libellé, donc on la réinitialise. La sélection
+  // "à la carte" ne s'applique plus si on change d'objet.
+  const selectPurpose = (p: Purpose) => { setPurpose(p); setHasSurfaceAttestation(null); setCheckedItems(new Set()); advance() }
+  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHeating(null); setHasSurfaceAttestation(null); setSizeIndex(null); setCheckedItems(new Set()); advance() }
   const selectHeating = (h: Heating) => { setHeating(h); advance() }
   const selectSurfaceAttestation = (v: boolean) => { setHasSurfaceAttestation(v); advance() }
   // Changer l'année peut faire basculer le seuil mission minimale / pack
@@ -103,6 +136,14 @@ export default function AssistantPage() {
   // correspond plus au bon parcours.
   const selectYear = (i: number) => { setYearIndex(i); setHasSurfaceAttestation(null); advance() }
   const selectSize = (i: number) => { setSizeIndex(i); advance() }
+  const toggleALaCarteItem = (id: ALaCarteItemId) => {
+    setCheckedItems((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   // Fragment inséré dans "Avez-vous déjà une attestation de surface {X} ?" :
   // "Carrez" en vente d'appartement, "Boutin" en location, "habitable" pour
@@ -114,11 +155,22 @@ export default function AssistantPage() {
   const sizeLabels = propertyType === 'apartment' ? APARTMENT_SIZE_LABELS : HOUSE_SIZE_LABELS
   const maxPack = propertyType === 'house' ? 6 : 7
 
-  const diagnostics = purpose && propertyType && constructionYear !== null
+  const diagnostics = (purpose === 'sale' || purpose === 'rental') && propertyType && constructionYear !== null
     ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: !!hasSurfaceAttestation })
     : null
 
   const houseOver250 = propertyType === 'house' && sizeIndex === HOUSE_QUOTE_ON_REQUEST_INDEX
+  // Mode "à la carte" : prix calculé par la source commune
+  // lib/property-pricing.ts (1 seul diagnostic coché -> prix unitaire ; 2 ou
+  // plus -> prix du pack existant correspondant au nombre coché, peu importe
+  // lesquels). L'assainissement reste affiché mais n'entre jamais dans ce
+  // calcul, comme dans le moteur guidé.
+  const alaCarteOverflow = purpose === 'alaCarte' && checkedItems.size > maxPack
+  const alaCarteQuoteOnRequest = purpose === 'alaCarte' && (houseOver250 || alaCarteOverflow)
+  const alaCartePrice = purpose === 'alaCarte' && propertyType && sizeIndex !== null && !alaCarteQuoteOnRequest && checkedItems.size > 0
+    ? getALaCartePrice(propertyType, Array.from(checkedItems), sizeIndex)
+    : null
+  const alaCarteNoMatch = purpose === 'alaCarte' && !alaCarteQuoteOnRequest && checkedItems.size > 0 && alaCartePrice === null
   // Nombre de diagnostics obligatoires qui comptent réellement pour choisir
   // le pack (l'ERP offert, en mission minimale + "Non", en est exclu : le
   // prix réutilise directement le pack 2, sans compter l'ERP comme un 3e
@@ -147,7 +199,7 @@ export default function AssistantPage() {
   // Prix du pack : -10 % en location par rapport à la vente (même pack, même
   // tranche de taille), calculé par la source commune lib/property-pricing.ts
   // pour que /assistant et /devis ne puissent pas diverger.
-  const packPrice = !isDpeOnly && diagnostics && packCount !== null && sizeIndex !== null && propertyType && purpose
+  const packPrice = !isDpeOnly && diagnostics && packCount !== null && sizeIndex !== null && propertyType && (purpose === 'sale' || purpose === 'rental')
     ? getPackPrice(propertyType, packCount, sizeIndex, purpose)
     : null
   const dpeOnlyPrice = isDpeOnly && sizeIndex !== null
@@ -177,6 +229,9 @@ export default function AssistantPage() {
         .diagassist-back { background: none; border: none; color: #6f7d90; font-weight: 700; font-size: 13px; cursor: pointer; padding: 0; margin-top: 22px; font-family: inherit; }
         .diagassist-back:hover { color: ${NAVY}; }
         .diagassist-restart { background: none; border: none; color: ${NAVY}; font-weight: 700; font-size: 13px; cursor: pointer; padding: 0; text-decoration: underline; font-family: inherit; }
+        .diagassist-checkbox-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 14px 18px; border-radius: 14px; border: 2px solid #dbe7f2; background: #fff; color: ${NAVY}; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .diagassist-checkbox-row input { width: 18px; height: 18px; accent-color: ${NAVY}; }
+        .diagassist-choice:disabled { opacity: .45; cursor: not-allowed; }
       `}</style>
 
       <div style={{ width: '100%', maxWidth: 560 }}>
@@ -220,6 +275,7 @@ export default function AssistantPage() {
                 <div style={{ display: 'grid', gap: 12 }}>
                   <button className="diagassist-choice" onClick={() => selectPurpose('sale')}>Une vente</button>
                   <button className="diagassist-choice" onClick={() => selectPurpose('rental')}>Une location</button>
+                  <button className="diagassist-choice" onClick={() => selectPurpose('alaCarte')}>Diagnostics à la carte</button>
                 </div>
               </>
             )}
@@ -280,7 +336,64 @@ export default function AssistantPage() {
               </>
             )}
 
-            {currentScreen === 'result' && propertyType && sizeIndex !== null && diagnostics && (
+            {currentScreen === 'checklist' && (
+              <>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Choisissez les diagnostics souhaités</h1>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {ALACARTE_ITEM_IDS.map((id) => (
+                    <label key={id} className="diagassist-checkbox-row">
+                      <input type="checkbox" checked={checkedItems.has(id)} onChange={() => toggleALaCarteItem(id)} />
+                      <span>{alaCarteItemLabel(id, propertyType)}</span>
+                    </label>
+                  ))}
+                </div>
+                <button className="diagassist-choice" style={{ marginTop: 16, textAlign: 'center' }} disabled={checkedItems.size === 0} onClick={advance}>
+                  Voir mon estimation
+                </button>
+              </>
+            )}
+
+            {currentScreen === 'result' && purpose === 'alaCarte' && propertyType && sizeIndex !== null && (
+              <div>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre estimation</h1>
+                <p style={{ color: '#6f7d90', fontSize: 14, margin: '0 0 22px' }}>
+                  {propertyType === 'apartment' ? 'Appartement' : 'Maison'} · {sizeLabels[sizeIndex]} · Diagnostics à la carte
+                </p>
+
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Diagnostics sélectionnés</div>
+                  <ul style={{ margin: 0, paddingLeft: 20, color: '#315a48', fontSize: 14, lineHeight: 1.6 }}>
+                    {ALACARTE_ITEM_IDS.filter((id) => checkedItems.has(id)).map((id) => (
+                      <li key={id}><b>{alaCarteItemLabel(id, propertyType)}</b></li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>À confirmer</div>
+                  <ul style={{ margin: 0, paddingLeft: 20, color: '#7a5612', fontSize: 14, lineHeight: 1.6 }}>
+                    <li><b>Assainissement</b> — {buildAssainissementDetail(propertyType, communeSlug)}</li>
+                  </ul>
+                  <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Si confirmé, ce diagnostic s’ajoute au prix ci-dessous.</p>
+                </div>
+
+                <div style={{ padding: '18px 20px', borderRadius: 16, background: alaCarteQuoteOnRequest || alaCarteNoMatch ? '#fff8e6' : LIGHT, border: `1px solid ${alaCarteQuoteOnRequest || alaCarteNoMatch ? '#f0c76a' : '#dbe7f2'}`, marginBottom: 20 }}>
+                  {alaCarteQuoteOnRequest || alaCarteNoMatch ? (
+                    <div style={{ color: '#7a5612', fontWeight: 900, fontSize: 17 }}>Nous vous répondons avec un devis personnalisé</div>
+                  ) : (
+                    <div style={{ color: NAVY, fontWeight: 900, fontSize: 22 }}>À partir de {euro(alaCartePrice as number)} TTC</div>
+                  )}
+                </div>
+
+                <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f5f7fa', border: '1px solid #e2e8ef', color: '#52657a', fontSize: 12, lineHeight: 1.6, marginBottom: 22 }}>
+                  Estimation indicative, établie à partir des informations que vous avez déclarées. Elle ne constitue ni un devis ni un engagement. Les diagnostics obligatoires dépendent de la situation réelle du bien et de la réglementation en vigueur : ARIA Diagnostics les confirme après vérification. Le prix définitif peut différer si les informations sont inexactes ou incomplètes (surface, nombre de lots, dépendances, accès, etc.). Aucun devis n’est envoyé avant cette vérification.
+                </div>
+
+                <button className="diagassist-restart" onClick={restart}>Recommencer</button>
+              </div>
+            )}
+
+            {currentScreen === 'result' && purpose !== 'alaCarte' && propertyType && sizeIndex !== null && diagnostics && (
               <div>
                 <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre estimation</h1>
                 <p style={{ color: '#6f7d90', fontSize: 14, margin: '0 0 22px' }}>
