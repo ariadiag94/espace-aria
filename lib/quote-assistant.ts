@@ -5,15 +5,23 @@ export type QuotePropertyType = 'apartment' | 'house'
 // pour que la grille tarifaire et la suggestion IA ne puissent plus diverger.
 // La dernière tranche (maxSurface: null) correspond à "> 250 m²", sans prix
 // calculé — évaluation personnalisée requise.
-export const HOUSE_SIZE_TIERS: { label: string; maxSurface: number | null }[] = [
-  { label: '≤ 70 m²', maxSurface: 70 },
-  { label: '71–100 m²', maxSurface: 100 },
-  { label: '101–130 m²', maxSurface: 130 },
-  { label: '131–160 m²', maxSurface: 160 },
-  { label: '161–200 m²', maxSurface: 200 },
-  { label: '201–250 m²', maxSurface: 250 },
-  { label: '> 250 m²', maxSurface: null },
+// measurementPrice : prix du mesurage maison (surface habitable) par tranche,
+// à lire depuis cette même source plutôt que dupliqué dans une seconde grille.
+export const HOUSE_SIZE_TIERS: { label: string; maxSurface: number | null; measurementPrice: number | null }[] = [
+  { label: '≤ 70 m²', maxSurface: 70, measurementPrice: 90 },
+  { label: '71–100 m²', maxSurface: 100, measurementPrice: 120 },
+  { label: '101–130 m²', maxSurface: 130, measurementPrice: 150 },
+  { label: '131–160 m²', maxSurface: 160, measurementPrice: 180 },
+  { label: '161–200 m²', maxSurface: 200, measurementPrice: 210 },
+  { label: '201–250 m²', maxSurface: 250, measurementPrice: 240 },
+  { label: '> 250 m²', maxSurface: null, measurementPrice: null },
 ]
+
+// Prix de l'option assainissement, seule source de vérité pour app/devis
+// (Devis Express) et pour l'assistant public (/assistant) — aucune des
+// deux pages ne doit garder sa propre valeur codée en dur.
+export const APARTMENT_ASSAINISSEMENT_PRICE = 100
+export const HOUSE_ASSAINISSEMENT_PRICE = 180
 
 const houseSizeKeyFromSurface = (surface: number) => {
   const index = HOUSE_SIZE_TIERS.findIndex(tier => tier.maxSurface === null || surface <= tier.maxSurface)
