@@ -105,9 +105,10 @@ export default function AssistantPage() {
   // ne s'applique : signalée telle quelle plutôt que d'inventer un prix.
   const noPackMatch = !quoteOnRequest && packPrice === null && diagnostics !== null && sizeIndex !== null
 
-  // Carrez, Boutin (appartement) et DAPP n'ont aucun prix dans le moteur
-  // existant : "selon devis" plutôt qu'un tarif inventé. Le mesurage maison
-  // est le seul avec un prix, lu depuis HOUSE_SIZE_TIERS (source commune).
+  // DAPP n'a aucun prix dans le moteur existant : "selon devis" plutôt qu'un
+  // tarif inventé. Le mesurage maison est le seul avec un prix, lu depuis
+  // HOUSE_SIZE_TIERS (source commune). Carrez et Boutin (appartement) sont
+  // désormais des diagnostics obligatoires sans prix propre, pas des options.
   const optionPrice = (id: PricedOptionId): number | null => {
     if (id === 'measurement' && propertyType === 'house' && sizeIndex !== null) return HOUSE_MEASUREMENT_PRICES[sizeIndex] ?? null
     return null

@@ -5,7 +5,7 @@ export type Purpose = 'sale' | 'rental'
 export type PropertyType = 'apartment' | 'house'
 
 export type DiagnosticItem = { id: string; label: string; detail: string }
-export type PricedOptionId = 'carrez' | 'boutin' | 'dapp' | 'measurement'
+export type PricedOptionId = 'dapp' | 'measurement'
 export type PricedOption = { id: PricedOptionId; label: string }
 
 export type DiagnosticsResult = {
@@ -85,16 +85,22 @@ export const computeDiagnostics = ({
         : `Contrôle du raccordement au réseau d’eaux usées. Dans certaines communes, il est réservé au service public : à vérifier auprès de votre mairie. Si nous le réalisons : + ${assainissementPrice} €`
     toConfirm.push({ id: 'assainissement', label: 'Assainissement', detail: assainissementDetail })
     if (propertyType === 'apartment') {
+      // Mesurage loi Carrez : obligatoire (et compte dans le pack) pour un
+      // appartement en copropriété vendu ; hors copropriété, aucun mesurage
+      // n'est requis. "Mesurage (surface habitable)" (maison) n'apparaît
+      // jamais pour un appartement.
       if (isCoowned) {
-        options.push({ id: 'carrez', label: 'Mesurage loi Carrez' })
+        mandatory.push({ id: 'carrez', label: 'Mesurage loi Carrez', detail: 'Surface privative à mentionner dans l’acte de vente d’un lot de copropriété.' })
       }
     } else {
       options.push({ id: 'measurement', label: 'Mesurage (surface habitable)' })
     }
   } else {
     if (propertyType === 'apartment') {
-      options.push({ id: 'boutin', label: 'Mesurage loi Boutin' })
-      // DAPP ne dépend plus de la copropriété : tout appartement construit
+      // Mesurage loi Boutin : obligatoire (et compte dans le pack) pour tout
+      // appartement en location, qu'il soit en copropriété ou non.
+      mandatory.push({ id: 'boutin', label: 'Mesurage loi Boutin', detail: 'Surface habitable à mentionner dans le bail.' })
+      // DAPP ne dépend pas de la copropriété : tout appartement construit
       // avant 1997, en location, qu'il soit en copropriété ou non.
       if (isBefore1997) {
         options.push({ id: 'dapp', label: 'DAPP (dossier amiante parties privatives)' })
