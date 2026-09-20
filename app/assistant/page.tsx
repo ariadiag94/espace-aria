@@ -100,17 +100,46 @@ const DIAGNOSTIC_ICON: Record<string, string> = {
 }
 const diagnosticIcon = (id: string): string => DIAGNOSTIC_ICON[id] ?? '✓'
 
+// Icônes PNG (public/icons/diagnostics/), fournies par l'utilisateur, déjà en
+// bleu ciel #4db3e6 — remplacent les glyphes texte ci-dessus sur cet écran.
+// "carrez"/"boutin"/"surface"/"measurement" partagent mesurage.png (un seul
+// fichier fourni pour le mesurage, quel que soit le régime) ; "dapp" aussi,
+// faute d'icône dédiée (demandé explicitement). DIAGNOSTIC_ICON (glyphes)
+// reste en repli défensif si un id sans PNG apparaissait un jour.
+const DIAGNOSTIC_ICON_SRC: Record<string, string> = {
+  dpe: '/icons/diagnostics/dpe.png',
+  erp: '/icons/diagnostics/erp.png',
+  carrez: '/icons/diagnostics/mesurage.png',
+  boutin: '/icons/diagnostics/mesurage.png',
+  surface: '/icons/diagnostics/mesurage.png',
+  measurement: '/icons/diagnostics/mesurage.png',
+  plomb: '/icons/diagnostics/plomb.png',
+  amiante: '/icons/diagnostics/amiante.png',
+  elec: '/icons/diagnostics/electricite.png',
+  gaz: '/icons/diagnostics/gaz.png',
+  termites: '/icons/diagnostics/termites.png',
+  dapp: '/icons/diagnostics/mesurage.png',
+  assainissement: '/icons/diagnostics/assainissement.png',
+}
+
 type DiagCardTag = { kind: 'included' } | { kind: 'toConfirm' } | { kind: 'option'; price: number | null }
 
 // Carte de diagnostic, réutilisée par les deux parcours résultat (guidé et
 // "à la carte") : icône + nom + sous-ligne explicative + tag à droite. Pure
 // présentation — ne recalcule jamais un prix ni une règle, reçoit tout en props.
 function DiagnosticCard({ id, label, detail, tag }: { id: string; label: string; detail: string; tag: DiagCardTag }) {
+  const iconSrc = DIAGNOSTIC_ICON_SRC[id]
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderRadius: 14, border: '1px solid #dbe7f2', background: '#fff', marginBottom: 8 }}>
-      <span style={{ display: 'grid', placeItems: 'center', width: 34, height: 34, borderRadius: 10, background: LIGHT, color: NAVY, fontWeight: 900, fontSize: 15, flexShrink: 0 }}>
-        {diagnosticIcon(id)}
-      </span>
+      <div style={{ width: 28, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+        {iconSrc ? (
+          <img src={iconSrc} alt="" width={26} height={26} style={{ display: 'block' }} />
+        ) : (
+          <span style={{ display: 'grid', placeItems: 'center', width: 26, height: 26, borderRadius: 8, background: LIGHT, color: NAVY, fontWeight: 900, fontSize: 13 }}>
+            {diagnosticIcon(id)}
+          </span>
+        )}
+      </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ color: NAVY, fontWeight: 700, fontSize: 14 }}>{label}</div>
         <div style={{ color: '#6f7d90', fontSize: 12, marginTop: 2 }}>{detail}</div>
