@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import { buildAssainissementDetail, computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
 import { COMMUNE_RULES, OTHER_COMMUNE_SLUG } from '@/lib/commune-rules'
 import { APARTMENT_ASSAINISSEMENT_PRICE, HOUSE_ASSAINISSEMENT_PRICE } from '@/lib/quote-assistant'
@@ -56,6 +57,151 @@ const alaCarteItemLabel = (id: ALaCarteItemId, propertyType: PropertyType | null
 }
 
 type Screen = 'commune' | 'purpose' | 'propertyType' | 'heating' | 'surfaceAttestation' | 'year' | 'checklist' | 'size' | 'result'
+
+// Contexte de l'estimation au moment où le client envoie sa demande, transmis
+// tel quel à public.leads (colonnes property_type/purpose/estimated_price) et
+// à diagnostics_summary (jsonb, forme différente selon le mode vente/location
+// vs "à la carte" — voir app/api/leads/notify/route.ts qui lit les deux).
+type LeadContext = {
+  propertyType: PropertyType
+  purpose: Purpose
+  estimatedPrice: number | null
+  diagnosticsSummary: Record<string, unknown>
+}
+
+const EMAIL_PATTERN = /^\S+@\S+\.\S+$/
+
+// Valeurs alignées sur la contrainte CHECK de public.leads (supabase/migrations/012_leads_extra_fields.sql).
+const DEPENDENCY_OPTIONS: { id: string; label: string }[] = [
+  { id: 'cave', label: 'Cave' },
+  { id: 'garage', label: 'Garage' },
+  { id: 'parking', label: 'Parking' },
+  { id: 'autre', label: 'Autre' },
+]
+
+// Formulaire de capture de la demande client, affiché sous le prix sur
+// l'écran "result" (vente/location et "à la carte"). Écrit directement dans
+// public.leads (RLS : insert ouvert à anon/authenticated, voir
+// supabase/migrations/011_leads.sql), sans .select() pour ne pas avoir
+// besoin d'un droit SELECT côté anon. La notification email
+// (app/api/leads/notify) est déclenchée seulement après un insert réussi et
+// n'est jamais bloquante : le lead est déjà sauvegardé, c'est l'essentiel.
+//
+// Le client Supabase est créé ici (pas importé depuis lib/supabase.ts, qui
+// lève une exception au chargement du module si les variables d'env sont
+// absentes) : /assistant est une page publique sans autre dépendance à
+// Supabase, elle doit continuer à afficher l'estimation même si Supabase est
+// mal configuré — seul ce formulaire doit échouer (proprement, via le statut
+// 'error' ci-dessous) dans ce cas.
+const getLeadsClient = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  if (!url || !key) return null
+  return createClient(url, key, { auth: { persistSession: false } })
+}
+function LeadCaptureForm({ context }: { context: LeadContext }) {
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [address, setAddress] = useState('')
+  const [floor, setFloor] = useState('')
+  const [dependencies, setDependencies] = useState<Set<string>>(new Set())
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
+
+  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0 && floor.trim().length > 0 && dependencies.size > 0
+
+  const toggleDependency = (id: string) => {
+    setDependencies((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const submit = async () => {
+    if (!canSubmit || status === 'submitting') return
+    setStatus('submitting')
+
+    const client = getLeadsClient()
+    if (!client) {
+      setStatus('error')
+      return
+    }
+
+    const payload = {
+      contact_name: name.trim(),
+      contact_phone: phone.trim(),
+      contact_email: email.trim(),
+      property_address: address.trim(),
+      floor: floor.trim(),
+      dependencies: Array.from(dependencies),
+      property_type: context.propertyType,
+      purpose: context.purpose,
+      estimated_price: context.estimatedPrice,
+      diagnostics_summary: context.diagnosticsSummary,
+    }
+
+    const { error } = await client.from('leads').insert(payload)
+    if (error) {
+      setStatus('error')
+      return
+    }
+
+    setStatus('done')
+    fetch('/api/leads/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => {})
+  }
+
+  if (status === 'done') {
+    return (
+      <div style={{ padding: '16px 18px', borderRadius: 14, background: '#eaf6ee', border: '1px solid #bfe2c8', color: '#1f5c34', fontWeight: 700, fontSize: 14, lineHeight: 1.6, marginBottom: 22 }}>
+        ✓ Votre demande a été transmise. Nous vous recontactons sous 24h ouvrées pour confirmer votre devis.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginBottom: 22 }}>
+      <div style={{ color: NAVY, fontWeight: 900, fontSize: 16, marginBottom: 6 }}>Envoyer ma demande</div>
+      <p style={{ color: '#6f7d90', fontSize: 13, margin: '0 0 14px' }}>
+        Transmettez-nous vos coordonnées, nous revenons vers vous sous 24h ouvrées pour confirmer votre devis.
+      </p>
+      <div style={{ display: 'grid', gap: 10, marginBottom: 12 }}>
+        <input className="diagassist-input" placeholder="Nom et prénom" value={name} onChange={(e) => setName(e.target.value)} />
+        <input className="diagassist-input" placeholder="Téléphone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <input className="diagassist-input" placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input className="diagassist-input" placeholder="Adresse du bien" value={address} onChange={(e) => setAddress(e.target.value)} />
+        <input className="diagassist-input" placeholder="Étage" value={floor} onChange={(e) => setFloor(e.target.value)} />
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ color: NAVY, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Dépendances</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          {DEPENDENCY_OPTIONS.map((option) => (
+            <label key={option.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, border: '2px solid #dbe7f2', background: '#fff', color: NAVY, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              <input type="checkbox" checked={dependencies.has(option.id)} onChange={() => toggleDependency(option.id)} />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <p style={{ color: '#9aa6b5', fontSize: 11, lineHeight: 1.5, margin: '0 0 14px' }}>
+        En envoyant ce formulaire, vous acceptez d’être recontacté(e) par ARIA Diagnostics au sujet de votre demande. Vos données ne sont utilisées que dans ce cadre.
+      </p>
+      {status === 'error' && (
+        <p style={{ color: '#b3261e', fontSize: 13, fontWeight: 700, margin: '0 0 12px' }}>
+          Une erreur est survenue lors de l’envoi. Merci de réessayer, ou de nous contacter directement au 06 15 70 36 70.
+        </p>
+      )}
+      <button className="diagassist-choice" style={{ textAlign: 'center' }} disabled={!canSubmit || status === 'submitting'} onClick={submit}>
+        {status === 'submitting' ? 'Envoi...' : 'Envoyer ma demande'}
+      </button>
+    </div>
+  )
+}
 
 export default function AssistantPage() {
   const [step, setStep] = useState(0)
@@ -274,6 +420,8 @@ export default function AssistantPage() {
         .diagassist-checkbox-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 14px 18px; border-radius: 14px; border: 2px solid #dbe7f2; background: #fff; color: ${NAVY}; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
         .diagassist-checkbox-row input { width: 18px; height: 18px; accent-color: ${NAVY}; }
         .diagassist-choice:disabled { opacity: .45; cursor: not-allowed; }
+        .diagassist-input { width: 100%; box-sizing: border-box; padding: 13px 16px; border-radius: 12px; border: 2px solid #dbe7f2; background: #fff; color: ${NAVY}; font-size: 15px; font-family: inherit; }
+        .diagassist-input:focus { outline: none; border-color: ${SKY}; }
       `}</style>
 
       <div style={{ width: '100%', maxWidth: 560 }}>
@@ -443,11 +591,27 @@ export default function AssistantPage() {
                   Estimation indicative, établie à partir des informations que vous avez déclarées. Elle ne constitue ni un devis ni un engagement. Les diagnostics obligatoires dépendent de la situation réelle du bien et de la réglementation en vigueur : ARIA Diagnostics les confirme après vérification. Le prix définitif peut différer si les informations sont inexactes ou incomplètes (surface, nombre de lots, dépendances, accès, etc.). Aucun devis n’est envoyé avant cette vérification.
                 </div>
 
+                <LeadCaptureForm context={{
+                  propertyType,
+                  purpose: 'alaCarte',
+                  estimatedPrice: alaCartePrice,
+                  diagnosticsSummary: {
+                    propertyType,
+                    sizeLabel: sizeLabels[sizeIndex],
+                    purpose: 'alaCarte',
+                    communeSlug,
+                    checkedItems: Array.from(alaCarteItems),
+                    assainissement: alaCarteAssainissement,
+                    priceStatus: alaCarteQuoteOnRequest ? 'quote_on_request' : alaCarteNoMatch ? 'no_match' : 'estimated',
+                    totalPrice: alaCartePrice,
+                  },
+                }} />
+
                 <button className="diagassist-restart" onClick={restart}>Recommencer</button>
               </div>
             )}
 
-            {currentScreen === 'result' && purpose !== 'alaCarte' && propertyType && sizeIndex !== null && diagnostics && (
+            {currentScreen === 'result' && purpose && purpose !== 'alaCarte' && propertyType && sizeIndex !== null && diagnostics && (
               <div>
                 <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre estimation</h1>
                 <p style={{ color: '#6f7d90', fontSize: 14, margin: '0 0 22px' }}>
@@ -505,6 +669,25 @@ export default function AssistantPage() {
                 <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f5f7fa', border: '1px solid #e2e8ef', color: '#52657a', fontSize: 12, lineHeight: 1.6, marginBottom: 22 }}>
                   Estimation indicative, établie à partir des informations que vous avez déclarées. Elle ne constitue ni un devis ni un engagement. Les diagnostics obligatoires dépendent de la situation réelle du bien et de la réglementation en vigueur : ARIA Diagnostics les confirme après vérification. Le prix définitif peut différer si les informations sont inexactes ou incomplètes (surface, nombre de lots, dépendances, accès, etc.). Aucun devis n’est envoyé avant cette vérification.
                 </div>
+
+                <LeadCaptureForm context={{
+                  propertyType,
+                  purpose,
+                  estimatedPrice: totalPrice,
+                  diagnosticsSummary: {
+                    propertyType,
+                    sizeLabel: sizeLabels[sizeIndex],
+                    purpose,
+                    communeSlug,
+                    constructionYear,
+                    heating,
+                    mandatory: diagnostics.mandatory.map((item) => ({ id: item.id, label: item.label })),
+                    toConfirm: diagnostics.toConfirm.map((item) => ({ id: item.id, label: item.label })),
+                    options: diagnostics.options.map((option) => ({ id: option.id, label: option.label, price: optionPrice(option.id) })),
+                    priceStatus: quoteOnRequest ? 'quote_on_request' : noPackMatch ? 'no_match' : 'estimated',
+                    totalPrice,
+                  },
+                }} />
 
                 <button className="diagassist-restart" onClick={restart}>Recommencer</button>
               </div>
