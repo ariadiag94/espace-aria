@@ -56,6 +56,80 @@ const alaCarteItemLabel = (id: ALaCarteItemId, propertyType: PropertyType | null
   }
 }
 
+// Sous-ligne explicative des cartes de diagnostic en mode "à la carte" (pas
+// d'objet vente/location dans ce mode, donc pas de règle "obligatoire si..."
+// à afficher — juste ce que couvre le diagnostic).
+const alaCarteItemDetail = (id: ALaCarteItemId, propertyType: PropertyType | null): string => {
+  switch (id) {
+    case 'dpe': return 'Performance énergétique du logement'
+    case 'erp': return 'État des risques et pollutions'
+    case 'surface': return propertyType === 'house' ? 'Mesure de la surface habitable' : 'Mesurage de la surface (loi Carrez/Boutin)'
+    case 'plomb': return 'Recherche de plomb (CREP)'
+    case 'amiante': return 'Recherche d’amiante'
+    case 'elec': return 'État de l’installation électrique'
+    case 'gaz': return 'État de l’installation gaz'
+    case 'termites': return 'Recherche de termites'
+  }
+}
+
+// Sous-ligne des deux seules options payantes du moteur guidé (PricedOptionId
+// dans lib/property-alerts.ts), qui n'ont pas de texte descriptif propre.
+const OPTION_DETAIL: Record<PricedOptionId, string> = {
+  measurement: 'Mesure de la surface habitable',
+  erp: 'État des risques et pollutions',
+}
+
+// Icônes des cartes de diagnostic : même jeu de glyphes que diagnosticIcon()
+// dans app/dossiers/[id]/page.tsx (utilisé pour les "Diagnostics commandés"
+// d'un dossier), repris tel quel par id plutôt que par correspondance de nom
+// pour rester fiable — aucune nouvelle icône inventée pour cet écran.
+const DIAGNOSTIC_ICON: Record<string, string> = {
+  dpe: '⌂',
+  erp: '⚑',
+  carrez: '↔',
+  boutin: '↔',
+  surface: '↔',
+  measurement: '↔',
+  plomb: 'Pb',
+  amiante: '◉',
+  elec: '⚡',
+  gaz: '♨',
+  termites: '⌁',
+  dapp: '✓',
+  assainissement: '≈',
+}
+const diagnosticIcon = (id: string): string => DIAGNOSTIC_ICON[id] ?? '✓'
+
+type DiagCardTag = { kind: 'included' } | { kind: 'toConfirm' } | { kind: 'option'; price: number | null }
+
+// Carte de diagnostic, réutilisée par les deux parcours résultat (guidé et
+// "à la carte") : icône + nom + sous-ligne explicative + tag à droite. Pure
+// présentation — ne recalcule jamais un prix ni une règle, reçoit tout en props.
+function DiagnosticCard({ id, label, detail, tag }: { id: string; label: string; detail: string; tag: DiagCardTag }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderRadius: 14, border: '1px solid #dbe7f2', background: '#fff', marginBottom: 8 }}>
+      <span style={{ display: 'grid', placeItems: 'center', width: 34, height: 34, borderRadius: 10, background: LIGHT, color: NAVY, fontWeight: 900, fontSize: 15, flexShrink: 0 }}>
+        {diagnosticIcon(id)}
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ color: NAVY, fontWeight: 700, fontSize: 14 }}>{label}</div>
+        <div style={{ color: '#6f7d90', fontSize: 12, marginTop: 2 }}>{detail}</div>
+      </div>
+      {tag.kind === 'included' && <span className="diagassist-badge" style={{ flexShrink: 0 }}>Inclus</span>}
+      {tag.kind === 'toConfirm' && (
+        <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '6px 12px', fontSize: 12, fontWeight: 700, background: '#fff8e6', color: '#7a5612', border: '1px solid #f0c76a' }}>
+          À confirmer
+        </span>
+      )}
+      {tag.kind === 'option' && (
+        <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '6px 12px', fontSize: 12, fontWeight: 700, background: SKY, color: '#fff' }}>
+          {tag.price !== null ? `+ ${euro(tag.price)}` : 'Option'}
+        </span>
+      )}
+    </div>
+  )
+}
+
 type Screen = 'commune' | 'purpose' | 'propertyType' | 'heating' | 'surfaceAttestation' | 'year' | 'checklist' | 'size' | 'result'
 
 // Contexte de l'estimation au moment où le client envoie sa demande, transmis
@@ -580,46 +654,42 @@ export default function AssistantPage() {
 
             {currentScreen === 'result' && purpose === 'alaCarte' && propertyType && sizeIndex !== null && (
               <div>
-                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre estimation</h1>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre devis</h1>
                 <p style={{ color: '#6f7d90', fontSize: 14, margin: '0 0 22px' }}>
                   {propertyType === 'apartment' ? 'Appartement' : 'Maison'} · {sizeLabels[sizeIndex]} · Diagnostics à la carte
                 </p>
 
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Diagnostics sélectionnés</div>
-                  <ul style={{ margin: 0, paddingLeft: 20, color: '#315a48', fontSize: 14, lineHeight: 1.6 }}>
-                    {ALACARTE_ITEM_IDS.filter((id) => alaCarteItems.has(id)).map((id) => (
-                      <li key={id}><b>{alaCarteItemLabel(id, propertyType)}</b></li>
-                    ))}
-                    {alaCarteAssainissement && (
-                      <li>
-                        <b>Assainissement</b>
-                        {communeSlug === 'maisons-alfort' ? ' — réalisé par le service public, pas de prix chez ARIA (0 €).' : ''}
-                      </li>
-                    )}
-                  </ul>
+                  {ALACARTE_ITEM_IDS.filter((id) => alaCarteItems.has(id)).map((id) => (
+                    <DiagnosticCard key={id} id={id} label={alaCarteItemLabel(id, propertyType)} detail={alaCarteItemDetail(id, propertyType)} tag={{ kind: 'included' }} />
+                  ))}
+                  {alaCarteAssainissement && (
+                    <DiagnosticCard id="assainissement" label="Assainissement" detail={buildAssainissementDetail(propertyType, communeSlug)} tag={{ kind: 'included' }} />
+                  )}
                 </div>
 
                 {!alaCarteAssainissement && (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>À confirmer</div>
-                    <ul style={{ margin: 0, paddingLeft: 20, color: '#7a5612', fontSize: 14, lineHeight: 1.6 }}>
-                      <li><b>Assainissement</b> — {buildAssainissementDetail(propertyType, communeSlug)}</li>
-                    </ul>
+                    <DiagnosticCard id="assainissement" label="Assainissement" detail={buildAssainissementDetail(propertyType, communeSlug)} tag={{ kind: 'toConfirm' }} />
                     <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Si confirmé, ce diagnostic s’ajoute au prix ci-dessous.</p>
                   </div>
                 )}
 
-                <div style={{ padding: '18px 20px', borderRadius: 16, background: alaCarteQuoteOnRequest || alaCarteNoMatch ? '#fff8e6' : LIGHT, border: `1px solid ${alaCarteQuoteOnRequest || alaCarteNoMatch ? '#f0c76a' : '#dbe7f2'}`, marginBottom: 20 }}>
+                <div style={{ padding: '18px 20px', borderRadius: 16, background: alaCarteQuoteOnRequest || alaCarteNoMatch ? '#fff8e6' : NAVY, border: alaCarteQuoteOnRequest || alaCarteNoMatch ? '1px solid #f0c76a' : 'none', marginBottom: 20 }}>
                   {alaCarteQuoteOnRequest || alaCarteNoMatch ? (
                     <div style={{ color: '#7a5612', fontWeight: 900, fontSize: 17 }}>Nous vous répondons avec un devis personnalisé</div>
                   ) : (
-                    <div style={{ color: NAVY, fontWeight: 900, fontSize: 22 }}>À partir de {euro(alaCartePrice as number)} TTC</div>
+                    <>
+                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(alaCartePrice as number)}</div>
+                      <div style={{ color: 'rgba(255,255,255,.7)', fontSize: 12, fontWeight: 700, marginTop: 4 }}>TVA incluse</div>
+                    </>
                   )}
                 </div>
 
                 <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f5f7fa', border: '1px solid #e2e8ef', color: '#52657a', fontSize: 12, lineHeight: 1.6, marginBottom: 22 }}>
-                  Estimation indicative, établie à partir des informations que vous avez déclarées. Elle ne constitue ni un devis ni un engagement. Les diagnostics obligatoires dépendent de la situation réelle du bien et de la réglementation en vigueur : ARIA Diagnostics les confirme après vérification. Le prix définitif peut différer si les informations sont inexactes ou incomplètes (surface, nombre de lots, dépendances, accès, etc.). Aucun devis n’est envoyé avant cette vérification.
+                  Devis établi sur la base des informations déclarées, sous réserve de conformité du bien constatée par ARIA Diagnostics.
                 </div>
 
                 <LeadCaptureForm context={{
@@ -644,18 +714,16 @@ export default function AssistantPage() {
 
             {currentScreen === 'result' && purpose && purpose !== 'alaCarte' && propertyType && sizeIndex !== null && diagnostics && (
               <div>
-                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre estimation</h1>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre devis</h1>
                 <p style={{ color: '#6f7d90', fontSize: 14, margin: '0 0 22px' }}>
                   {propertyType === 'apartment' ? 'Appartement' : 'Maison'} · {sizeLabels[sizeIndex]} · {purpose === 'rental' ? 'Location' : 'Vente'}
                 </p>
 
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Diagnostics obligatoires</div>
-                  <ul style={{ margin: 0, paddingLeft: 20, color: '#315a48', fontSize: 14, lineHeight: 1.6 }}>
-                    {diagnostics.mandatory.map((item) => (
-                      <li key={item.id}><b>{item.label}</b> — {item.detail}</li>
-                    ))}
-                  </ul>
+                  {diagnostics.mandatory.map((item) => (
+                    <DiagnosticCard key={item.id} id={item.id} label={item.label} detail={item.detail} tag={{ kind: 'included' }} />
+                  ))}
                 </div>
 
                 {diagnostics.surfaceAttestationNote && (
@@ -667,11 +735,9 @@ export default function AssistantPage() {
                 {diagnostics.toConfirm.length > 0 && (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>À confirmer</div>
-                    <ul style={{ margin: 0, paddingLeft: 20, color: '#7a5612', fontSize: 14, lineHeight: 1.6 }}>
-                      {diagnostics.toConfirm.map((item) => (
-                        <li key={item.id}><b>{item.label}</b> — {item.detail}</li>
-                      ))}
-                    </ul>
+                    {diagnostics.toConfirm.map((item) => (
+                      <DiagnosticCard key={item.id} id={item.id} label={item.label} detail={item.detail} tag={{ kind: 'toConfirm' }} />
+                    ))}
                     <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Si confirmés, ces diagnostics s’ajoutent au prix ci-dessus.</p>
                   </div>
                 )}
@@ -679,26 +745,26 @@ export default function AssistantPage() {
                 {diagnostics.options.length > 0 && !quoteOnRequest && (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Options liées à votre situation</div>
-                    <ul style={{ margin: 0, paddingLeft: 20, color: '#315a48', fontSize: 14, lineHeight: 1.6 }}>
-                      {diagnostics.options.map((option) => {
-                        const price = optionPrice(option.id)
-                        return <li key={option.id}><b>{option.label}</b> — {price !== null ? euro(price) : 'selon devis'}</li>
-                      })}
-                    </ul>
+                    {diagnostics.options.map((option) => (
+                      <DiagnosticCard key={option.id} id={option.id} label={option.label} detail={OPTION_DETAIL[option.id]} tag={{ kind: 'option', price: optionPrice(option.id) }} />
+                    ))}
                     <p style={{ color: '#6f7d90', fontSize: 12, margin: '8px 0 0' }}>Options en supplément, non incluses dans le prix ci-dessus.</p>
                   </div>
                 )}
 
-                <div style={{ padding: '18px 20px', borderRadius: 16, background: quoteOnRequest || noPackMatch ? '#fff8e6' : LIGHT, border: `1px solid ${quoteOnRequest || noPackMatch ? '#f0c76a' : '#dbe7f2'}`, marginBottom: 20 }}>
+                <div style={{ padding: '18px 20px', borderRadius: 16, background: quoteOnRequest || noPackMatch ? '#fff8e6' : NAVY, border: quoteOnRequest || noPackMatch ? '1px solid #f0c76a' : 'none', marginBottom: 20 }}>
                   {quoteOnRequest || noPackMatch ? (
                     <div style={{ color: '#7a5612', fontWeight: 900, fontSize: 17 }}>Nous vous répondons avec un devis personnalisé</div>
                   ) : (
-                    <div style={{ color: NAVY, fontWeight: 900, fontSize: 22 }}>À partir de {euro(totalPrice as number)} TTC</div>
+                    <>
+                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(totalPrice as number)}</div>
+                      <div style={{ color: 'rgba(255,255,255,.7)', fontSize: 12, fontWeight: 700, marginTop: 4 }}>TVA incluse</div>
+                    </>
                   )}
                 </div>
 
                 <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f5f7fa', border: '1px solid #e2e8ef', color: '#52657a', fontSize: 12, lineHeight: 1.6, marginBottom: 22 }}>
-                  Estimation indicative, établie à partir des informations que vous avez déclarées. Elle ne constitue ni un devis ni un engagement. Les diagnostics obligatoires dépendent de la situation réelle du bien et de la réglementation en vigueur : ARIA Diagnostics les confirme après vérification. Le prix définitif peut différer si les informations sont inexactes ou incomplètes (surface, nombre de lots, dépendances, accès, etc.). Aucun devis n’est envoyé avant cette vérification.
+                  Devis établi sur la base des informations déclarées, sous réserve de conformité du bien constatée par ARIA Diagnostics.
                 </div>
 
                 <LeadCaptureForm context={{
