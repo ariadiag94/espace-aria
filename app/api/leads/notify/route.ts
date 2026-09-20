@@ -113,7 +113,13 @@ export async function POST(request: Request) {
     },
     body: JSON.stringify({
       from: 'ARIA Diagnostics <contact@aria-diagnostics.fr>',
-      to: 'contact@aria-diagnostics.fr',
+      // Destinataire distinct de l'expéditeur (voir diagnostic du
+      // 2026-09-20) : envoyer à contact@aria-diagnostics.fr depuis
+      // contact@aria-diagnostics.fr est un schéma "self-send" que Gmail
+      // (qui héberge cette boîte) filtre silencieusement malgré un statut
+      // "Delivered" côté Resend — jamais mis en spam, jamais en boîte
+      // de réception non plus.
+      to: 'ermansola@gmail.com',
       reply_to: contactEmail,
       subject: `Nouvelle demande /assistant — ${contactName}`,
       html,
