@@ -8,6 +8,7 @@ const escapeHtml = (value: string) =>
 
 const PROPERTY_TYPE_LABEL: Record<string, string> = { apartment: 'Appartement', house: 'Maison' }
 const PURPOSE_LABEL: Record<string, string> = { sale: 'Vente', rental: 'Location', alaCarte: 'Diagnostics à la carte' }
+const DEPENDENCY_LABEL: Record<string, string> = { cave: 'Cave', garage: 'Garage', parking: 'Parking', autre: 'Autre' }
 const PRICE_STATUS_LABEL: Record<string, string> = {
   estimated: 'Estimé',
   quote_on_request: 'Devis personnalisé (hors grille de packs)',
@@ -70,6 +71,10 @@ export async function POST(request: Request) {
   }
 
   const propertyAddress = body?.property_address ? String(body.property_address).trim() : ''
+  const floor = body?.floor ? String(body.floor).trim() : ''
+  const dependencies = Array.isArray(body?.dependencies)
+    ? body.dependencies.map((id: unknown) => DEPENDENCY_LABEL[String(id)] || String(id)).filter(Boolean)
+    : []
   const propertyType = String(body?.property_type || '')
   const purpose = String(body?.purpose || '')
   const estimatedPrice = typeof body?.estimated_price === 'number' ? body.estimated_price : null
@@ -90,6 +95,8 @@ export async function POST(request: Request) {
         <li>Téléphone : ${escapeHtml(contactPhone)}</li>
         <li>Email : ${escapeHtml(contactEmail)}</li>
         ${propertyAddress ? `<li>Adresse du bien : ${escapeHtml(propertyAddress)}</li>` : ''}
+        ${floor ? `<li>Étage : ${escapeHtml(floor)}</li>` : ''}
+        ${dependencies.length ? `<li>Dépendances : ${escapeHtml(dependencies.join(', '))}</li>` : ''}
         <li>Type de bien : ${escapeHtml(PROPERTY_TYPE_LABEL[propertyType] || propertyType)}</li>
         <li>Objet : ${escapeHtml(PURPOSE_LABEL[purpose] || purpose)}</li>
         <li>Estimation : ${escapeHtml(priceText)}</li>

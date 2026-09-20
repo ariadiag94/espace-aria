@@ -71,6 +71,14 @@ type LeadContext = {
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/
 
+// Valeurs alignées sur la contrainte CHECK de public.leads (supabase/migrations/012_leads_extra_fields.sql).
+const DEPENDENCY_OPTIONS: { id: string; label: string }[] = [
+  { id: 'cave', label: 'Cave' },
+  { id: 'garage', label: 'Garage' },
+  { id: 'parking', label: 'Parking' },
+  { id: 'autre', label: 'Autre' },
+]
+
 // Formulaire de capture de la demande client, affiché sous le prix sur
 // l'écran "result" (vente/location et "à la carte"). Écrit directement dans
 // public.leads (RLS : insert ouvert à anon/authenticated, voir
@@ -96,9 +104,20 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [address, setAddress] = useState('')
+  const [floor, setFloor] = useState('')
+  const [dependencies, setDependencies] = useState<Set<string>>(new Set())
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
 
-  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim())
+  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0
+
+  const toggleDependency = (id: string) => {
+    setDependencies((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const submit = async () => {
     if (!canSubmit || status === 'submitting') return
@@ -114,7 +133,9 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
       contact_name: name.trim(),
       contact_phone: phone.trim(),
       contact_email: email.trim(),
-      property_address: address.trim() || null,
+      property_address: address.trim(),
+      floor: floor.trim() || null,
+      dependencies: dependencies.size > 0 ? Array.from(dependencies) : null,
       property_type: context.propertyType,
       purpose: context.purpose,
       estimated_price: context.estimatedPrice,
@@ -153,7 +174,19 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
         <input className="diagassist-input" placeholder="Nom et prénom" value={name} onChange={(e) => setName(e.target.value)} />
         <input className="diagassist-input" placeholder="Téléphone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
         <input className="diagassist-input" placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input className="diagassist-input" placeholder="Adresse du bien (optionnel)" value={address} onChange={(e) => setAddress(e.target.value)} />
+        <input className="diagassist-input" placeholder="Adresse du bien" value={address} onChange={(e) => setAddress(e.target.value)} />
+        <input className="diagassist-input" placeholder="Étage (optionnel)" value={floor} onChange={(e) => setFloor(e.target.value)} />
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ color: NAVY, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Dépendances (optionnel)</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          {DEPENDENCY_OPTIONS.map((option) => (
+            <label key={option.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, border: '2px solid #dbe7f2', background: '#fff', color: NAVY, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              <input type="checkbox" checked={dependencies.has(option.id)} onChange={() => toggleDependency(option.id)} />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
       </div>
       <p style={{ color: '#9aa6b5', fontSize: 11, lineHeight: 1.5, margin: '0 0 14px' }}>
         En envoyant ce formulaire, vous acceptez d’être recontacté(e) par ARIA Diagnostics au sujet de votre demande. Vos données ne sont utilisées que dans ce cadre.
