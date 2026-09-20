@@ -108,7 +108,7 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
   const [dependencies, setDependencies] = useState<Set<string>>(new Set())
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
 
-  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0
+  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0 && floor.trim().length > 0
 
   const toggleDependency = (id: string) => {
     setDependencies((prev) => {
@@ -134,7 +134,7 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
       contact_phone: phone.trim(),
       contact_email: email.trim(),
       property_address: address.trim(),
-      floor: floor.trim() || null,
+      floor: floor.trim(),
       dependencies: dependencies.size > 0 ? Array.from(dependencies) : null,
       property_type: context.propertyType,
       purpose: context.purpose,
@@ -175,7 +175,7 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
         <input className="diagassist-input" placeholder="Téléphone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
         <input className="diagassist-input" placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <input className="diagassist-input" placeholder="Adresse du bien" value={address} onChange={(e) => setAddress(e.target.value)} />
-        <input className="diagassist-input" placeholder="Étage (optionnel)" value={floor} onChange={(e) => setFloor(e.target.value)} />
+        <input className="diagassist-input" placeholder="Étage" value={floor} onChange={(e) => setFloor(e.target.value)} />
       </div>
       <div style={{ marginBottom: 14 }}>
         <div style={{ color: NAVY, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Dépendances (optionnel)</div>
