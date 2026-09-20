@@ -409,6 +409,28 @@ export default function AssistantPage() {
     return null
   }
 
+  // Badges de résumé du bien, affichés dès qu'une info est connue (pas
+  // seulement sur l'écran résultat) et enrichis au fil du parcours. Pas de
+  // code postal : l'app ne collecte que le nom de la commune (liste
+  // déroulante), aucune donnée de code postal n'existe ailleurs dans le
+  // projet — le nom de la commune en tient lieu.
+  const communeName = communeSlug === OTHER_COMMUNE_SLUG
+    ? 'Autre commune'
+    : COMMUNE_RULES.find((c) => c.slug === communeSlug)?.name ?? null
+  const purposeBadgeLabel = purpose === 'sale' ? 'Vente' : purpose === 'rental' ? 'Location' : purpose === 'alaCarte' ? 'Diagnostics à la carte' : null
+  // "Copropriété" : déductible automatiquement, pas de question dédiée dans
+  // l'app (tout appartement y est déjà traité comme une copropriété, voir
+  // le commentaire sur l'écran 'heating' plus haut).
+  const summaryBadges = [
+    communeName,
+    purposeBadgeLabel,
+    propertyType === 'apartment' ? 'Appartement' : propertyType === 'house' ? 'Maison' : null,
+    propertyType === 'apartment' ? 'Copropriété' : null,
+    heating === 'collective' ? 'Chauffage collectif' : heating === 'individual' ? 'Chauffage individuel' : null,
+    yearIndex !== null ? YEAR_BRACKETS[yearIndex].label : null,
+    sizeIndex !== null ? sizeLabels[sizeIndex] : null,
+  ].filter((b): b is string => Boolean(b))
+
   return (
     <main style={{ minHeight: '100vh', background: LIGHT, fontFamily: 'Arial,Helvetica,sans-serif', padding: '28px 16px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <style>{`
@@ -422,6 +444,7 @@ export default function AssistantPage() {
         .diagassist-choice:disabled { opacity: .45; cursor: not-allowed; }
         .diagassist-input { width: 100%; box-sizing: border-box; padding: 13px 16px; border-radius: 12px; border: 2px solid #dbe7f2; background: #fff; color: ${NAVY}; font-size: 15px; font-family: inherit; }
         .diagassist-input:focus { outline: none; border-color: ${SKY}; }
+        .diagassist-badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; background: ${LIGHT}; color: ${NAVY}; }
       `}</style>
 
       <div style={{ width: '100%', maxWidth: 560 }}>
@@ -441,6 +464,14 @@ export default function AssistantPage() {
             <div style={{ color: SKY, fontWeight: 900, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>
               DIAGASSIST · ÉTAPE {Math.min(step + 1, screens.length)}/{screens.length}
             </div>
+
+            {summaryBadges.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
+                {summaryBadges.map((badge) => (
+                  <span key={badge} className="diagassist-badge">{badge}</span>
+                ))}
+              </div>
+            )}
 
             {currentScreen === 'commune' && (
               <>
