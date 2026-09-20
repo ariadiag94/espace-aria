@@ -42,6 +42,7 @@ const summaryLines = (summary: unknown): string[] => {
   if (Array.isArray(s.checkedItems) && s.checkedItems.length) {
     lines.push(`Diagnostics sélectionnés : ${s.checkedItems.map(String).join(', ')}`)
   }
+  if (s.assainissement === true) lines.push('Assainissement : oui')
   if (typeof s.priceStatus === 'string' && PRICE_STATUS_LABEL[s.priceStatus]) {
     lines.push(`Statut du prix : ${PRICE_STATUS_LABEL[s.priceStatus]}`)
   }
