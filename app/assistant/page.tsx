@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { buildAssainissementDetail, computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
 import { COMMUNE_RULES, OTHER_COMMUNE_SLUG } from '@/lib/commune-rules'
+import { APARTMENT_ASSAINISSEMENT_PRICE, HOUSE_ASSAINISSEMENT_PRICE } from '@/lib/quote-assistant'
 import {
   ALACARTE_ITEM_IDS,
   ALaCarteItemId,
@@ -179,6 +180,10 @@ export default function AssistantPage() {
   const [yearIndex, setYearIndex] = useState<number | null>(null)
   const [sizeIndex, setSizeIndex] = useState<number | null>(null)
   const [checkedItems, setCheckedItems] = useState<Set<ALaCarteItemId>>(new Set())
+  // Assainissement en mode "à la carte" : case séparée, jamais comptée dans
+  // ALaCarteItemId/getALaCartePrice (elle ne doit jamais influer sur le choix
+  // unitaire vs pack), son prix s'additionne à part.
+  const [alaCarteAssainissement, setALaCarteAssainissement] = useState(false)
 
   const constructionYear = yearIndex !== null ? YEAR_BRACKETS[yearIndex].year : null
   // Seuil "mission minimale" (DPE seul) : ne dépend pas de la réponse à
@@ -191,10 +196,18 @@ export default function AssistantPage() {
     ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: false }).isMinimalMission
     : false
 
+  // Mode "à la carte" avec un seul item coché et c'est le DPE : même seuil
+  // "DPE seul" que la mission minimale du moteur guidé, juste atteint par un
+  // autre chemin (sélection libre au lieu du questionnaire). La question
+  // d'attestation de surface doit donc être posée ici aussi, pour ne pas
+  // dépendre du chemin emprunté pour arriver à "DPE seul".
+  const alaCarteAskSurfaceAttestation = purpose === 'alaCarte' && checkedItems.size === 1 && checkedItems.has('dpe')
+
   // Parcours dynamique : la commune est demandée en premier. Le mode "à la
   // carte" (3e choix sur l'écran "objet") saute directement à la sélection
-  // libre des diagnostics, sans année, chauffage, ni question d'attestation
-  // — ces notions n'ont pas de sens quand le client choisit lui-même.
+  // libre des diagnostics, sans année ni chauffage — ces notions n'ont pas de
+  // sens quand le client choisit lui-même. La question d'attestation de
+  // surface y apparaît uniquement dans le cas "DPE seul coché" ci-dessus.
   // Pour vente/location : un appartement est toujours en copropriété (pas de
   // question dédiée), le chauffage est donc demandé pour tout appartement.
   // La question d'attestation de surface n'est posée qu'en mission minimale,
@@ -203,7 +216,11 @@ export default function AssistantPage() {
   const screens: Screen[] = useMemo(() => {
     const s: Screen[] = ['commune', 'purpose']
     if (purpose === 'alaCarte') {
-      s.push('propertyType', 'size', 'checklist', 'result')
+      s.push('propertyType', 'size', 'checklist')
+      if (alaCarteAskSurfaceAttestation) {
+        s.push('surfaceAttestation')
+      }
+      s.push('result')
       return s
     }
     s.push('propertyType')
@@ -216,7 +233,7 @@ export default function AssistantPage() {
     }
     s.push('size', 'result')
     return s
-  }, [propertyType, isMinimalMission, purpose])
+  }, [propertyType, isMinimalMission, purpose, alaCarteAskSurfaceAttestation])
 
   const currentScreen = screens[Math.min(step, screens.length - 1)]
 
@@ -232,6 +249,7 @@ export default function AssistantPage() {
     setYearIndex(null)
     setSizeIndex(null)
     setCheckedItems(new Set())
+    setALaCarteAssainissement(false)
   }
 
   const selectCommune = (slug: string) => { setCommuneSlug(slug); advance() }
@@ -239,8 +257,8 @@ export default function AssistantPage() {
   // vente, Boutin en location) : si l'objet change, la réponse précédente
   // ne s'applique plus au bon libellé, donc on la réinitialise. La sélection
   // "à la carte" ne s'applique plus si on change d'objet.
-  const selectPurpose = (p: Purpose) => { setPurpose(p); setHasSurfaceAttestation(null); setCheckedItems(new Set()); advance() }
-  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHeating(null); setHasSurfaceAttestation(null); setSizeIndex(null); setCheckedItems(new Set()); advance() }
+  const selectPurpose = (p: Purpose) => { setPurpose(p); setHasSurfaceAttestation(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); advance() }
+  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHeating(null); setHasSurfaceAttestation(null); setSizeIndex(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); advance() }
   const selectHeating = (h: Heating) => { setHeating(h); advance() }
   const selectSurfaceAttestation = (v: boolean) => { setHasSurfaceAttestation(v); advance() }
   // Changer l'année peut faire basculer le seuil mission minimale / pack
@@ -259,10 +277,12 @@ export default function AssistantPage() {
   }
 
   // Fragment inséré dans "Avez-vous déjà une attestation de surface {X} ?" :
-  // "Carrez" en vente d'appartement, "Boutin" en location, "habitable" pour
-  // une maison (donne "...de surface habitable", sans doublon).
+  // "Carrez" en vente d'appartement, "Boutin" en location, "Carrez/Boutin" en
+  // mode "à la carte" (pas d'objet vente/location, même libellé double que
+  // l'item "surface" de la checklist), "habitable" pour une maison (donne
+  // "...de surface habitable", sans doublon).
   const surfaceAttestationFragment = propertyType === 'apartment'
-    ? (purpose === 'sale' ? 'Carrez' : 'Boutin')
+    ? (purpose === 'sale' ? 'Carrez' : purpose === 'rental' ? 'Boutin' : 'Carrez/Boutin')
     : 'habitable'
 
   const sizeLabels = propertyType === 'apartment' ? APARTMENT_SIZE_LABELS : HOUSE_SIZE_LABELS
@@ -273,17 +293,39 @@ export default function AssistantPage() {
     : null
 
   const houseOver250 = propertyType === 'house' && sizeIndex === HOUSE_QUOTE_ON_REQUEST_INDEX
+  // Ensemble effectif des 8 diagnostics sélectionnables "à la carte" : si
+  // alaCarteAskSurfaceAttestation est vrai et que la réponse est "Non" (ou pas
+  // encore répondue — hasSurfaceAttestation vaut alors null, traité comme
+  // "Non" par défaut), le diagnostic de surface s'ajoute automatiquement.
+  // Dérivé plutôt que coché pour le client : identique par construction à
+  // "mission minimale + Non" qui réutilise directement le pack 2 existant.
+  // Le wizard forçant à répondre Oui/Non avant d'atteindre 'result' (pas de
+  // saut possible), hasSurfaceAttestation est garanti non-null à ce stade.
+  const alaCarteItems = alaCarteAskSurfaceAttestation && !hasSurfaceAttestation
+    ? new Set<ALaCarteItemId>([...checkedItems, 'surface'])
+    : checkedItems
   // Mode "à la carte" : prix calculé par la source commune
   // lib/property-pricing.ts (1 seul diagnostic coché -> prix unitaire ; 2 ou
   // plus -> prix du pack existant correspondant au nombre coché, peu importe
-  // lesquels). L'assainissement reste affiché mais n'entre jamais dans ce
-  // calcul, comme dans le moteur guidé.
-  const alaCarteOverflow = purpose === 'alaCarte' && checkedItems.size > maxPack
+  // lesquels). L'assainissement n'entre jamais dans ce calcul (ni dans le
+  // compte utilisé pour choisir unitaire vs pack), son prix s'additionne à
+  // part ci-dessous — comme partout ailleurs dans l'app.
+  const alaCarteOverflow = purpose === 'alaCarte' && alaCarteItems.size > maxPack
   const alaCarteQuoteOnRequest = purpose === 'alaCarte' && (houseOver250 || alaCarteOverflow)
-  const alaCartePrice = purpose === 'alaCarte' && propertyType && sizeIndex !== null && !alaCarteQuoteOnRequest && checkedItems.size > 0
-    ? getALaCartePrice(propertyType, Array.from(checkedItems), sizeIndex)
+  const alaCarteBasePrice = purpose === 'alaCarte' && propertyType && sizeIndex !== null && !alaCarteQuoteOnRequest && alaCarteItems.size > 0
+    ? getALaCartePrice(propertyType, Array.from(alaCarteItems), sizeIndex)
     : null
-  const alaCarteNoMatch = purpose === 'alaCarte' && !alaCarteQuoteOnRequest && checkedItems.size > 0 && alaCartePrice === null
+  const alaCarteNoMatch = purpose === 'alaCarte' && !alaCarteQuoteOnRequest && alaCarteItems.size > 0 && alaCarteBasePrice === null
+  // Maisons-Alfort : assainissement réservé au service public, ARIA n'y
+  // intervient pas — la case reste cochable (texte explicatif affiché) mais
+  // n'ajoute aucun prix, cohérent avec buildAssainissementDetail().
+  const alaCarteAssainissementPrice = alaCarteAssainissement && communeSlug !== 'maisons-alfort'
+    ? (propertyType === 'apartment' ? APARTMENT_ASSAINISSEMENT_PRICE : HOUSE_ASSAINISSEMENT_PRICE)
+    : 0
+  const alaCarteNothingSelected = alaCarteItems.size === 0 && !alaCarteAssainissement
+  const alaCartePrice = purpose === 'alaCarte' && !alaCarteQuoteOnRequest && !alaCarteNoMatch && !alaCarteNothingSelected
+    ? (alaCarteBasePrice ?? 0) + alaCarteAssainissementPrice
+    : null
   // Nombre de diagnostics obligatoires qui comptent réellement pour choisir
   // le pack (l'ERP offert, en mission minimale + "Non", en est exclu : le
   // prix réutilise directement le pack 2, sans compter l'ERP comme un 3e
@@ -461,8 +503,12 @@ export default function AssistantPage() {
                       <span>{alaCarteItemLabel(id, propertyType)}</span>
                     </label>
                   ))}
+                  <label className="diagassist-checkbox-row">
+                    <input type="checkbox" checked={alaCarteAssainissement} onChange={() => setALaCarteAssainissement((v) => !v)} />
+                    <span>Assainissement</span>
+                  </label>
                 </div>
-                <button className="diagassist-choice" style={{ marginTop: 16, textAlign: 'center' }} disabled={checkedItems.size === 0} onClick={advance}>
+                <button className="diagassist-choice" style={{ marginTop: 16, textAlign: 'center' }} disabled={checkedItems.size === 0 && !alaCarteAssainissement} onClick={advance}>
                   Voir mon estimation
                 </button>
               </>
@@ -478,19 +524,27 @@ export default function AssistantPage() {
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Diagnostics sélectionnés</div>
                   <ul style={{ margin: 0, paddingLeft: 20, color: '#315a48', fontSize: 14, lineHeight: 1.6 }}>
-                    {ALACARTE_ITEM_IDS.filter((id) => checkedItems.has(id)).map((id) => (
+                    {ALACARTE_ITEM_IDS.filter((id) => alaCarteItems.has(id)).map((id) => (
                       <li key={id}><b>{alaCarteItemLabel(id, propertyType)}</b></li>
                     ))}
+                    {alaCarteAssainissement && (
+                      <li>
+                        <b>Assainissement</b>
+                        {communeSlug === 'maisons-alfort' ? ' — réalisé par le service public, pas de prix chez ARIA (0 €).' : ''}
+                      </li>
+                    )}
                   </ul>
                 </div>
 
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>À confirmer</div>
-                  <ul style={{ margin: 0, paddingLeft: 20, color: '#7a5612', fontSize: 14, lineHeight: 1.6 }}>
-                    <li><b>Assainissement</b> — {buildAssainissementDetail(propertyType, communeSlug)}</li>
-                  </ul>
-                  <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Si confirmé, ce diagnostic s’ajoute au prix ci-dessous.</p>
-                </div>
+                {!alaCarteAssainissement && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>À confirmer</div>
+                    <ul style={{ margin: 0, paddingLeft: 20, color: '#7a5612', fontSize: 14, lineHeight: 1.6 }}>
+                      <li><b>Assainissement</b> — {buildAssainissementDetail(propertyType, communeSlug)}</li>
+                    </ul>
+                    <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Si confirmé, ce diagnostic s’ajoute au prix ci-dessous.</p>
+                  </div>
+                )}
 
                 <div style={{ padding: '18px 20px', borderRadius: 16, background: alaCarteQuoteOnRequest || alaCarteNoMatch ? '#fff8e6' : LIGHT, border: `1px solid ${alaCarteQuoteOnRequest || alaCarteNoMatch ? '#f0c76a' : '#dbe7f2'}`, marginBottom: 20 }}>
                   {alaCarteQuoteOnRequest || alaCarteNoMatch ? (
