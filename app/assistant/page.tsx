@@ -108,7 +108,7 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
   const [dependencies, setDependencies] = useState<Set<string>>(new Set())
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
 
-  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0 && floor.trim().length > 0
+  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0 && floor.trim().length > 0 && dependencies.size > 0
 
   const toggleDependency = (id: string) => {
     setDependencies((prev) => {
@@ -135,7 +135,7 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
       contact_email: email.trim(),
       property_address: address.trim(),
       floor: floor.trim(),
-      dependencies: dependencies.size > 0 ? Array.from(dependencies) : null,
+      dependencies: Array.from(dependencies),
       property_type: context.propertyType,
       purpose: context.purpose,
       estimated_price: context.estimatedPrice,
@@ -178,7 +178,7 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
         <input className="diagassist-input" placeholder="Étage" value={floor} onChange={(e) => setFloor(e.target.value)} />
       </div>
       <div style={{ marginBottom: 14 }}>
-        <div style={{ color: NAVY, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Dépendances (optionnel)</div>
+        <div style={{ color: NAVY, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Dépendances</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {DEPENDENCY_OPTIONS.map((option) => (
             <label key={option.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, border: '2px solid #dbe7f2', background: '#fff', color: NAVY, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
