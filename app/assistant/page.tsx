@@ -26,6 +26,25 @@ const LIGHT = '#eef1f5'
 
 const euro = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
 
+// Icônes sobres (trait, currentColor) pour le bandeau d'en-tête du résultat
+// vente/location — aucun fichier fourni pour "maison"/"immeuble" (les PNG
+// existants couvrent uniquement les diagnostics), donc dessinées ici en SVG
+// minimal plutôt que réutiliser une icône de diagnostic hors-sujet.
+const HouseIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 11.5 12 4l9 7.5" />
+    <path d="M5.5 10v9a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-9" />
+    <path d="M9.5 20v-5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v5" />
+  </svg>
+)
+const BuildingIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="5" y="3" width="14" height="18" rx="1" />
+    <path d="M9 7h1.5M13.5 7H15M9 11h1.5M13.5 11H15M9 15h1.5M13.5 15H15" />
+    <path d="M10.5 21v-3a1.5 1.5 0 0 1 3 0v3" />
+  </svg>
+)
+
 // 'alaCarte' est un 3e choix au même niveau que vente/location, pas une
 // variante du moteur guidé : computeDiagnostics() (lib/property-alerts.ts)
 // n'est jamais appelé avec cette valeur, uniquement avec 'sale' | 'rental'.
@@ -743,10 +762,22 @@ export default function AssistantPage() {
 
             {currentScreen === 'result' && purpose && purpose !== 'alaCarte' && propertyType && sizeIndex !== null && diagnostics && (
               <div>
-                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre devis</h1>
-                <p style={{ color: '#6f7d90', fontSize: 14, margin: '0 0 22px' }}>
-                  {propertyType === 'apartment' ? 'Appartement' : 'Maison'} · {sizeLabels[sizeIndex]} · {purpose === 'rental' ? 'Location' : 'Vente'}
-                </p>
+                <div style={{ background: NAVY, borderRadius: '18px 18px 0 0', margin: '-30px -26px 22px', padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ color: '#fff', flexShrink: 0, display: 'flex' }}>
+                      {propertyType === 'apartment' ? <BuildingIcon /> : <HouseIcon />}
+                    </span>
+                    <div>
+                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 17 }}>
+                        {purpose === 'rental' ? 'Pack Location' : 'Pack Vente'}
+                      </div>
+                      <span className="diagassist-badge" style={{ marginTop: 4 }}>{sizeLabels[sizeIndex]}</span>
+                    </div>
+                  </div>
+                  <div style={{ color: '#fff', fontWeight: 900, fontSize: 24, textAlign: 'right' }}>
+                    {quoteOnRequest || noPackMatch ? 'Sur devis' : euro(totalPrice as number)}
+                  </div>
+                </div>
 
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Diagnostics obligatoires</div>
