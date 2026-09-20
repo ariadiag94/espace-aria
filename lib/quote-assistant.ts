@@ -20,7 +20,7 @@ export const HOUSE_SIZE_TIERS: { label: string; maxSurface: number | null; measu
 // Prix de l'option assainissement, seule source de vérité pour app/devis
 // (Devis Express) et pour l'assistant public (/assistant) — aucune des
 // deux pages ne doit garder sa propre valeur codée en dur.
-export const APARTMENT_ASSAINISSEMENT_PRICE = 100
+export const APARTMENT_ASSAINISSEMENT_PRICE = 120
 export const HOUSE_ASSAINISSEMENT_PRICE = 180
 
 const houseSizeKeyFromSurface = (surface: number) => {
