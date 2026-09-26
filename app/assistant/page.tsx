@@ -50,7 +50,6 @@ const BuildingIcon = () => (
 // n'est jamais appelé avec cette valeur, uniquement avec 'sale' | 'rental'.
 type Purpose = 'sale' | 'rental' | 'alaCarte'
 type PropertyType = 'apartment' | 'house'
-type Heating = 'collective' | 'individual'
 
 const currentYear = new Date().getFullYear()
 const YEAR_BRACKETS = [
@@ -178,7 +177,7 @@ function DiagnosticCard({ id, label, detail, tag }: { id: string; label: string;
   )
 }
 
-type Screen = 'commune' | 'purpose' | 'propertyType' | 'heating' | 'surfaceAttestation' | 'year' | 'checklist' | 'size' | 'result'
+type Screen = 'commune' | 'purpose' | 'propertyType' | 'gas' | 'surfaceAttestation' | 'year' | 'checklist' | 'size' | 'result'
 
 // Contexte de l'estimation au moment où le client envoie sa demande, transmis
 // tel quel à public.leads (colonnes property_type/purpose/estimated_price) et
@@ -330,7 +329,13 @@ export default function AssistantPage() {
   const [communeSlug, setCommuneSlug] = useState<string | null>(null)
   const [purpose, setPurpose] = useState<Purpose | null>(null)
   const [propertyType, setPropertyType] = useState<PropertyType | null>(null)
-  const [heating, setHeating] = useState<Heating | null>(null)
+  // Présence d'une installation gaz, déclarée par le client (2026-09-26) :
+  // remplace l'ancienne question "chauffage collectif/individuel", qui
+  // n'entrait dans aucun calcul (aucune règle ne la testait). Le Gaz devient
+  // obligatoire seulement si hasGas est vrai ET l'installation a plus de
+  // 15 ans (voir computeDiagnostics dans lib/property-alerts.ts) —
+  // contrairement à l'Électricité, présente sur tout logement.
+  const [hasGas, setHasGas] = useState<boolean | null>(null)
   const [hasSurfaceAttestation, setHasSurfaceAttestation] = useState<boolean | null>(null)
   const [yearIndex, setYearIndex] = useState<number | null>(null)
   const [sizeIndex, setSizeIndex] = useState<number | null>(null)
@@ -348,7 +353,7 @@ export default function AssistantPage() {
   // pas de question du tout). Sans objet en mode "à la carte" (purpose ===
   // 'alaCarte') : le moteur guidé n'est jamais appelé dans ce cas.
   const isMinimalMission = (purpose === 'sale' || purpose === 'rental') && propertyType && constructionYear !== null
-    ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: false }).isMinimalMission
+    ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: false, hasGas: !!hasGas }).isMinimalMission
     : false
 
   // Mode "à la carte" avec un seul item coché et c'est le DPE : même seuil
@@ -360,11 +365,12 @@ export default function AssistantPage() {
 
   // Parcours dynamique : la commune est demandée en premier. Le mode "à la
   // carte" (3e choix sur l'écran "objet") saute directement à la sélection
-  // libre des diagnostics, sans année ni chauffage — ces notions n'ont pas de
-  // sens quand le client choisit lui-même. La question d'attestation de
-  // surface y apparaît uniquement dans le cas "DPE seul coché" ci-dessus.
-  // Pour vente/location : un appartement est toujours en copropriété (pas de
-  // question dédiée), le chauffage est donc demandé pour tout appartement.
+  // libre des diagnostics, sans année ni gaz — ces notions n'ont pas de sens
+  // quand le client choisit lui-même. La question d'attestation de surface y
+  // apparaît uniquement dans le cas "DPE seul coché" ci-dessus.
+  // Pour vente/location : la question gaz est posée pour tout type de bien
+  // (contrairement à l'ancienne question chauffage, réservée aux
+  // appartements — une installation gaz existe aussi bien dans une maison).
   // La question d'attestation de surface n'est posée qu'en mission minimale,
   // une fois l'année connue (le seuil en dépend) ; en pack complet elle
   // n'apparaît pas du tout.
@@ -378,17 +384,13 @@ export default function AssistantPage() {
       s.push('result')
       return s
     }
-    s.push('propertyType')
-    if (propertyType === 'apartment') {
-      s.push('heating')
-    }
-    s.push('year')
+    s.push('propertyType', 'gas', 'year')
     if (isMinimalMission) {
       s.push('surfaceAttestation')
     }
     s.push('size', 'result')
     return s
-  }, [propertyType, isMinimalMission, purpose, alaCarteAskSurfaceAttestation])
+  }, [purpose, isMinimalMission, alaCarteAskSurfaceAttestation])
 
   const currentScreen = screens[Math.min(step, screens.length - 1)]
 
@@ -399,7 +401,7 @@ export default function AssistantPage() {
     setCommuneSlug(null)
     setPurpose(null)
     setPropertyType(null)
-    setHeating(null)
+    setHasGas(null)
     setHasSurfaceAttestation(null)
     setYearIndex(null)
     setSizeIndex(null)
@@ -413,8 +415,8 @@ export default function AssistantPage() {
   // ne s'applique plus au bon libellé, donc on la réinitialise. La sélection
   // "à la carte" ne s'applique plus si on change d'objet.
   const selectPurpose = (p: Purpose) => { setPurpose(p); setHasSurfaceAttestation(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); advance() }
-  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHeating(null); setHasSurfaceAttestation(null); setSizeIndex(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); advance() }
-  const selectHeating = (h: Heating) => { setHeating(h); advance() }
+  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHasGas(null); setHasSurfaceAttestation(null); setSizeIndex(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); advance() }
+  const selectHasGas = (v: boolean) => { setHasGas(v); advance() }
   const selectSurfaceAttestation = (v: boolean) => { setHasSurfaceAttestation(v); advance() }
   // Changer l'année peut faire basculer le seuil mission minimale / pack
   // complet, ce qui change si la question d'attestation doit être posée :
@@ -444,7 +446,7 @@ export default function AssistantPage() {
   const maxPack = propertyType === 'house' ? 6 : 7
 
   const diagnostics = (purpose === 'sale' || purpose === 'rental') && propertyType && constructionYear !== null
-    ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: !!hasSurfaceAttestation })
+    ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: !!hasSurfaceAttestation, hasGas: !!hasGas })
     : null
 
   const houseOver250 = propertyType === 'house' && sizeIndex === HOUSE_QUOTE_ON_REQUEST_INDEX
@@ -493,9 +495,6 @@ export default function AssistantPage() {
   // la grille de packs (surtout pour les maisons, dont la grille s'arrête à
   // 6) : on le détecte sur le nombre NON plafonné, pour ne jamais afficher
   // le prix d'un pack à côté qui ne couvre pas tout ce qui est obligatoire.
-  // Le chauffage collectif/individuel n'entre plus dans ce calcul : la
-  // question reste posée (utile pour Gaz/DAPP et de futurs besoins de
-  // documents), mais n'a aucun rapport avec le prix du pack.
   const packOverflow = packMandatoryCount !== null && packMandatoryCount > maxPack
   const quoteOnRequest = houseOver250 || packOverflow
 
@@ -541,14 +540,13 @@ export default function AssistantPage() {
     : COMMUNE_RULES.find((c) => c.slug === communeSlug)?.name ?? null
   const purposeBadgeLabel = purpose === 'sale' ? 'Vente' : purpose === 'rental' ? 'Location' : purpose === 'alaCarte' ? 'Diagnostics à la carte' : null
   // "Copropriété" : déductible automatiquement, pas de question dédiée dans
-  // l'app (tout appartement y est déjà traité comme une copropriété, voir
-  // le commentaire sur l'écran 'heating' plus haut).
+  // l'app (tout appartement y est déjà traité comme une copropriété).
   const summaryBadges = [
     communeName,
     purposeBadgeLabel,
     propertyType === 'apartment' ? 'Appartement' : propertyType === 'house' ? 'Maison' : null,
     propertyType === 'apartment' ? 'Copropriété' : null,
-    heating === 'collective' ? 'Chauffage collectif' : heating === 'individual' ? 'Chauffage individuel' : null,
+    hasGas === true ? 'Gaz' : hasGas === false ? 'Sans gaz' : null,
     yearIndex !== null ? YEAR_BRACKETS[yearIndex].label : null,
     sizeIndex !== null ? sizeLabels[sizeIndex] : null,
   ].filter((b): b is string => Boolean(b))
@@ -633,12 +631,12 @@ export default function AssistantPage() {
               </>
             )}
 
-            {currentScreen === 'heating' && (
+            {currentScreen === 'gas' && (
               <>
-                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Le chauffage est-il collectif ou individuel ?</h1>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Le bien a-t-il une installation de gaz ?</h1>
                 <div style={{ display: 'grid', gap: 12 }}>
-                  <button className="diagassist-choice" onClick={() => selectHeating('collective')}>Collectif</button>
-                  <button className="diagassist-choice" onClick={() => selectHeating('individual')}>Individuel</button>
+                  <button className="diagassist-choice" onClick={() => selectHasGas(true)}>Oui</button>
+                  <button className="diagassist-choice" onClick={() => selectHasGas(false)}>Non</button>
                 </div>
               </>
             )}
@@ -837,7 +835,7 @@ export default function AssistantPage() {
                     purpose,
                     communeSlug,
                     constructionYear,
-                    heating,
+                    hasGas,
                     mandatory: diagnostics.mandatory.map((item) => ({ id: item.id, label: item.label })),
                     toConfirm: diagnostics.toConfirm.map((item) => ({ id: item.id, label: item.label })),
                     options: diagnostics.options.map((option) => ({ id: option.id, label: option.label, price: optionPrice(option.id) })),
