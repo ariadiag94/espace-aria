@@ -40,6 +40,10 @@ const summaryLines = (summary: unknown): string[] => {
   if (toConfirm) lines.push(`À confirmer : ${toConfirm}`)
   const options = labelJoin(s.options)
   if (options) lines.push(`Options : ${options}`)
+  const addedToConfirm = labelJoin(s.addedToConfirm)
+  if (addedToConfirm) lines.push(`Diagnostics ajoutés (à confirmer) : ${addedToConfirm}`)
+  const addedOptions = labelJoin(s.addedOptions)
+  if (addedOptions) lines.push(`Options ajoutées : ${addedOptions}`)
   if (Array.isArray(s.checkedItems) && s.checkedItems.length) {
     lines.push(`Diagnostics sélectionnés : ${s.checkedItems.map(String).join(', ')}`)
   }

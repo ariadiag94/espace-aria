@@ -11,6 +11,7 @@ import {
   ALaCarteItemId,
   APARTMENT_DPE_ONLY_PRICES,
   APARTMENT_SIZE_LABELS,
+  APARTMENT_TERMITES_UNIT_PRICES,
   ERP_OPTION_PRICE,
   getALaCartePrice,
   getPackPrice,
@@ -18,6 +19,7 @@ import {
   HOUSE_MEASUREMENT_PRICES,
   HOUSE_QUOTE_ON_REQUEST_INDEX,
   HOUSE_SIZE_LABELS,
+  HOUSE_TERMITES_UNIT_PRICES,
 } from '@/lib/property-pricing'
 
 const NAVY = '#062b59'
@@ -140,15 +142,27 @@ const DIAGNOSTIC_ICON_SRC: Record<string, string> = {
   assainissement: '/icons/diagnostics/assainissement.png',
 }
 
-type DiagCardTag = { kind: 'included' } | { kind: 'toConfirm' } | { kind: 'option'; price: number | null }
+// 'added' : variante de 'included' pour un item que le client a lui-même
+// ajouté en cliquant une carte "toConfirm"/"option" (2026-09-26) — même style
+// visuel que "Inclus" (aucune nouvelle couleur), mais distinct sémantiquement
+// (un item vraiment obligatoire n'est jamais "added").
+type DiagCardTag = { kind: 'included' } | { kind: 'added' } | { kind: 'toConfirm' } | { kind: 'option'; price: number | null }
 
 // Carte de diagnostic, réutilisée par les deux parcours résultat (guidé et
 // "à la carte") : icône + nom + sous-ligne explicative + tag à droite. Pure
-// présentation — ne recalcule jamais un prix ni une règle, reçoit tout en props.
-function DiagnosticCard({ id, label, detail, tag }: { id: string; label: string; detail: string; tag: DiagCardTag }) {
+// présentation — ne recalcule jamais un prix ni une règle, reçoit tout en
+// props. onToggle rend la carte cliquable (curseur, surbrillance bleu ciel de
+// la bordure) : uniquement pour les cartes "à confirmer"/"option" que le
+// client peut ajouter/retirer — jamais pour "Diagnostics obligatoires".
+function DiagnosticCard({ id, label, detail, tag, onToggle }: { id: string; label: string; detail: string; tag: DiagCardTag; onToggle?: () => void }) {
   const iconSrc = DIAGNOSTIC_ICON_SRC[id]
+  const interactive = typeof onToggle === 'function'
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderRadius: 14, border: '1px solid #dbe7f2', background: '#fff', marginBottom: 8 }}>
+    <div
+      onClick={onToggle}
+      role={interactive ? 'button' : undefined}
+      style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderRadius: 14, border: `1px solid ${tag.kind === 'added' ? SKY : '#dbe7f2'}`, background: '#fff', marginBottom: 8, cursor: interactive ? 'pointer' : 'default' }}
+    >
       <div style={{ width: 28, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
         {iconSrc ? (
           <img src={iconSrc} alt="" width={26} height={26} style={{ display: 'block' }} />
@@ -162,7 +176,9 @@ function DiagnosticCard({ id, label, detail, tag }: { id: string; label: string;
         <div style={{ color: NAVY, fontWeight: 700, fontSize: 14 }}>{label}</div>
         <div style={{ color: '#6f7d90', fontSize: 12, marginTop: 2 }}>{detail}</div>
       </div>
-      {tag.kind === 'included' && <span className="diagassist-badge" style={{ flexShrink: 0 }}>Inclus</span>}
+      {(tag.kind === 'included' || tag.kind === 'added') && (
+        <span className="diagassist-badge" style={{ flexShrink: 0 }}>{tag.kind === 'added' ? '✓ Ajouté' : 'Inclus'}</span>
+      )}
       {tag.kind === 'toConfirm' && (
         <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '6px 12px', fontSize: 12, fontWeight: 700, background: '#fff8e6', color: '#7a5612', border: '1px solid #f0c76a' }}>
           À confirmer
@@ -344,6 +360,14 @@ export default function AssistantPage() {
   // ALaCarteItemId/getALaCartePrice (elle ne doit jamais influer sur le choix
   // unitaire vs pack), son prix s'additionne à part.
   const [alaCarteAssainissement, setALaCarteAssainissement] = useState(false)
+  // Ajouts volontaires du client sur l'écran résultat du moteur guidé
+  // (2026-09-26) : une carte "à confirmer" (aujourd'hui, seulement
+  // Assainissement) ou "option" (ERP/Mesurage, + Termites quand
+  // optionalAddOn) peut être cliquée pour s'ajouter au total, en plus du
+  // pack déjà choisi — jamais de recalcul du pack lui-même. Sans objet en
+  // mode "à la carte", qui a son propre état (alaCarteAssainissement).
+  const [selectedToConfirm, setSelectedToConfirm] = useState<Set<string>>(new Set())
+  const [selectedOptions, setSelectedOptions] = useState<Set<PricedOptionId | 'termites'>>(new Set())
 
   const constructionYear = yearIndex !== null ? YEAR_BRACKETS[yearIndex].year : null
   // Seuil "mission minimale" (DPE seul) : ne dépend pas de la réponse à
@@ -407,6 +431,8 @@ export default function AssistantPage() {
     setSizeIndex(null)
     setCheckedItems(new Set())
     setALaCarteAssainissement(false)
+    setSelectedToConfirm(new Set())
+    setSelectedOptions(new Set())
   }
 
   const selectCommune = (slug: string) => { setCommuneSlug(slug); advance() }
@@ -414,8 +440,8 @@ export default function AssistantPage() {
   // vente, Boutin en location) : si l'objet change, la réponse précédente
   // ne s'applique plus au bon libellé, donc on la réinitialise. La sélection
   // "à la carte" ne s'applique plus si on change d'objet.
-  const selectPurpose = (p: Purpose) => { setPurpose(p); setHasSurfaceAttestation(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); advance() }
-  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHasGas(null); setHasSurfaceAttestation(null); setSizeIndex(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); advance() }
+  const selectPurpose = (p: Purpose) => { setPurpose(p); setHasSurfaceAttestation(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); setSelectedToConfirm(new Set()); setSelectedOptions(new Set()); advance() }
+  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHasGas(null); setHasSurfaceAttestation(null); setSizeIndex(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); setSelectedToConfirm(new Set()); setSelectedOptions(new Set()); advance() }
   const selectHasGas = (v: boolean) => { setHasGas(v); advance() }
   const selectSurfaceAttestation = (v: boolean) => { setHasSurfaceAttestation(v); advance() }
   // Changer l'année peut faire basculer le seuil mission minimale / pack
@@ -426,6 +452,22 @@ export default function AssistantPage() {
   const selectSize = (i: number) => { setSizeIndex(i); advance() }
   const toggleALaCarteItem = (id: ALaCarteItemId) => {
     setCheckedItems((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const toggleToConfirm = (id: string) => {
+    setSelectedToConfirm((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const toggleOption = (id: PricedOptionId | 'termites') => {
+    setSelectedOptions((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -529,6 +571,30 @@ export default function AssistantPage() {
     if (id === 'erp') return ERP_OPTION_PRICE
     return null
   }
+  // Termites proposé comme option cliquable uniquement quand computeDiagnostics
+  // l'a marqué optionalAddOn (aucun arrêté préfectoral recensé) : tarif repris
+  // tel quel des grilles à la carte existantes, selon la taille du bien —
+  // jamais un tarif inventé pour l'occasion.
+  const termitesOptionPrice = (): number | null => {
+    if (sizeIndex === null) return null
+    if (propertyType === 'apartment') return APARTMENT_TERMITES_UNIT_PRICES[sizeIndex] ?? null
+    if (propertyType === 'house') return HOUSE_TERMITES_UNIT_PRICES[sizeIndex] ?? null
+    return null
+  }
+  // Prix d'ajout d'un item "à confirmer" (aujourd'hui, seul Assainissement
+  // est cliquable dans cette section) : même grille que l'assainissement "à
+  // la carte" ci-dessus, pour ne jamais diverger.
+  const toConfirmAddPrice = (id: string): number | null => {
+    if (id === 'assainissement') return propertyType === 'apartment' ? APARTMENT_ASSAINISSEMENT_PRICE : HOUSE_ASSAINISSEMENT_PRICE
+    return null
+  }
+  const termitesOptionalAddOn = diagnostics?.toConfirm.find((item) => item.id === 'termites' && item.optionalAddOn) ?? null
+  // Total additif : jamais de recalcul du pack, seulement la somme des
+  // ajouts volontaires du client par-dessus le prix déjà affiché — garantit
+  // qu'un seul et même prix est montré partout (bandeau + encadré + email).
+  const extrasPrice = Array.from(selectedToConfirm).reduce((sum, id) => sum + (toConfirmAddPrice(id) ?? 0), 0)
+    + Array.from(selectedOptions).reduce((sum, id) => sum + (id === 'termites' ? (termitesOptionPrice() ?? 0) : (optionPrice(id) ?? 0)), 0)
+  const totalPriceWithExtras = totalPrice !== null ? totalPrice + extrasPrice : null
 
   // Badges de résumé du bien, affichés dès qu'une info est connue (pas
   // seulement sur l'écran résultat) et enrichis au fil du parcours. Pas de
@@ -711,15 +777,15 @@ export default function AssistantPage() {
                     <DiagnosticCard key={id} id={id} label={alaCarteItemLabel(id, propertyType)} detail={alaCarteItemDetail(id, propertyType)} tag={{ kind: 'included' }} />
                   ))}
                   {alaCarteAssainissement && (
-                    <DiagnosticCard id="assainissement" label="Assainissement" detail={buildAssainissementDetail(propertyType, communeSlug)} tag={{ kind: 'included' }} />
+                    <DiagnosticCard id="assainissement" label="Assainissement" detail={buildAssainissementDetail(propertyType, communeSlug)} tag={{ kind: 'added' }} onToggle={() => setALaCarteAssainissement((v) => !v)} />
                   )}
                 </div>
 
                 {!alaCarteAssainissement && (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>À confirmer</div>
-                    <DiagnosticCard id="assainissement" label="Assainissement" detail={buildAssainissementDetail(propertyType, communeSlug)} tag={{ kind: 'toConfirm' }} />
-                    <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Si confirmé, ce diagnostic s’ajoute au prix ci-dessous.</p>
+                    <DiagnosticCard id="assainissement" label="Assainissement" detail={buildAssainissementDetail(propertyType, communeSlug)} tag={{ kind: 'toConfirm' }} onToggle={() => setALaCarteAssainissement((v) => !v)} />
+                    <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Cliquez sur la carte pour l’ajouter à votre demande ; son montant s’ajoute alors au prix ci-dessous.</p>
                   </div>
                 )}
 
@@ -773,7 +839,7 @@ export default function AssistantPage() {
                     </div>
                   </div>
                   <div style={{ color: '#fff', fontWeight: 900, fontSize: 24, textAlign: 'right' }}>
-                    {quoteOnRequest || noPackMatch ? 'Sur devis' : euro(totalPrice as number)}
+                    {quoteOnRequest || noPackMatch ? 'Sur devis' : euro(totalPriceWithExtras as number)}
                   </div>
                 </div>
 
@@ -790,23 +856,53 @@ export default function AssistantPage() {
                   </div>
                 )}
 
-                {diagnostics.toConfirm.length > 0 && (
+                {diagnostics.toConfirm.filter((item) => !item.optionalAddOn).length > 0 && (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>À confirmer</div>
-                    {diagnostics.toConfirm.map((item) => (
-                      <DiagnosticCard key={item.id} id={item.id} label={item.label} detail={item.detail} tag={{ kind: 'toConfirm' }} />
-                    ))}
-                    <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Si confirmés, ces diagnostics s’ajoutent au prix ci-dessus.</p>
+                    {diagnostics.toConfirm.filter((item) => !item.optionalAddOn).map((item) => {
+                      const addPrice = toConfirmAddPrice(item.id)
+                      const added = selectedToConfirm.has(item.id)
+                      return (
+                        <DiagnosticCard
+                          key={item.id}
+                          id={item.id}
+                          label={item.label}
+                          detail={item.detail}
+                          tag={added ? { kind: 'added' } : { kind: 'toConfirm' }}
+                          onToggle={addPrice !== null ? () => toggleToConfirm(item.id) : undefined}
+                        />
+                      )
+                    })}
+                    <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Cliquez sur une carte pour l’ajouter à votre demande ; son montant s’ajoute alors au prix ci-dessous.</p>
                   </div>
                 )}
 
-                {diagnostics.options.length > 0 && !quoteOnRequest && (
+                {(diagnostics.options.length > 0 || termitesOptionalAddOn) && !quoteOnRequest && (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Options liées à votre situation</div>
-                    {diagnostics.options.map((option) => (
-                      <DiagnosticCard key={option.id} id={option.id} label={option.label} detail={OPTION_DETAIL[option.id]} tag={{ kind: 'option', price: optionPrice(option.id) }} />
-                    ))}
-                    <p style={{ color: '#6f7d90', fontSize: 12, margin: '8px 0 0' }}>Options en supplément, non incluses dans le prix ci-dessus.</p>
+                    {diagnostics.options.map((option) => {
+                      const added = selectedOptions.has(option.id)
+                      return (
+                        <DiagnosticCard
+                          key={option.id}
+                          id={option.id}
+                          label={option.label}
+                          detail={OPTION_DETAIL[option.id]}
+                          tag={added ? { kind: 'added' } : { kind: 'option', price: optionPrice(option.id) }}
+                          onToggle={() => toggleOption(option.id)}
+                        />
+                      )
+                    })}
+                    {termitesOptionalAddOn && (
+                      <DiagnosticCard
+                        id="termites"
+                        label={termitesOptionalAddOn.label}
+                        detail={termitesOptionalAddOn.detail}
+                        tag={selectedOptions.has('termites') ? { kind: 'added' } : { kind: 'option', price: termitesOptionPrice() }}
+                        onToggle={() => toggleOption('termites')}
+                      />
+                    )}
+                    <p style={{ color: '#6f7d90', fontSize: 12, margin: '8px 0 0' }}>Cliquez sur une carte pour l’ajouter à votre demande ; son montant s’ajoute alors au prix ci-dessous.</p>
                   </div>
                 )}
 
@@ -815,7 +911,7 @@ export default function AssistantPage() {
                     <div style={{ color: '#7a5612', fontWeight: 900, fontSize: 17 }}>Nous vous répondons avec un devis personnalisé</div>
                   ) : (
                     <>
-                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(totalPrice as number)}</div>
+                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(totalPriceWithExtras as number)}</div>
                       <div style={{ color: 'rgba(255,255,255,.7)', fontSize: 12, fontWeight: 700, marginTop: 4 }}>TVA incluse</div>
                     </>
                   )}
@@ -828,7 +924,7 @@ export default function AssistantPage() {
                 <LeadCaptureForm context={{
                   propertyType,
                   purpose,
-                  estimatedPrice: totalPrice,
+                  estimatedPrice: totalPriceWithExtras,
                   diagnosticsSummary: {
                     propertyType,
                     sizeLabel: sizeLabels[sizeIndex],
@@ -837,10 +933,15 @@ export default function AssistantPage() {
                     constructionYear,
                     hasGas,
                     mandatory: diagnostics.mandatory.map((item) => ({ id: item.id, label: item.label })),
-                    toConfirm: diagnostics.toConfirm.map((item) => ({ id: item.id, label: item.label })),
+                    toConfirm: diagnostics.toConfirm.filter((item) => !item.optionalAddOn).map((item) => ({ id: item.id, label: item.label })),
                     options: diagnostics.options.map((option) => ({ id: option.id, label: option.label, price: optionPrice(option.id) })),
+                    addedToConfirm: diagnostics.toConfirm.filter((item) => selectedToConfirm.has(item.id)).map((item) => ({ id: item.id, label: item.label })),
+                    addedOptions: [
+                      ...diagnostics.options.filter((option) => selectedOptions.has(option.id)).map((option) => ({ id: option.id, label: option.label, price: optionPrice(option.id) })),
+                      ...(termitesOptionalAddOn && selectedOptions.has('termites') ? [{ id: 'termites', label: termitesOptionalAddOn.label, price: termitesOptionPrice() }] : []),
+                    ],
                     priceStatus: quoteOnRequest ? 'quote_on_request' : noPackMatch ? 'no_match' : 'estimated',
-                    totalPrice,
+                    totalPrice: totalPriceWithExtras,
                   },
                 }} />
 
