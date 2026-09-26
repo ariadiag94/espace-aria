@@ -9,7 +9,13 @@ export type PropertyType = 'apartment' | 'house'
 // offert en mission minimale + attestation "Non", dont le prix vient de la
 // réutilisation directe du pack 2, pas d'un 3e diagnostic compté). Par
 // défaut (undefined), un item obligatoire compte dans le pack.
-export type DiagnosticItem = { id: string; label: string; detail: string; countsTowardPack?: boolean }
+// optionalAddOn : true uniquement pour un item "à confirmer" que le client
+// peut choisir d'ajouter volontairement à sa demande (2026-09-26) — cas
+// aujourd'hui limité à Termites quand aucun arrêté préfectoral n'est
+// recensé (non obligatoire, mais un contrôle reste possible sur demande).
+// Les autres cas "à confirmer" (zone partielle, mairie à vérifier,
+// Assainissement) restent de simples informations, sans prix ni bouton.
+export type DiagnosticItem = { id: string; label: string; detail: string; countsTowardPack?: boolean; optionalAddOn?: boolean }
 export type PricedOptionId = 'measurement' | 'erp'
 export type PricedOption = { id: PricedOptionId; label: string }
 
@@ -43,9 +49,13 @@ export const buildAssainissementDetail = (propertyType: PropertyType, communeSlu
       : `Contrôle du raccordement au réseau d’eaux usées. Dans certaines communes, il est réservé au service public : à vérifier auprès de votre mairie. Si nous le réalisons : + ${assainissementPrice} €`
 }
 
-// Seuils électricité/gaz (installation de plus de 15 ans, approximée depuis
+// Seuil électricité (installation de plus de 15 ans, approximée depuis
 // l'année de construction) et plomb (< 1949) repris tels quels de la règle
 // déjà codée dans app/dossiers/nouveau/page.tsx (constructionYearAlerts).
+// Gaz applique le même seuil d'âge, mais uniquement si le client a confirmé
+// avoir une installation gaz (hasGas) — contrairement à l'électricité,
+// présente sur tout logement, une installation gaz peut ne pas exister du
+// tout, donc jamais déduite de l'âge seul (2026-09-26).
 // Le reste (DPE/ERP systématiques, amiante vente, termites/assainissement à
 // confirmer, Carrez/Boutin/DAPP) est la règle demandée pour ce parcours
 // public, appliquée ici à l'identique de ce qui a été spécifié — rien
@@ -56,12 +66,18 @@ export const computeDiagnostics = ({
   constructionYear,
   communeSlug,
   hasSurfaceAttestation,
+  hasGas,
 }: {
   purpose: Purpose
   propertyType: PropertyType
   constructionYear: number
   communeSlug: string | null
   hasSurfaceAttestation: boolean
+  // Gaz : obligatoire seulement si le bien a réellement une installation gaz
+  // ET qu'elle a plus de 15 ans — contrairement à Électricité, qui reste basé
+  // sur l'âge seul (toute installation électrique en a une, pas toute
+  // installation gaz). Répondu par une question dédiée dans /assistant.
+  hasGas: boolean
 }): DiagnosticsResult => {
   const age = new Date().getFullYear() - constructionYear
   const isOldInstallation = age >= 15
@@ -128,6 +144,12 @@ export const computeDiagnostics = ({
   }
   if (isOldInstallation) {
     mandatory.push({ id: 'elec', label: 'Électricité', detail: 'Installation électrique de plus de 15 ans (approximé depuis l’année de construction, une rénovation récente peut changer la donne).' })
+  }
+  // Gaz : contrairement à l'électricité (présente sur tout logement), le gaz
+  // dépend de la présence réelle d'une installation — déclarée par le client,
+  // pas déduite de l'année seule. Obligatoire seulement si les deux
+  // conditions sont réunies.
+  if (isOldInstallation && hasGas) {
     mandatory.push({ id: 'gaz', label: 'Gaz', detail: 'Installation gaz de plus de 15 ans (approximé depuis l’année de construction, une rénovation récente peut changer la donne).' })
   }
   if (isBefore1949) {
@@ -144,7 +166,7 @@ export const computeDiagnostics = ({
     } else if (communeCoverage === 'partielle') {
       toConfirm.push({ id: 'termites', label: 'Termites', detail: 'Seule une partie de votre commune est classée en zone termitée (arrêté préfectoral) : obligatoire si votre bien se trouve dans cette zone. Nous le vérifions avec votre adresse.' })
     } else if (communeCoverage === 'aucun') {
-      toConfirm.push({ id: 'termites', label: 'Termites', detail: 'Pas d’arrêté préfectoral recensé dans votre commune : en principe non obligatoire pour une vente. Un contrôle reste possible sur demande.' })
+      toConfirm.push({ id: 'termites', label: 'Termites', detail: 'Pas d’arrêté préfectoral recensé dans votre commune : en principe non obligatoire pour une vente. Un contrôle reste possible sur demande.', optionalAddOn: true })
     } else {
       toConfirm.push({ id: 'termites', label: 'Termites', detail: 'À vérifier auprès de votre mairie.' })
     }

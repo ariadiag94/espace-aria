@@ -11,6 +11,7 @@ import {
   ALaCarteItemId,
   APARTMENT_DPE_ONLY_PRICES,
   APARTMENT_SIZE_LABELS,
+  APARTMENT_TERMITES_UNIT_PRICES,
   ERP_OPTION_PRICE,
   getALaCartePrice,
   getPackPrice,
@@ -18,6 +19,7 @@ import {
   HOUSE_MEASUREMENT_PRICES,
   HOUSE_QUOTE_ON_REQUEST_INDEX,
   HOUSE_SIZE_LABELS,
+  HOUSE_TERMITES_UNIT_PRICES,
 } from '@/lib/property-pricing'
 
 const NAVY = '#062b59'
@@ -26,12 +28,30 @@ const LIGHT = '#eef1f5'
 
 const euro = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
 
+// Icônes sobres (trait, currentColor) pour le bandeau d'en-tête du résultat
+// vente/location — aucun fichier fourni pour "maison"/"immeuble" (les PNG
+// existants couvrent uniquement les diagnostics), donc dessinées ici en SVG
+// minimal plutôt que réutiliser une icône de diagnostic hors-sujet.
+const HouseIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 11.5 12 4l9 7.5" />
+    <path d="M5.5 10v9a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-9" />
+    <path d="M9.5 20v-5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v5" />
+  </svg>
+)
+const BuildingIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="5" y="3" width="14" height="18" rx="1" />
+    <path d="M9 7h1.5M13.5 7H15M9 11h1.5M13.5 11H15M9 15h1.5M13.5 15H15" />
+    <path d="M10.5 21v-3a1.5 1.5 0 0 1 3 0v3" />
+  </svg>
+)
+
 // 'alaCarte' est un 3e choix au même niveau que vente/location, pas une
 // variante du moteur guidé : computeDiagnostics() (lib/property-alerts.ts)
 // n'est jamais appelé avec cette valeur, uniquement avec 'sale' | 'rental'.
 type Purpose = 'sale' | 'rental' | 'alaCarte'
 type PropertyType = 'apartment' | 'house'
-type Heating = 'collective' | 'individual'
 
 const currentYear = new Date().getFullYear()
 const YEAR_BRACKETS = [
@@ -56,7 +76,124 @@ const alaCarteItemLabel = (id: ALaCarteItemId, propertyType: PropertyType | null
   }
 }
 
-type Screen = 'commune' | 'purpose' | 'propertyType' | 'heating' | 'surfaceAttestation' | 'year' | 'checklist' | 'size' | 'result'
+// Sous-ligne explicative des cartes de diagnostic en mode "à la carte" (pas
+// d'objet vente/location dans ce mode, donc pas de règle "obligatoire si..."
+// à afficher — juste ce que couvre le diagnostic).
+const alaCarteItemDetail = (id: ALaCarteItemId, propertyType: PropertyType | null): string => {
+  switch (id) {
+    case 'dpe': return 'Performance énergétique du logement'
+    case 'erp': return 'État des risques et pollutions'
+    case 'surface': return propertyType === 'house' ? 'Mesure de la surface habitable' : 'Mesurage de la surface (loi Carrez/Boutin)'
+    case 'plomb': return 'Recherche de plomb (CREP)'
+    case 'amiante': return 'Recherche d’amiante'
+    case 'elec': return 'État de l’installation électrique'
+    case 'gaz': return 'État de l’installation gaz'
+    case 'termites': return 'Recherche de termites'
+  }
+}
+
+// Sous-ligne des deux seules options payantes du moteur guidé (PricedOptionId
+// dans lib/property-alerts.ts), qui n'ont pas de texte descriptif propre.
+const OPTION_DETAIL: Record<PricedOptionId, string> = {
+  measurement: 'Mesure de la surface habitable',
+  erp: 'État des risques et pollutions',
+}
+
+// Icônes des cartes de diagnostic : même jeu de glyphes que diagnosticIcon()
+// dans app/dossiers/[id]/page.tsx (utilisé pour les "Diagnostics commandés"
+// d'un dossier), repris tel quel par id plutôt que par correspondance de nom
+// pour rester fiable — aucune nouvelle icône inventée pour cet écran.
+const DIAGNOSTIC_ICON: Record<string, string> = {
+  dpe: '⌂',
+  erp: '⚑',
+  carrez: '↔',
+  boutin: '↔',
+  surface: '↔',
+  measurement: '↔',
+  plomb: 'Pb',
+  amiante: '◉',
+  elec: '⚡',
+  gaz: '♨',
+  termites: '⌁',
+  dapp: '✓',
+  assainissement: '≈',
+}
+const diagnosticIcon = (id: string): string => DIAGNOSTIC_ICON[id] ?? '✓'
+
+// Icônes PNG (public/icons/diagnostics/), fournies par l'utilisateur, déjà en
+// bleu ciel #4db3e6 — remplacent les glyphes texte ci-dessus sur cet écran.
+// "carrez"/"boutin"/"surface"/"measurement" partagent mesurage.png (un seul
+// fichier fourni pour le mesurage, quel que soit le régime) ; "dapp" aussi,
+// faute d'icône dédiée (demandé explicitement). DIAGNOSTIC_ICON (glyphes)
+// reste en repli défensif si un id sans PNG apparaissait un jour.
+const DIAGNOSTIC_ICON_SRC: Record<string, string> = {
+  dpe: '/icons/diagnostics/dpe.png',
+  erp: '/icons/diagnostics/erp.png',
+  carrez: '/icons/diagnostics/mesurage.png',
+  boutin: '/icons/diagnostics/mesurage.png',
+  surface: '/icons/diagnostics/mesurage.png',
+  measurement: '/icons/diagnostics/mesurage.png',
+  plomb: '/icons/diagnostics/plomb.png',
+  amiante: '/icons/diagnostics/amiante.png',
+  elec: '/icons/diagnostics/electricite.png',
+  gaz: '/icons/diagnostics/gaz.png',
+  termites: '/icons/diagnostics/termites.png',
+  dapp: '/icons/diagnostics/mesurage.png',
+  assainissement: '/icons/diagnostics/assainissement.png',
+}
+
+// 'added' : variante de 'included' pour un item que le client a lui-même
+// ajouté en cliquant une carte "toConfirm"/"option" (2026-09-26) — même style
+// visuel que "Inclus" (aucune nouvelle couleur), mais distinct sémantiquement
+// (un item vraiment obligatoire n'est jamais "added").
+type DiagCardTag = { kind: 'included' } | { kind: 'added' } | { kind: 'toConfirm' } | { kind: 'option'; price: number | null }
+
+// Carte de diagnostic, réutilisée par les deux parcours résultat (guidé et
+// "à la carte") : icône + nom + sous-ligne explicative + tag à droite. Pure
+// présentation — ne recalcule jamais un prix ni une règle, reçoit tout en
+// props. onToggle rend la carte cliquable (curseur, surbrillance bleu ciel de
+// la bordure) : uniquement pour les cartes "à confirmer"/"option" que le
+// client peut ajouter/retirer — jamais pour "Diagnostics obligatoires".
+function DiagnosticCard({ id, label, detail, tag, onToggle }: { id: string; label: string; detail: string; tag: DiagCardTag; onToggle?: () => void }) {
+  const iconSrc = DIAGNOSTIC_ICON_SRC[id]
+  const interactive = typeof onToggle === 'function'
+  return (
+    <div
+      onClick={onToggle}
+      role={interactive ? 'button' : undefined}
+      style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', borderRadius: 14, border: `1px solid ${tag.kind === 'added' ? SKY : '#dbe7f2'}`, background: '#fff', marginBottom: 8, cursor: interactive ? 'pointer' : 'default' }}
+    >
+      <div style={{ width: 28, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+        {iconSrc ? (
+          <img src={iconSrc} alt="" width={26} height={26} style={{ display: 'block' }} />
+        ) : (
+          <span style={{ display: 'grid', placeItems: 'center', width: 26, height: 26, borderRadius: 8, background: LIGHT, color: NAVY, fontWeight: 900, fontSize: 13 }}>
+            {diagnosticIcon(id)}
+          </span>
+        )}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ color: NAVY, fontWeight: 700, fontSize: 14 }}>{label}</div>
+        <div style={{ color: '#6f7d90', fontSize: 12, marginTop: 2 }}>{detail}</div>
+      </div>
+      {(tag.kind === 'included' || tag.kind === 'added') && (
+        <span className="diagassist-badge" style={{ flexShrink: 0 }}>{tag.kind === 'added' ? '✓ Ajouté' : 'Inclus'}</span>
+      )}
+      {tag.kind === 'toConfirm' && (
+        <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '6px 12px', fontSize: 12, fontWeight: 700, background: '#fff8e6', color: '#7a5612', border: '1px solid #f0c76a' }}>
+          À confirmer
+        </span>
+      )}
+      {tag.kind === 'option' && (
+        <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '6px 12px', fontSize: 12, fontWeight: 700, background: SKY, color: '#fff' }}>
+          {tag.price !== null ? `+ ${euro(tag.price)}` : 'Option'}
+        </span>
+      )}
+    </div>
+  )
+}
+
+type Screen = 'commune' | 'purpose' | 'propertyType' | 'gas' | 'surfaceAttestation' | 'year' | 'checklist' | 'size' | 'result'
 
 // Contexte de l'estimation au moment où le client envoie sa demande, transmis
 // tel quel à public.leads (colonnes property_type/purpose/estimated_price) et
@@ -208,7 +345,13 @@ export default function AssistantPage() {
   const [communeSlug, setCommuneSlug] = useState<string | null>(null)
   const [purpose, setPurpose] = useState<Purpose | null>(null)
   const [propertyType, setPropertyType] = useState<PropertyType | null>(null)
-  const [heating, setHeating] = useState<Heating | null>(null)
+  // Présence d'une installation gaz, déclarée par le client (2026-09-26) :
+  // remplace l'ancienne question "chauffage collectif/individuel", qui
+  // n'entrait dans aucun calcul (aucune règle ne la testait). Le Gaz devient
+  // obligatoire seulement si hasGas est vrai ET l'installation a plus de
+  // 15 ans (voir computeDiagnostics dans lib/property-alerts.ts) —
+  // contrairement à l'Électricité, présente sur tout logement.
+  const [hasGas, setHasGas] = useState<boolean | null>(null)
   const [hasSurfaceAttestation, setHasSurfaceAttestation] = useState<boolean | null>(null)
   const [yearIndex, setYearIndex] = useState<number | null>(null)
   const [sizeIndex, setSizeIndex] = useState<number | null>(null)
@@ -217,6 +360,14 @@ export default function AssistantPage() {
   // ALaCarteItemId/getALaCartePrice (elle ne doit jamais influer sur le choix
   // unitaire vs pack), son prix s'additionne à part.
   const [alaCarteAssainissement, setALaCarteAssainissement] = useState(false)
+  // Ajouts volontaires du client sur l'écran résultat du moteur guidé
+  // (2026-09-26) : une carte "à confirmer" (aujourd'hui, seulement
+  // Assainissement) ou "option" (ERP/Mesurage, + Termites quand
+  // optionalAddOn) peut être cliquée pour s'ajouter au total, en plus du
+  // pack déjà choisi — jamais de recalcul du pack lui-même. Sans objet en
+  // mode "à la carte", qui a son propre état (alaCarteAssainissement).
+  const [selectedToConfirm, setSelectedToConfirm] = useState<Set<string>>(new Set())
+  const [selectedOptions, setSelectedOptions] = useState<Set<PricedOptionId | 'termites'>>(new Set())
 
   const constructionYear = yearIndex !== null ? YEAR_BRACKETS[yearIndex].year : null
   // Seuil "mission minimale" (DPE seul) : ne dépend pas de la réponse à
@@ -226,7 +377,7 @@ export default function AssistantPage() {
   // pas de question du tout). Sans objet en mode "à la carte" (purpose ===
   // 'alaCarte') : le moteur guidé n'est jamais appelé dans ce cas.
   const isMinimalMission = (purpose === 'sale' || purpose === 'rental') && propertyType && constructionYear !== null
-    ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: false }).isMinimalMission
+    ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: false, hasGas: !!hasGas }).isMinimalMission
     : false
 
   // Mode "à la carte" avec un seul item coché et c'est le DPE : même seuil
@@ -238,11 +389,12 @@ export default function AssistantPage() {
 
   // Parcours dynamique : la commune est demandée en premier. Le mode "à la
   // carte" (3e choix sur l'écran "objet") saute directement à la sélection
-  // libre des diagnostics, sans année ni chauffage — ces notions n'ont pas de
-  // sens quand le client choisit lui-même. La question d'attestation de
-  // surface y apparaît uniquement dans le cas "DPE seul coché" ci-dessus.
-  // Pour vente/location : un appartement est toujours en copropriété (pas de
-  // question dédiée), le chauffage est donc demandé pour tout appartement.
+  // libre des diagnostics, sans année ni gaz — ces notions n'ont pas de sens
+  // quand le client choisit lui-même. La question d'attestation de surface y
+  // apparaît uniquement dans le cas "DPE seul coché" ci-dessus.
+  // Pour vente/location : la question gaz est posée pour tout type de bien
+  // (contrairement à l'ancienne question chauffage, réservée aux
+  // appartements — une installation gaz existe aussi bien dans une maison).
   // La question d'attestation de surface n'est posée qu'en mission minimale,
   // une fois l'année connue (le seuil en dépend) ; en pack complet elle
   // n'apparaît pas du tout.
@@ -256,17 +408,13 @@ export default function AssistantPage() {
       s.push('result')
       return s
     }
-    s.push('propertyType')
-    if (propertyType === 'apartment') {
-      s.push('heating')
-    }
-    s.push('year')
+    s.push('propertyType', 'gas', 'year')
     if (isMinimalMission) {
       s.push('surfaceAttestation')
     }
     s.push('size', 'result')
     return s
-  }, [propertyType, isMinimalMission, purpose, alaCarteAskSurfaceAttestation])
+  }, [purpose, isMinimalMission, alaCarteAskSurfaceAttestation])
 
   const currentScreen = screens[Math.min(step, screens.length - 1)]
 
@@ -277,12 +425,14 @@ export default function AssistantPage() {
     setCommuneSlug(null)
     setPurpose(null)
     setPropertyType(null)
-    setHeating(null)
+    setHasGas(null)
     setHasSurfaceAttestation(null)
     setYearIndex(null)
     setSizeIndex(null)
     setCheckedItems(new Set())
     setALaCarteAssainissement(false)
+    setSelectedToConfirm(new Set())
+    setSelectedOptions(new Set())
   }
 
   const selectCommune = (slug: string) => { setCommuneSlug(slug); advance() }
@@ -290,9 +440,9 @@ export default function AssistantPage() {
   // vente, Boutin en location) : si l'objet change, la réponse précédente
   // ne s'applique plus au bon libellé, donc on la réinitialise. La sélection
   // "à la carte" ne s'applique plus si on change d'objet.
-  const selectPurpose = (p: Purpose) => { setPurpose(p); setHasSurfaceAttestation(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); advance() }
-  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHeating(null); setHasSurfaceAttestation(null); setSizeIndex(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); advance() }
-  const selectHeating = (h: Heating) => { setHeating(h); advance() }
+  const selectPurpose = (p: Purpose) => { setPurpose(p); setHasSurfaceAttestation(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); setSelectedToConfirm(new Set()); setSelectedOptions(new Set()); advance() }
+  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHasGas(null); setHasSurfaceAttestation(null); setSizeIndex(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); setSelectedToConfirm(new Set()); setSelectedOptions(new Set()); advance() }
+  const selectHasGas = (v: boolean) => { setHasGas(v); advance() }
   const selectSurfaceAttestation = (v: boolean) => { setHasSurfaceAttestation(v); advance() }
   // Changer l'année peut faire basculer le seuil mission minimale / pack
   // complet, ce qui change si la question d'attestation doit être posée :
@@ -302,6 +452,22 @@ export default function AssistantPage() {
   const selectSize = (i: number) => { setSizeIndex(i); advance() }
   const toggleALaCarteItem = (id: ALaCarteItemId) => {
     setCheckedItems((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const toggleToConfirm = (id: string) => {
+    setSelectedToConfirm((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const toggleOption = (id: PricedOptionId | 'termites') => {
+    setSelectedOptions((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -322,7 +488,7 @@ export default function AssistantPage() {
   const maxPack = propertyType === 'house' ? 6 : 7
 
   const diagnostics = (purpose === 'sale' || purpose === 'rental') && propertyType && constructionYear !== null
-    ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: !!hasSurfaceAttestation })
+    ? computeDiagnostics({ purpose, propertyType, constructionYear, communeSlug, hasSurfaceAttestation: !!hasSurfaceAttestation, hasGas: !!hasGas })
     : null
 
   const houseOver250 = propertyType === 'house' && sizeIndex === HOUSE_QUOTE_ON_REQUEST_INDEX
@@ -371,9 +537,6 @@ export default function AssistantPage() {
   // la grille de packs (surtout pour les maisons, dont la grille s'arrête à
   // 6) : on le détecte sur le nombre NON plafonné, pour ne jamais afficher
   // le prix d'un pack à côté qui ne couvre pas tout ce qui est obligatoire.
-  // Le chauffage collectif/individuel n'entre plus dans ce calcul : la
-  // question reste posée (utile pour Gaz/DAPP et de futurs besoins de
-  // documents), mais n'a aucun rapport avec le prix du pack.
   const packOverflow = packMandatoryCount !== null && packMandatoryCount > maxPack
   const quoteOnRequest = houseOver250 || packOverflow
 
@@ -408,6 +571,30 @@ export default function AssistantPage() {
     if (id === 'erp') return ERP_OPTION_PRICE
     return null
   }
+  // Termites proposé comme option cliquable uniquement quand computeDiagnostics
+  // l'a marqué optionalAddOn (aucun arrêté préfectoral recensé) : tarif repris
+  // tel quel des grilles à la carte existantes, selon la taille du bien —
+  // jamais un tarif inventé pour l'occasion.
+  const termitesOptionPrice = (): number | null => {
+    if (sizeIndex === null) return null
+    if (propertyType === 'apartment') return APARTMENT_TERMITES_UNIT_PRICES[sizeIndex] ?? null
+    if (propertyType === 'house') return HOUSE_TERMITES_UNIT_PRICES[sizeIndex] ?? null
+    return null
+  }
+  // Prix d'ajout d'un item "à confirmer" (aujourd'hui, seul Assainissement
+  // est cliquable dans cette section) : même grille que l'assainissement "à
+  // la carte" ci-dessus, pour ne jamais diverger.
+  const toConfirmAddPrice = (id: string): number | null => {
+    if (id === 'assainissement') return propertyType === 'apartment' ? APARTMENT_ASSAINISSEMENT_PRICE : HOUSE_ASSAINISSEMENT_PRICE
+    return null
+  }
+  const termitesOptionalAddOn = diagnostics?.toConfirm.find((item) => item.id === 'termites' && item.optionalAddOn) ?? null
+  // Total additif : jamais de recalcul du pack, seulement la somme des
+  // ajouts volontaires du client par-dessus le prix déjà affiché — garantit
+  // qu'un seul et même prix est montré partout (bandeau + encadré + email).
+  const extrasPrice = Array.from(selectedToConfirm).reduce((sum, id) => sum + (toConfirmAddPrice(id) ?? 0), 0)
+    + Array.from(selectedOptions).reduce((sum, id) => sum + (id === 'termites' ? (termitesOptionPrice() ?? 0) : (optionPrice(id) ?? 0)), 0)
+  const totalPriceWithExtras = totalPrice !== null ? totalPrice + extrasPrice : null
 
   // Badges de résumé du bien, affichés dès qu'une info est connue (pas
   // seulement sur l'écran résultat) et enrichis au fil du parcours. Pas de
@@ -419,14 +606,13 @@ export default function AssistantPage() {
     : COMMUNE_RULES.find((c) => c.slug === communeSlug)?.name ?? null
   const purposeBadgeLabel = purpose === 'sale' ? 'Vente' : purpose === 'rental' ? 'Location' : purpose === 'alaCarte' ? 'Diagnostics à la carte' : null
   // "Copropriété" : déductible automatiquement, pas de question dédiée dans
-  // l'app (tout appartement y est déjà traité comme une copropriété, voir
-  // le commentaire sur l'écran 'heating' plus haut).
+  // l'app (tout appartement y est déjà traité comme une copropriété).
   const summaryBadges = [
     communeName,
     purposeBadgeLabel,
     propertyType === 'apartment' ? 'Appartement' : propertyType === 'house' ? 'Maison' : null,
     propertyType === 'apartment' ? 'Copropriété' : null,
-    heating === 'collective' ? 'Chauffage collectif' : heating === 'individual' ? 'Chauffage individuel' : null,
+    hasGas === true ? 'Gaz' : hasGas === false ? 'Sans gaz' : null,
     yearIndex !== null ? YEAR_BRACKETS[yearIndex].label : null,
     sizeIndex !== null ? sizeLabels[sizeIndex] : null,
   ].filter((b): b is string => Boolean(b))
@@ -511,12 +697,12 @@ export default function AssistantPage() {
               </>
             )}
 
-            {currentScreen === 'heating' && (
+            {currentScreen === 'gas' && (
               <>
-                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Le chauffage est-il collectif ou individuel ?</h1>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 20px' }}>Le bien a-t-il une installation de gaz ?</h1>
                 <div style={{ display: 'grid', gap: 12 }}>
-                  <button className="diagassist-choice" onClick={() => selectHeating('collective')}>Collectif</button>
-                  <button className="diagassist-choice" onClick={() => selectHeating('individual')}>Individuel</button>
+                  <button className="diagassist-choice" onClick={() => selectHasGas(true)}>Oui</button>
+                  <button className="diagassist-choice" onClick={() => selectHasGas(false)}>Non</button>
                 </div>
               </>
             )}
@@ -580,46 +766,42 @@ export default function AssistantPage() {
 
             {currentScreen === 'result' && purpose === 'alaCarte' && propertyType && sizeIndex !== null && (
               <div>
-                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre estimation</h1>
+                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre devis</h1>
                 <p style={{ color: '#6f7d90', fontSize: 14, margin: '0 0 22px' }}>
                   {propertyType === 'apartment' ? 'Appartement' : 'Maison'} · {sizeLabels[sizeIndex]} · Diagnostics à la carte
                 </p>
 
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Diagnostics sélectionnés</div>
-                  <ul style={{ margin: 0, paddingLeft: 20, color: '#315a48', fontSize: 14, lineHeight: 1.6 }}>
-                    {ALACARTE_ITEM_IDS.filter((id) => alaCarteItems.has(id)).map((id) => (
-                      <li key={id}><b>{alaCarteItemLabel(id, propertyType)}</b></li>
-                    ))}
-                    {alaCarteAssainissement && (
-                      <li>
-                        <b>Assainissement</b>
-                        {communeSlug === 'maisons-alfort' ? ' — réalisé par le service public, pas de prix chez ARIA (0 €).' : ''}
-                      </li>
-                    )}
-                  </ul>
+                  {ALACARTE_ITEM_IDS.filter((id) => alaCarteItems.has(id)).map((id) => (
+                    <DiagnosticCard key={id} id={id} label={alaCarteItemLabel(id, propertyType)} detail={alaCarteItemDetail(id, propertyType)} tag={{ kind: 'included' }} />
+                  ))}
+                  {alaCarteAssainissement && (
+                    <DiagnosticCard id="assainissement" label="Assainissement" detail={buildAssainissementDetail(propertyType, communeSlug)} tag={{ kind: 'added' }} onToggle={() => setALaCarteAssainissement((v) => !v)} />
+                  )}
                 </div>
 
                 {!alaCarteAssainissement && (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>À confirmer</div>
-                    <ul style={{ margin: 0, paddingLeft: 20, color: '#7a5612', fontSize: 14, lineHeight: 1.6 }}>
-                      <li><b>Assainissement</b> — {buildAssainissementDetail(propertyType, communeSlug)}</li>
-                    </ul>
-                    <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Si confirmé, ce diagnostic s’ajoute au prix ci-dessous.</p>
+                    <DiagnosticCard id="assainissement" label="Assainissement" detail={buildAssainissementDetail(propertyType, communeSlug)} tag={{ kind: 'toConfirm' }} onToggle={() => setALaCarteAssainissement((v) => !v)} />
+                    <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Cliquez sur la carte pour l’ajouter à votre demande ; son montant s’ajoute alors au prix ci-dessous.</p>
                   </div>
                 )}
 
-                <div style={{ padding: '18px 20px', borderRadius: 16, background: alaCarteQuoteOnRequest || alaCarteNoMatch ? '#fff8e6' : LIGHT, border: `1px solid ${alaCarteQuoteOnRequest || alaCarteNoMatch ? '#f0c76a' : '#dbe7f2'}`, marginBottom: 20 }}>
+                <div style={{ padding: '18px 20px', borderRadius: 16, background: alaCarteQuoteOnRequest || alaCarteNoMatch ? '#fff8e6' : NAVY, border: alaCarteQuoteOnRequest || alaCarteNoMatch ? '1px solid #f0c76a' : 'none', marginBottom: 20 }}>
                   {alaCarteQuoteOnRequest || alaCarteNoMatch ? (
                     <div style={{ color: '#7a5612', fontWeight: 900, fontSize: 17 }}>Nous vous répondons avec un devis personnalisé</div>
                   ) : (
-                    <div style={{ color: NAVY, fontWeight: 900, fontSize: 22 }}>À partir de {euro(alaCartePrice as number)} TTC</div>
+                    <>
+                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(alaCartePrice as number)}</div>
+                      <div style={{ color: 'rgba(255,255,255,.7)', fontSize: 12, fontWeight: 700, marginTop: 4 }}>TVA incluse</div>
+                    </>
                   )}
                 </div>
 
                 <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f5f7fa', border: '1px solid #e2e8ef', color: '#52657a', fontSize: 12, lineHeight: 1.6, marginBottom: 22 }}>
-                  Estimation indicative, établie à partir des informations que vous avez déclarées. Elle ne constitue ni un devis ni un engagement. Les diagnostics obligatoires dépendent de la situation réelle du bien et de la réglementation en vigueur : ARIA Diagnostics les confirme après vérification. Le prix définitif peut différer si les informations sont inexactes ou incomplètes (surface, nombre de lots, dépendances, accès, etc.). Aucun devis n’est envoyé avant cette vérification.
+                  Devis établi sur la base des informations déclarées, sous réserve de conformité du bien constatée par ARIA Diagnostics.
                 </div>
 
                 <LeadCaptureForm context={{
@@ -644,18 +826,28 @@ export default function AssistantPage() {
 
             {currentScreen === 'result' && purpose && purpose !== 'alaCarte' && propertyType && sizeIndex !== null && diagnostics && (
               <div>
-                <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Votre estimation</h1>
-                <p style={{ color: '#6f7d90', fontSize: 14, margin: '0 0 22px' }}>
-                  {propertyType === 'apartment' ? 'Appartement' : 'Maison'} · {sizeLabels[sizeIndex]} · {purpose === 'rental' ? 'Location' : 'Vente'}
-                </p>
+                <div style={{ background: NAVY, borderRadius: '18px 18px 0 0', margin: '-30px -26px 22px', padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ color: '#fff', flexShrink: 0, display: 'flex' }}>
+                      {propertyType === 'apartment' ? <BuildingIcon /> : <HouseIcon />}
+                    </span>
+                    <div>
+                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 17 }}>
+                        {purpose === 'rental' ? 'Pack Location' : 'Pack Vente'}
+                      </div>
+                      <span className="diagassist-badge" style={{ marginTop: 4 }}>{sizeLabels[sizeIndex]}</span>
+                    </div>
+                  </div>
+                  <div style={{ color: '#fff', fontWeight: 900, fontSize: 24, textAlign: 'right' }}>
+                    {quoteOnRequest || noPackMatch ? 'Sur devis' : euro(totalPriceWithExtras as number)}
+                  </div>
+                </div>
 
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Diagnostics obligatoires</div>
-                  <ul style={{ margin: 0, paddingLeft: 20, color: '#315a48', fontSize: 14, lineHeight: 1.6 }}>
-                    {diagnostics.mandatory.map((item) => (
-                      <li key={item.id}><b>{item.label}</b> — {item.detail}</li>
-                    ))}
-                  </ul>
+                  {diagnostics.mandatory.map((item) => (
+                    <DiagnosticCard key={item.id} id={item.id} label={item.label} detail={item.detail} tag={{ kind: 'included' }} />
+                  ))}
                 </div>
 
                 {diagnostics.surfaceAttestationNote && (
@@ -664,59 +856,92 @@ export default function AssistantPage() {
                   </div>
                 )}
 
-                {diagnostics.toConfirm.length > 0 && (
+                {diagnostics.toConfirm.filter((item) => !item.optionalAddOn).length > 0 && (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>À confirmer</div>
-                    <ul style={{ margin: 0, paddingLeft: 20, color: '#7a5612', fontSize: 14, lineHeight: 1.6 }}>
-                      {diagnostics.toConfirm.map((item) => (
-                        <li key={item.id}><b>{item.label}</b> — {item.detail}</li>
-                      ))}
-                    </ul>
-                    <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Si confirmés, ces diagnostics s’ajoutent au prix ci-dessus.</p>
+                    {diagnostics.toConfirm.filter((item) => !item.optionalAddOn).map((item) => {
+                      const addPrice = toConfirmAddPrice(item.id)
+                      const added = selectedToConfirm.has(item.id)
+                      return (
+                        <DiagnosticCard
+                          key={item.id}
+                          id={item.id}
+                          label={item.label}
+                          detail={item.detail}
+                          tag={added ? { kind: 'added' } : { kind: 'toConfirm' }}
+                          onToggle={addPrice !== null ? () => toggleToConfirm(item.id) : undefined}
+                        />
+                      )
+                    })}
+                    <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Cliquez sur une carte pour l’ajouter à votre demande ; son montant s’ajoute alors au prix ci-dessous.</p>
                   </div>
                 )}
 
-                {diagnostics.options.length > 0 && !quoteOnRequest && (
+                {(diagnostics.options.length > 0 || termitesOptionalAddOn) && !quoteOnRequest && (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Options liées à votre situation</div>
-                    <ul style={{ margin: 0, paddingLeft: 20, color: '#315a48', fontSize: 14, lineHeight: 1.6 }}>
-                      {diagnostics.options.map((option) => {
-                        const price = optionPrice(option.id)
-                        return <li key={option.id}><b>{option.label}</b> — {price !== null ? euro(price) : 'selon devis'}</li>
-                      })}
-                    </ul>
-                    <p style={{ color: '#6f7d90', fontSize: 12, margin: '8px 0 0' }}>Options en supplément, non incluses dans le prix ci-dessus.</p>
+                    {diagnostics.options.map((option) => {
+                      const added = selectedOptions.has(option.id)
+                      return (
+                        <DiagnosticCard
+                          key={option.id}
+                          id={option.id}
+                          label={option.label}
+                          detail={OPTION_DETAIL[option.id]}
+                          tag={added ? { kind: 'added' } : { kind: 'option', price: optionPrice(option.id) }}
+                          onToggle={() => toggleOption(option.id)}
+                        />
+                      )
+                    })}
+                    {termitesOptionalAddOn && (
+                      <DiagnosticCard
+                        id="termites"
+                        label={termitesOptionalAddOn.label}
+                        detail={termitesOptionalAddOn.detail}
+                        tag={selectedOptions.has('termites') ? { kind: 'added' } : { kind: 'option', price: termitesOptionPrice() }}
+                        onToggle={() => toggleOption('termites')}
+                      />
+                    )}
+                    <p style={{ color: '#6f7d90', fontSize: 12, margin: '8px 0 0' }}>Cliquez sur une carte pour l’ajouter à votre demande ; son montant s’ajoute alors au prix ci-dessous.</p>
                   </div>
                 )}
 
-                <div style={{ padding: '18px 20px', borderRadius: 16, background: quoteOnRequest || noPackMatch ? '#fff8e6' : LIGHT, border: `1px solid ${quoteOnRequest || noPackMatch ? '#f0c76a' : '#dbe7f2'}`, marginBottom: 20 }}>
+                <div style={{ padding: '18px 20px', borderRadius: 16, background: quoteOnRequest || noPackMatch ? '#fff8e6' : NAVY, border: quoteOnRequest || noPackMatch ? '1px solid #f0c76a' : 'none', marginBottom: 20 }}>
                   {quoteOnRequest || noPackMatch ? (
                     <div style={{ color: '#7a5612', fontWeight: 900, fontSize: 17 }}>Nous vous répondons avec un devis personnalisé</div>
                   ) : (
-                    <div style={{ color: NAVY, fontWeight: 900, fontSize: 22 }}>À partir de {euro(totalPrice as number)} TTC</div>
+                    <>
+                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(totalPriceWithExtras as number)}</div>
+                      <div style={{ color: 'rgba(255,255,255,.7)', fontSize: 12, fontWeight: 700, marginTop: 4 }}>TVA incluse</div>
+                    </>
                   )}
                 </div>
 
                 <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f5f7fa', border: '1px solid #e2e8ef', color: '#52657a', fontSize: 12, lineHeight: 1.6, marginBottom: 22 }}>
-                  Estimation indicative, établie à partir des informations que vous avez déclarées. Elle ne constitue ni un devis ni un engagement. Les diagnostics obligatoires dépendent de la situation réelle du bien et de la réglementation en vigueur : ARIA Diagnostics les confirme après vérification. Le prix définitif peut différer si les informations sont inexactes ou incomplètes (surface, nombre de lots, dépendances, accès, etc.). Aucun devis n’est envoyé avant cette vérification.
+                  Devis établi sur la base des informations déclarées, sous réserve de conformité du bien constatée par ARIA Diagnostics.
                 </div>
 
                 <LeadCaptureForm context={{
                   propertyType,
                   purpose,
-                  estimatedPrice: totalPrice,
+                  estimatedPrice: totalPriceWithExtras,
                   diagnosticsSummary: {
                     propertyType,
                     sizeLabel: sizeLabels[sizeIndex],
                     purpose,
                     communeSlug,
                     constructionYear,
-                    heating,
+                    hasGas,
                     mandatory: diagnostics.mandatory.map((item) => ({ id: item.id, label: item.label })),
-                    toConfirm: diagnostics.toConfirm.map((item) => ({ id: item.id, label: item.label })),
+                    toConfirm: diagnostics.toConfirm.filter((item) => !item.optionalAddOn).map((item) => ({ id: item.id, label: item.label })),
                     options: diagnostics.options.map((option) => ({ id: option.id, label: option.label, price: optionPrice(option.id) })),
+                    addedToConfirm: diagnostics.toConfirm.filter((item) => selectedToConfirm.has(item.id)).map((item) => ({ id: item.id, label: item.label })),
+                    addedOptions: [
+                      ...diagnostics.options.filter((option) => selectedOptions.has(option.id)).map((option) => ({ id: option.id, label: option.label, price: optionPrice(option.id) })),
+                      ...(termitesOptionalAddOn && selectedOptions.has('termites') ? [{ id: 'termites', label: termitesOptionalAddOn.label, price: termitesOptionPrice() }] : []),
+                    ],
                     priceStatus: quoteOnRequest ? 'quote_on_request' : noPackMatch ? 'no_match' : 'estimated',
-                    totalPrice,
+                    totalPrice: totalPriceWithExtras,
                   },
                 }} />
 
