@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#062b59"/>
+  <text x="256" y="300" font-family="Arial, Helvetica, sans-serif" font-size="300" font-weight="900" fill="#ffffff" text-anchor="middle">A</text>
+  <rect x="171" y="330" width="170" height="7" rx="3.5" fill="#4db3e6"/>
+  <text x="256" y="378" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" letter-spacing="2" fill="#ffffff" text-anchor="middle">ARIA DIAGNOSTICS</text>
+</svg>
