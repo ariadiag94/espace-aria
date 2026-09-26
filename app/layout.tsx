@@ -14,9 +14,10 @@ export const metadata: Metadata = {
   },
 }
 
-// Icône provisoire (lettre "A" stylisée) : à remplacer par un vrai symbole
-// graphique ARIA dès qu'un logo carré haute résolution sera disponible
-// (voir public/icons/pwa/icon.svg et icon-maskable.svg, sources des PNG).
+// Icônes PWA générées depuis public/logo-aria-white.png (seul logo existant,
+// wordmark rectangulaire) centré sur un fond navy carré — solution
+// pragmatique en attendant un vrai symbole carré isolé, à remplacer si
+// besoin (voir la génération dans l'historique de la PR "PWA installable").
 export const viewport: Viewport = {
   themeColor: '#062b59',
 }
