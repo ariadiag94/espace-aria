@@ -54,11 +54,15 @@ type Purpose = 'sale' | 'rental' | 'alaCarte'
 type PropertyType = 'apartment' | 'house'
 
 const currentYear = new Date().getFullYear()
+// Libellés reformulés le 2026-09-26 (moins de chiffres explicites, plus
+// clair pour le client) : year reste le seul champ qui alimente le calcul
+// (isBefore1949/isBefore1997/isOldInstallation dans computeDiagnostics), ces
+// valeurs numériques ne changent pas — uniquement le texte affiché.
 const YEAR_BRACKETS = [
   { label: 'Avant 1949', year: 1930 },
-  { label: '1949 – 1996', year: 1970 },
-  { label: `1997 – ${currentYear - 15}`, year: currentYear - 15 },
-  { label: `${currentYear - 14} à aujourd’hui`, year: currentYear },
+  { label: 'Entre 1949 et 1997', year: 1970 },
+  { label: 'Après 1997', year: currentYear - 15 },
+  { label: 'Après 1997 et moins de 15 ans', year: currentYear },
 ]
 
 // Libellé de chaque diagnostic sélectionnable en mode "à la carte" ;
