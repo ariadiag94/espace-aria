@@ -9,6 +9,7 @@ const escapeHtml = (value: string) =>
 const PROPERTY_TYPE_LABEL: Record<string, string> = { apartment: 'Appartement', house: 'Maison' }
 const PURPOSE_LABEL: Record<string, string> = { sale: 'Vente', rental: 'Location', alaCarte: 'Diagnostics à la carte' }
 const DEPENDENCY_LABEL: Record<string, string> = { cave: 'Cave', garage: 'Garage', parking: 'Parking', autre: 'Autre' }
+const DTG_AUDIT_LABEL: Record<string, string> = { oui: 'Oui', non: 'Non', inconnu: 'Ne sait pas' }
 const PRICE_STATUS_LABEL: Record<string, string> = {
   estimated: 'Estimé',
   quote_on_request: 'Devis personnalisé (hors grille de packs)',
@@ -49,6 +50,14 @@ const summaryLines = (summary: unknown): string[] => {
   }
   if (s.assainissement === true) lines.push('Assainissement : oui')
   if (typeof s.hasGas === 'boolean') lines.push(`Installation gaz : ${s.hasGas ? 'oui' : 'non'}`)
+  if (s.heatingType === 'collectif' || s.heatingType === 'individuel') {
+    lines.push(`Chauffage : ${s.heatingType === 'collectif' ? 'Collectif' : 'Individuel'}`)
+  }
+  if (s.heatingType === 'collectif') {
+    if (typeof s.heatingSystemType === 'string' && s.heatingSystemType) lines.push(`Type de chauffage collectif : ${s.heatingSystemType}`)
+    if (typeof s.heatingCharges === 'string' && s.heatingCharges) lines.push(`Charges de chauffage : ${s.heatingCharges}`)
+    if (DTG_AUDIT_LABEL[s.dtgAuditAvailable as string]) lines.push(`Audit DTG disponible : ${DTG_AUDIT_LABEL[s.dtgAuditAvailable as string]}`)
+  }
   if (typeof s.priceStatus === 'string' && PRICE_STATUS_LABEL[s.priceStatus]) {
     lines.push(`Statut du prix : ${PRICE_STATUS_LABEL[s.priceStatus]}`)
   }

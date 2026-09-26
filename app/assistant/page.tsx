@@ -216,6 +216,21 @@ const DEPENDENCY_OPTIONS: { id: string; label: string }[] = [
   { id: 'autre', label: 'Autre' },
 ]
 
+// Complément chauffage collectif (2026-09-26), collecté directement dans ce
+// formulaire — le wizard /assistant ne pose plus la question chauffage
+// (retirée au profit de la question gaz, voir plus haut). Uniquement affiché
+// pour un appartement (le "collectif" n'a pas de sens pour une maison
+// isolée) ; entièrement optionnel, aucun impact sur canSubmit ni sur le prix.
+// Valeurs alignées sur les contraintes CHECK de
+// supabase/migrations/015_leads_heating_fields.sql.
+type HeatingType = 'collectif' | 'individuel'
+type DtgAuditAvailable = 'oui' | 'non' | 'inconnu'
+const DTG_AUDIT_OPTIONS: { id: DtgAuditAvailable; label: string }[] = [
+  { id: 'oui', label: 'Oui' },
+  { id: 'non', label: 'Non' },
+  { id: 'inconnu', label: 'Je ne sais pas' },
+]
+
 // Formulaire de capture de la demande client, affiché sous le prix sur
 // l'écran "result" (vente/location et "à la carte"). Écrit directement dans
 // public.leads (RLS : insert ouvert à anon/authenticated, voir
@@ -243,8 +258,13 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
   const [address, setAddress] = useState('')
   const [floor, setFloor] = useState('')
   const [dependencies, setDependencies] = useState<Set<string>>(new Set())
+  const [heatingType, setHeatingType] = useState<HeatingType | null>(null)
+  const [heatingSystemType, setHeatingSystemType] = useState('')
+  const [heatingCharges, setHeatingCharges] = useState('')
+  const [dtgAuditAvailable, setDtgAuditAvailable] = useState<DtgAuditAvailable | null>(null)
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
 
+  // Bloc chauffage entièrement optionnel : n'entre jamais dans canSubmit.
   const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0 && floor.trim().length > 0 && dependencies.size > 0
 
   const toggleDependency = (id: string) => {
@@ -276,7 +296,17 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
       property_type: context.propertyType,
       purpose: context.purpose,
       estimated_price: context.estimatedPrice,
-      diagnostics_summary: context.diagnosticsSummary,
+      heating_type: heatingType,
+      heating_system_type: heatingType === 'collectif' ? (heatingSystemType.trim() || null) : null,
+      heating_charges: heatingType === 'collectif' ? (heatingCharges.trim() || null) : null,
+      dtg_audit_available: heatingType === 'collectif' ? dtgAuditAvailable : null,
+      diagnostics_summary: {
+        ...context.diagnosticsSummary,
+        heatingType,
+        heatingSystemType: heatingType === 'collectif' ? (heatingSystemType.trim() || null) : null,
+        heatingCharges: heatingType === 'collectif' ? (heatingCharges.trim() || null) : null,
+        dtgAuditAvailable: heatingType === 'collectif' ? dtgAuditAvailable : null,
+      },
     }
 
     const { error } = await client.from('leads').insert(payload)
@@ -325,6 +355,57 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
           ))}
         </div>
       </div>
+
+      {context.propertyType === 'apartment' && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ color: NAVY, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Chauffage (si connu)</div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {(['collectif', 'individuel'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setHeatingType((v) => (v === value ? null : value))}
+                style={{ padding: '8px 14px', borderRadius: 10, border: `2px solid ${heatingType === value ? SKY : '#dbe7f2'}`, background: heatingType === value ? '#eaf5fc' : '#fff', color: NAVY, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+              >
+                {value === 'collectif' ? 'Collectif' : 'Individuel'}
+              </button>
+            ))}
+          </div>
+
+          {heatingType === 'collectif' && (
+            <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+              <input
+                className="diagassist-input"
+                placeholder="Type de chauffage (si connu) — ex. gaz collectif, fioul, réseau de chaleur"
+                value={heatingSystemType}
+                onChange={(e) => setHeatingSystemType(e.target.value)}
+              />
+              <input
+                className="diagassist-input"
+                placeholder="Charges de chauffage (si connu)"
+                value={heatingCharges}
+                onChange={(e) => setHeatingCharges(e.target.value)}
+              />
+              <div>
+                <div style={{ color: NAVY, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Audit DTG disponible ?</div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {DTG_AUDIT_OPTIONS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setDtgAuditAvailable((v) => (v === option.id ? null : option.id))}
+                      style={{ padding: '8px 14px', borderRadius: 10, border: `2px solid ${dtgAuditAvailable === option.id ? SKY : '#dbe7f2'}`, background: dtgAuditAvailable === option.id ? '#eaf5fc' : '#fff', color: NAVY, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <p style={{ color: '#9aa6b5', fontSize: 11, lineHeight: 1.5, margin: '0 0 14px' }}>
         En envoyant ce formulaire, vous acceptez d’être recontacté(e) par ARIA Diagnostics au sujet de votre demande. Vos données ne sont utilisées que dans ce cadre.
       </p>
