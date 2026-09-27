@@ -10,7 +10,7 @@ type Dossier = { id:string; dossier_name:string; status:string; created_at:strin
 
 function labelStatus(s:string) {
   const map:Record<string,string> = {
-    quote_sent:'Devis envoyé', quote_accepted:'Devis accepté', to_schedule:'À planifier', scheduled:'Planifié',
+    quote_sent:'Devis envoyé', quote_accepted:'Devis accepté', quote_refused:'Devis refusé', to_schedule:'À planifier', scheduled:'Planifié',
     reports_ready:'Rapports prêts', waiting_payment:'Règlement', completed:'Terminé', draft:'Brouillon'
   }
   return map[s] || s.replaceAll('_',' ')

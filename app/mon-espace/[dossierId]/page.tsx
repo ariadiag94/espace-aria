@@ -146,6 +146,22 @@ export default function MonEspaceDossierPage() {
       return
     }
 
+    // Synchronise dossiers.status (décision produit validée : accepté ->
+    // 'quote_accepted', refusé -> 'quote_refused' — voir
+    // supabase/migrations/023_dossiers_client_decision_sync.sql). Jamais
+    // bloquant : quotes.status est déjà la source de vérité de la décision,
+    // un échec ici est signalé sans laisser croire que la décision elle-même
+    // a échoué.
+    const dossierStatus = decision === 'accepted' ? 'quote_accepted' : 'quote_refused'
+    const { error: dossierError } = await client
+      .from('dossiers')
+      .update({ status: dossierStatus })
+      .eq('id', dossierId)
+
+    if (dossierError) {
+      setDecisionError((prev) => ({ ...prev, [quote.id]: `Votre décision a bien été enregistrée, mais le statut du dossier n’a pas pu être mis à jour (${dossierError.message}).` }))
+    }
+
     if (dossier.contact_email) {
       fetch('/api/quotes/decision-notify', {
         method: 'POST',
