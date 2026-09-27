@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSignupClient } from '@/lib/pro-signup'
+import { dossierStatusLabel } from '@/lib/dossier-status-labels'
 
 const NAVY = '#062b59'
 const LIGHT = '#eef1f5'
@@ -121,7 +122,7 @@ export default function MonEspacePage() {
               <div style={{ color: '#6f7d90', fontSize: 13, marginTop: 2 }}>{dossier.property_address || '—'}</div>
               {dossier.status && (
                 <span style={{ display: 'inline-flex', marginTop: 8, borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700, background: LIGHT, color: NAVY }}>
-                  {dossier.status.replaceAll('_', ' ')}
+                  {dossierStatusLabel(dossier.status)}
                 </span>
               )}
             </Link>

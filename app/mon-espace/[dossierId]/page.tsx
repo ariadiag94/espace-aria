@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSignupClient } from '@/lib/pro-signup'
+import { quoteStatusLabel } from '@/lib/dossier-status-labels'
 
 const NAVY = '#062b59'
 const SKY = '#4db3e6'
@@ -36,7 +37,6 @@ type DocumentRow = { id: string; title: string | null; document_type: string | n
 
 type AccessState = 'checking' | 'authorized' | 'unavailable' | 'not-found'
 
-const QUOTE_STATUS_LABEL: Record<string, string> = { sent: 'En attente de votre décision', accepted: 'Accepté', refused: 'Refusé' }
 
 export default function MonEspaceDossierPage() {
   const router = useRouter()
@@ -146,6 +146,22 @@ export default function MonEspaceDossierPage() {
       return
     }
 
+    // Synchronise dossiers.status (décision produit validée : accepté ->
+    // 'quote_accepted', refusé -> 'quote_refused' — voir
+    // supabase/migrations/023_dossiers_client_decision_sync.sql). Jamais
+    // bloquant : quotes.status est déjà la source de vérité de la décision,
+    // un échec ici est signalé sans laisser croire que la décision elle-même
+    // a échoué.
+    const dossierStatus = decision === 'accepted' ? 'quote_accepted' : 'quote_refused'
+    const { error: dossierError } = await client
+      .from('dossiers')
+      .update({ status: dossierStatus })
+      .eq('id', dossierId)
+
+    if (dossierError) {
+      setDecisionError((prev) => ({ ...prev, [quote.id]: `Votre décision a bien été enregistrée, mais le statut du dossier n’a pas pu être mis à jour (${dossierError.message}).` }))
+    }
+
     if (dossier.contact_email) {
       fetch('/api/quotes/decision-notify', {
         method: 'POST',
@@ -217,7 +233,7 @@ export default function MonEspaceDossierPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <b style={{ color: NAVY, fontSize: 14 }}>{quote.quote_number}</b>
                 <span style={{ display: 'inline-flex', borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700, background: quote.status === 'sent' ? '#fff8e6' : quote.status === 'accepted' ? '#eaf6ee' : '#fff0f0', color: quote.status === 'sent' ? '#7a5612' : quote.status === 'accepted' ? '#1f5c34' : '#a62d2d' }}>
-                  {QUOTE_STATUS_LABEL[quote.status] || quote.status}
+                  {quoteStatusLabel(quote.status)}
                 </span>
               </div>
 
