@@ -17,40 +17,67 @@ const REASON_MESSAGE: Record<string, string> = {
 
 // Un chemin relatif uniquement (jamais une URL absolue) : évite qu'un lien
 // "next" forgé ne redirige l'utilisateur vers un site externe après connexion.
+// null si absent/invalide : dans ce cas la destination par défaut se décide
+// dynamiquement (voir resolveDefaultDestination) plutôt que de supposer
+// /dashboard pour tout le monde — un compte pro n'a rien à faire sur le
+// dashboard staff.
 const safeNextPath = (value: string | null) =>
-  value && value.startsWith('/') && !value.startsWith('//') ? value : '/dashboard'
+  value && value.startsWith('/') && !value.startsWith('//') ? value : null
+
+// Chantier "compte pro", portail client V1 (2026-09-27) : sans next explicite
+// (lien générique vers /login, ou next invalide), la destination dépend du
+// type de compte — un membre interne (profiles.role in ('admin','staff'))
+// reste dirigé vers /dashboard comme avant, tout le reste (compte pro
+// aujourd'hui, compte individuel plus tard) part vers /mon-espace, qui gère
+// lui-même l'affinage pending/rejected/no-account (même pattern que la garde
+// de /assistant, Phase 4). En cas d'échec de la vérification (RPC en erreur),
+// on ne suppose jamais /dashboard par défaut : direction la plus restrictive.
+const resolveDefaultDestination = async (explicitNext: string | null) => {
+  if (explicitNext) return explicitNext
+  const { data: isStaff } = await supabase.rpc('is_staff_or_admin')
+  return isStaff ? '/dashboard' : '/mon-espace'
+}
 
 function LoginPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const reason = searchParams.get('reason')
-  const next = safeNextPath(searchParams.get('next'))
+  const explicitNext = safeNextPath(searchParams.get('next'))
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   // Session déjà active + reason renseigné : l'utilisateur est déjà connecté
   // mais n'a pas accès à la page d'où il vient (pro en attente/refusé) — dans
-  // ce cas précis, ne pas le renvoyer silencieusement vers /dashboard (le
-  // comportement normal ci-dessous), afficher le message à la place.
+  // ce cas précis, ne pas le renvoyer silencieusement vers sa destination par
+  // défaut (le comportement normal ci-dessous), afficher le message à la place.
   const [alreadyLoggedInBlocked, setAlreadyLoggedInBlocked] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        if (reason) setAlreadyLoggedInBlocked(true)
-        else router.replace(next)
+    let cancelled = false
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return
+      if (reason) {
+        if (!cancelled) setAlreadyLoggedInBlocked(true)
+        return
       }
+      const destination = await resolveDefaultDestination(explicitNext)
+      if (!cancelled) router.replace(destination)
     })
-  }, [router, reason, next])
+    return () => { cancelled = true }
+  }, [router, reason, explicitNext])
 
   async function submit(e: FormEvent) {
     e.preventDefault()
     setError(''); setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setLoading(false)
+      return setError('Connexion impossible. Vérifie ton e-mail et ton mot de passe.')
+    }
+    const destination = await resolveDefaultDestination(explicitNext)
     setLoading(false)
-    if (error) return setError('Connexion impossible. Vérifie ton e-mail et ton mot de passe.')
-    router.replace(next)
+    router.replace(destination)
   }
 
   async function logout() {
