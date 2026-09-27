@@ -199,6 +199,48 @@ function DiagnosticCard({ id, label, detail, tag, onToggle }: { id: string; labe
   )
 }
 
+// Chantier "compte pro", Phase 5 : uniquement affiché à un compte pro validé
+// (jamais à un membre interne, qui n'a pas de compte pro ; jamais à un
+// visiteur, /assistant étant désormais fermé au grand public — voir Phase 4).
+// Le choix conditionne la remise de 10 % (voir applyPayerDiscount dans
+// AssistantPage), jamais appliquée par défaut avant un choix explicite.
+function PayerChoice({ proAccountName, payerType, onSelect }: { proAccountName: string | null; payerType: 'pro' | 'client_final' | null; onSelect: (value: 'pro' | 'client_final') => void }) {
+  const optionStyle = (selected: boolean) => ({
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: 12,
+    padding: '14px 18px',
+    borderRadius: 14,
+    border: `2px solid ${selected ? SKY : '#dbe7f2'}`,
+    background: '#fff',
+    color: NAVY,
+    fontSize: 15,
+    fontWeight: 700,
+    cursor: 'pointer',
+    textAlign: 'left' as const,
+    fontFamily: 'inherit',
+    width: '100%',
+  })
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ color: NAVY, fontWeight: 900, fontSize: 14, marginBottom: 10 }}>Qui règle cette demande ?</div>
+      <div style={{ display: 'grid', gap: 10 }}>
+        <button type="button" onClick={() => onSelect('pro')} style={optionStyle(payerType === 'pro')}>
+          <span>Nous-mêmes{proAccountName ? ` (${proAccountName})` : ''}</span>
+          <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '6px 12px', fontSize: 12, fontWeight: 700, background: SKY, color: '#fff' }}>- 10 %</span>
+        </button>
+        <button type="button" onClick={() => onSelect('client_final')} style={optionStyle(payerType === 'client_final')}>
+          Le client final (propriétaire du bien)
+        </button>
+      </div>
+      {payerType === null && (
+        <p style={{ color: '#9a8355', fontSize: 12, margin: '8px 0 0' }}>Merci de préciser qui règle cette demande avant de continuer.</p>
+      )}
+    </div>
+  )
+}
+
 type Screen = 'commune' | 'purpose' | 'propertyType' | 'gas' | 'surfaceAttestation' | 'year' | 'checklist' | 'size' | 'result'
 
 // Contexte de l'estimation au moment où le client envoie sa demande, transmis
@@ -210,6 +252,9 @@ type LeadContext = {
   purpose: Purpose
   estimatedPrice: number | null
   diagnosticsSummary: Record<string, unknown>
+  // Chantier "compte pro", Phase 5 : qui règle cette demande précise (null
+  // hors contexte pro — jamais demandé à un membre interne ni à un visiteur).
+  payerType: 'pro' | 'client_final' | null
 }
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/
@@ -302,12 +347,14 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
       property_type: context.propertyType,
       purpose: context.purpose,
       estimated_price: context.estimatedPrice,
+      payer_type: context.payerType,
       heating_type: heatingType,
       heating_system_type: heatingType === 'collectif' ? (heatingSystemType.trim() || null) : null,
       heating_charges: heatingType === 'collectif' ? (heatingCharges.trim() || null) : null,
       dtg_audit_available: heatingType === 'collectif' ? dtgAuditAvailable : null,
       diagnostics_summary: {
         ...context.diagnosticsSummary,
+        payerType: context.payerType,
         heatingType,
         heatingSystemType: heatingType === 'collectif' ? (heatingSystemType.trim() || null) : null,
         heatingCharges: heatingType === 'collectif' ? (heatingCharges.trim() || null) : null,
@@ -437,6 +484,13 @@ export default function AssistantPage() {
   // service Supabase indisponible, on refuse l'accès plutôt que de l'autoriser
   // par défaut (échec fermé, pas ouvert).
   const [accessState, setAccessState] = useState<'checking' | 'authorized' | 'unavailable'>('checking')
+  // Chantier "compte pro", Phase 5 : seul un compte pro validé (pas un
+  // membre interne, qui n'a pas de compte pro) se voit proposer le choix du
+  // payeur + la remise de 10 %. proAccountName sert uniquement à
+  // personnaliser le libellé du bouton ("Nous-mêmes (Agence X)").
+  const [isPro, setIsPro] = useState(false)
+  const [proAccountName, setProAccountName] = useState<string | null>(null)
+  const [payerType, setPayerType] = useState<'pro' | 'client_final' | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -453,7 +507,15 @@ export default function AssistantPage() {
       }
       const { data: hasAccess } = await client.rpc('has_assistant_access')
       if (hasAccess) {
-        if (!cancelled) setAccessState('authorized')
+        const { data: proAccountRows } = await client.rpc('my_validated_pro_account')
+        const proAccount = Array.isArray(proAccountRows) ? proAccountRows[0] : null
+        if (!cancelled) {
+          setAccessState('authorized')
+          if (proAccount) {
+            setIsPro(true)
+            setProAccountName(proAccount.company_name || null)
+          }
+        }
         return
       }
       const { data: status } = await client.rpc('my_client_account_validation_status')
@@ -556,6 +618,9 @@ export default function AssistantPage() {
     setALaCarteAssainissement(false)
     setSelectedToConfirm(new Set())
     setSelectedOptions(new Set())
+    // payerType concerne une demande précise : une nouvelle demande peut
+    // avoir un payeur différent, on ne garde jamais le choix précédent.
+    setPayerType(null)
   }
 
   const selectCommune = (slug: string) => { setCommuneSlug(slug); advance() }
@@ -563,8 +628,8 @@ export default function AssistantPage() {
   // vente, Boutin en location) : si l'objet change, la réponse précédente
   // ne s'applique plus au bon libellé, donc on la réinitialise. La sélection
   // "à la carte" ne s'applique plus si on change d'objet.
-  const selectPurpose = (p: Purpose) => { setPurpose(p); setHasSurfaceAttestation(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); setSelectedToConfirm(new Set()); setSelectedOptions(new Set()); advance() }
-  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHasGas(null); setHasSurfaceAttestation(null); setSizeIndex(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); setSelectedToConfirm(new Set()); setSelectedOptions(new Set()); advance() }
+  const selectPurpose = (p: Purpose) => { setPurpose(p); setHasSurfaceAttestation(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); setSelectedToConfirm(new Set()); setSelectedOptions(new Set()); setPayerType(null); advance() }
+  const selectPropertyType = (t: PropertyType) => { setPropertyType(t); setHasGas(null); setHasSurfaceAttestation(null); setSizeIndex(null); setCheckedItems(new Set()); setALaCarteAssainissement(false); setSelectedToConfirm(new Set()); setSelectedOptions(new Set()); setPayerType(null); advance() }
   const selectHasGas = (v: boolean) => { setHasGas(v); advance() }
   const selectSurfaceAttestation = (v: boolean) => { setHasSurfaceAttestation(v); advance() }
   // Changer l'année peut faire basculer le seuil mission minimale / pack
@@ -718,6 +783,17 @@ export default function AssistantPage() {
   const extrasPrice = Array.from(selectedToConfirm).reduce((sum, id) => sum + (toConfirmAddPrice(id) ?? 0), 0)
     + Array.from(selectedOptions).reduce((sum, id) => sum + (id === 'termites' ? (termitesOptionPrice() ?? 0) : (optionPrice(id) ?? 0)), 0)
   const totalPriceWithExtras = totalPrice !== null ? totalPrice + extrasPrice : null
+
+  // Chantier "compte pro", Phase 5 : remise de 10 % sur le montant TTC,
+  // arrondie à l'euro supérieur — jamais appliquée par défaut, seulement
+  // quand le compte pro a explicitement choisi de régler lui-même cette
+  // demande (payerType === 'pro'). Si le client final paie, ou si payerType
+  // n'a pas encore été choisi, ou hors contexte pro (staff/admin, isPro
+  // false), le prix reste inchangé.
+  const applyPayerDiscount = (price: number | null) =>
+    price !== null && isPro && payerType === 'pro' ? Math.ceil(price * 0.9) : price
+  const finalPrice = applyPayerDiscount(totalPriceWithExtras)
+  const finalALaCartePrice = applyPayerDiscount(alaCartePrice)
 
   // Badges de résumé du bien, affichés dès qu'une info est connue (pas
   // seulement sur l'écran résultat) et enrichis au fil du parcours. Pas de
@@ -929,31 +1005,36 @@ export default function AssistantPage() {
                     <div style={{ color: '#7a5612', fontWeight: 900, fontSize: 17 }}>Nous vous répondons avec un devis personnalisé</div>
                   ) : (
                     <>
-                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(alaCartePrice as number)}</div>
+                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(finalALaCartePrice as number)}</div>
                       <div style={{ color: 'rgba(255,255,255,.7)', fontSize: 12, fontWeight: 700, marginTop: 4 }}>TVA incluse</div>
                     </>
                   )}
                 </div>
 
+                {isPro && <PayerChoice proAccountName={proAccountName} payerType={payerType} onSelect={setPayerType} />}
+
                 <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f5f7fa', border: '1px solid #e2e8ef', color: '#52657a', fontSize: 12, lineHeight: 1.6, marginBottom: 22 }}>
                   Devis établi sur la base des informations déclarées, sous réserve de conformité du bien constatée par ARIA Diagnostics.
                 </div>
 
-                <LeadCaptureForm context={{
-                  propertyType,
-                  purpose: 'alaCarte',
-                  estimatedPrice: alaCartePrice,
-                  diagnosticsSummary: {
+                {(!isPro || payerType !== null) && (
+                  <LeadCaptureForm context={{
                     propertyType,
-                    sizeLabel: sizeLabels[sizeIndex],
                     purpose: 'alaCarte',
-                    communeSlug,
-                    checkedItems: Array.from(alaCarteItems),
-                    assainissement: alaCarteAssainissement,
-                    priceStatus: alaCarteQuoteOnRequest ? 'quote_on_request' : alaCarteNoMatch ? 'no_match' : 'estimated',
-                    totalPrice: alaCartePrice,
-                  },
-                }} />
+                    estimatedPrice: finalALaCartePrice,
+                    payerType: isPro ? payerType : null,
+                    diagnosticsSummary: {
+                      propertyType,
+                      sizeLabel: sizeLabels[sizeIndex],
+                      purpose: 'alaCarte',
+                      communeSlug,
+                      checkedItems: Array.from(alaCarteItems),
+                      assainissement: alaCarteAssainissement,
+                      priceStatus: alaCarteQuoteOnRequest ? 'quote_on_request' : alaCarteNoMatch ? 'no_match' : 'estimated',
+                      totalPrice: finalALaCartePrice,
+                    },
+                  }} />
+                )}
 
                 <button className="diagassist-restart" onClick={restart}>Recommencer</button>
               </div>
@@ -974,7 +1055,7 @@ export default function AssistantPage() {
                     </div>
                   </div>
                   <div style={{ color: '#fff', fontWeight: 900, fontSize: 24, textAlign: 'right' }}>
-                    {quoteOnRequest || noPackMatch ? 'Sur devis' : euro(totalPriceWithExtras as number)}
+                    {quoteOnRequest || noPackMatch ? 'Sur devis' : euro(finalPrice as number)}
                   </div>
                 </div>
 
@@ -1046,39 +1127,44 @@ export default function AssistantPage() {
                     <div style={{ color: '#7a5612', fontWeight: 900, fontSize: 17 }}>Nous vous répondons avec un devis personnalisé</div>
                   ) : (
                     <>
-                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(totalPriceWithExtras as number)}</div>
+                      <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(finalPrice as number)}</div>
                       <div style={{ color: 'rgba(255,255,255,.7)', fontSize: 12, fontWeight: 700, marginTop: 4 }}>TVA incluse</div>
                     </>
                   )}
                 </div>
 
+                {isPro && <PayerChoice proAccountName={proAccountName} payerType={payerType} onSelect={setPayerType} />}
+
                 <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f5f7fa', border: '1px solid #e2e8ef', color: '#52657a', fontSize: 12, lineHeight: 1.6, marginBottom: 22 }}>
                   Devis établi sur la base des informations déclarées, sous réserve de conformité du bien constatée par ARIA Diagnostics.
                 </div>
 
-                <LeadCaptureForm context={{
-                  propertyType,
-                  purpose,
-                  estimatedPrice: totalPriceWithExtras,
-                  diagnosticsSummary: {
+                {(!isPro || payerType !== null) && (
+                  <LeadCaptureForm context={{
                     propertyType,
-                    sizeLabel: sizeLabels[sizeIndex],
                     purpose,
-                    communeSlug,
-                    constructionYear,
-                    hasGas,
-                    mandatory: diagnostics.mandatory.map((item) => ({ id: item.id, label: item.label })),
-                    toConfirm: diagnostics.toConfirm.filter((item) => !item.optionalAddOn).map((item) => ({ id: item.id, label: item.label })),
-                    options: diagnostics.options.map((option) => ({ id: option.id, label: option.label, price: optionPrice(option.id) })),
-                    addedToConfirm: diagnostics.toConfirm.filter((item) => selectedToConfirm.has(item.id)).map((item) => ({ id: item.id, label: item.label })),
-                    addedOptions: [
-                      ...diagnostics.options.filter((option) => selectedOptions.has(option.id)).map((option) => ({ id: option.id, label: option.label, price: optionPrice(option.id) })),
-                      ...(termitesOptionalAddOn && selectedOptions.has('termites') ? [{ id: 'termites', label: termitesOptionalAddOn.label, price: termitesOptionPrice() }] : []),
-                    ],
-                    priceStatus: quoteOnRequest ? 'quote_on_request' : noPackMatch ? 'no_match' : 'estimated',
-                    totalPrice: totalPriceWithExtras,
-                  },
-                }} />
+                    estimatedPrice: finalPrice,
+                    payerType: isPro ? payerType : null,
+                    diagnosticsSummary: {
+                      propertyType,
+                      sizeLabel: sizeLabels[sizeIndex],
+                      purpose,
+                      communeSlug,
+                      constructionYear,
+                      hasGas,
+                      mandatory: diagnostics.mandatory.map((item) => ({ id: item.id, label: item.label })),
+                      toConfirm: diagnostics.toConfirm.filter((item) => !item.optionalAddOn).map((item) => ({ id: item.id, label: item.label })),
+                      options: diagnostics.options.map((option) => ({ id: option.id, label: option.label, price: optionPrice(option.id) })),
+                      addedToConfirm: diagnostics.toConfirm.filter((item) => selectedToConfirm.has(item.id)).map((item) => ({ id: item.id, label: item.label })),
+                      addedOptions: [
+                        ...diagnostics.options.filter((option) => selectedOptions.has(option.id)).map((option) => ({ id: option.id, label: option.label, price: optionPrice(option.id) })),
+                        ...(termitesOptionalAddOn && selectedOptions.has('termites') ? [{ id: 'termites', label: termitesOptionalAddOn.label, price: termitesOptionPrice() }] : []),
+                      ],
+                      priceStatus: quoteOnRequest ? 'quote_on_request' : noPackMatch ? 'no_match' : 'estimated',
+                      totalPrice: finalPrice,
+                    },
+                  }} />
+                )}
 
                 <button className="diagassist-restart" onClick={restart}>Recommencer</button>
               </div>
