@@ -28,6 +28,12 @@ const NAVY = '#062b59'
 const SKY = '#4db3e6'
 const LIGHT = '#eef1f5'
 
+// Chantier "compte pro", Phase 5 : remise appliquée dès que le donneur
+// d'ordre (l'utilisateur connecté sur /assistant) est un compte pro validé —
+// indépendamment du choix "qui règle cette demande" (voir applyPayerDiscount
+// dans AssistantPage). Constante unique, à ajuster ici seulement.
+const PRO_DISCOUNT_RATE = 0.10
+
 const euro = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
 
 // Icônes sobres (trait, currentColor) pour le bandeau d'en-tête du résultat
@@ -202,8 +208,10 @@ function DiagnosticCard({ id, label, detail, tag, onToggle }: { id: string; labe
 // Chantier "compte pro", Phase 5 : uniquement affiché à un compte pro validé
 // (jamais à un membre interne, qui n'a pas de compte pro ; jamais à un
 // visiteur, /assistant étant désormais fermé au grand public — voir Phase 4).
-// Le choix conditionne la remise de 10 % (voir applyPayerDiscount dans
-// AssistantPage), jamais appliquée par défaut avant un choix explicite.
+// Ce choix ne conditionne plus le prix (la remise pro s'applique dès que le
+// donneur d'ordre est un compte pro validé, quel que soit le payeur choisi
+// — voir applyPayerDiscount dans AssistantPage) : il sert uniquement à
+// enregistrer qui règle la facture, pour la facturation en aval.
 function PayerChoice({ proAccountName, payerType, onSelect }: { proAccountName: string | null; payerType: 'pro' | 'client_final' | null; onSelect: (value: 'pro' | 'client_final') => void }) {
   const optionStyle = (selected: boolean) => ({
     display: 'flex' as const,
@@ -228,7 +236,6 @@ function PayerChoice({ proAccountName, payerType, onSelect }: { proAccountName: 
       <div style={{ display: 'grid', gap: 10 }}>
         <button type="button" onClick={() => onSelect('pro')} style={optionStyle(payerType === 'pro')}>
           <span>Nous-mêmes{proAccountName ? ` (${proAccountName})` : ''}</span>
-          <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '6px 12px', fontSize: 12, fontWeight: 700, background: SKY, color: '#fff' }}>- 10 %</span>
         </button>
         <button type="button" onClick={() => onSelect('client_final')} style={optionStyle(payerType === 'client_final')}>
           Le client final (propriétaire du bien)
@@ -784,14 +791,15 @@ export default function AssistantPage() {
     + Array.from(selectedOptions).reduce((sum, id) => sum + (id === 'termites' ? (termitesOptionPrice() ?? 0) : (optionPrice(id) ?? 0)), 0)
   const totalPriceWithExtras = totalPrice !== null ? totalPrice + extrasPrice : null
 
-  // Chantier "compte pro", Phase 5 : remise de 10 % sur le montant TTC,
-  // arrondie à l'euro supérieur — jamais appliquée par défaut, seulement
-  // quand le compte pro a explicitement choisi de régler lui-même cette
-  // demande (payerType === 'pro'). Si le client final paie, ou si payerType
-  // n'a pas encore été choisi, ou hors contexte pro (staff/admin, isPro
+  // Chantier "compte pro", Phase 5 (ajustement 2026-09-27) : remise de
+  // PRO_DISCOUNT_RATE sur le montant TTC, arrondie à l'euro supérieur —
+  // appliquée dès que le donneur d'ordre (l'utilisateur connecté) est un
+  // compte pro validé (isPro), indépendamment de qui règle la facture
+  // ensuite (payerType, enregistré séparément pour la facturation mais qui
+  // ne conditionne plus le prix). Hors contexte pro (staff/admin, isPro
   // false), le prix reste inchangé.
   const applyPayerDiscount = (price: number | null) =>
-    price !== null && isPro && payerType === 'pro' ? Math.ceil(price * 0.9) : price
+    price !== null && isPro ? Math.ceil(price * (1 - PRO_DISCOUNT_RATE)) : price
   const finalPrice = applyPayerDiscount(totalPriceWithExtras)
   const finalALaCartePrice = applyPayerDiscount(alaCartePrice)
 
@@ -1005,6 +1013,11 @@ export default function AssistantPage() {
                     <div style={{ color: '#7a5612', fontWeight: 900, fontSize: 17 }}>Nous vous répondons avec un devis personnalisé</div>
                   ) : (
                     <>
+                      {isPro && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '5px 12px', fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,.16)', color: '#fff', marginBottom: 8 }}>
+                          Tarif préférentiel partenaire (-{Math.round(PRO_DISCOUNT_RATE * 100)} %)
+                        </div>
+                      )}
                       <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(finalALaCartePrice as number)}</div>
                       <div style={{ color: 'rgba(255,255,255,.7)', fontSize: 12, fontWeight: 700, marginTop: 4 }}>TVA incluse</div>
                     </>
@@ -1127,6 +1140,11 @@ export default function AssistantPage() {
                     <div style={{ color: '#7a5612', fontWeight: 900, fontSize: 17 }}>Nous vous répondons avec un devis personnalisé</div>
                   ) : (
                     <>
+                      {isPro && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '5px 12px', fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,.16)', color: '#fff', marginBottom: 8 }}>
+                          Tarif préférentiel partenaire (-{Math.round(PRO_DISCOUNT_RATE * 100)} %)
+                        </div>
+                      )}
                       <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(finalPrice as number)}</div>
                       <div style={{ color: 'rgba(255,255,255,.7)', fontSize: 12, fontWeight: 700, marginTop: 4 }}>TVA incluse</div>
                     </>
