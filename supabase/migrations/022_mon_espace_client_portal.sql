@@ -62,6 +62,15 @@ begin
     return new;
   end if;
 
+  -- decided_at est imposé côté serveur (now()), jamais la valeur envoyée
+  -- par le client : app/mon-espace/[dossierId]/page.tsx envoie
+  -- new Date().toISOString() depuis le navigateur, une valeur modifiable
+  -- via les devtools avant l'envoi de la requête — sans cette ligne, un
+  -- client pourrait forger n'importe quelle date de décision. Le frontend
+  -- peut continuer à envoyer ce qu'il veut pour decided_at, c'est ignoré/
+  -- écrasé ici avant toute autre vérification.
+  new.decided_at := now();
+
   old_json := to_jsonb(old) - 'status' - 'decided_at';
   new_json := to_jsonb(new) - 'status' - 'decided_at';
   if old_json is distinct from new_json then
@@ -74,10 +83,6 @@ begin
 
   if new.status not in ('accepted', 'refused') then
     raise exception 'Statut cible invalide.';
-  end if;
-
-  if new.decided_at is null then
-    raise exception 'decided_at doit être renseigné.';
   end if;
 
   return new;
