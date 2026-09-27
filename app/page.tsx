@@ -1,8 +1,34 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { TrustindexWidget } from '@/components/TrustindexWidget'
 
-export default function Home() {
+const ARIA_GOOGLE_PLACE_ID = 'ChIJNaCHLkJz5kcR37FYeVZTLy0'
+
+type GoogleReviewSummary = { rating: number; total: number }
+
+// Fetch côté serveur uniquement (Home est un Server Component — pas de
+// directive 'use client' — la clé API n'est donc jamais envoyée au
+// navigateur). `next.revalidate` met en cache la réponse 24h (ISR) : la page
+// n'appelle l'API Google Places qu'une fois par jour au maximum, jamais à
+// chaque chargement. Si la clé est absente, le quota dépassé, ou toute autre
+// erreur : renvoie null plutôt que de faire échouer le rendu de la page —
+// l'appelant affiche alors un badge de repli discret.
+async function getGoogleReviewSummary(): Promise<GoogleReviewSummary | null> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY
+  if (!apiKey) return null
+  try {
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${ARIA_GOOGLE_PLACE_ID}&fields=rating,user_ratings_total&key=${apiKey}`
+    const response = await fetch(url, { next: { revalidate: 86400 } })
+    if (!response.ok) return null
+    const data = await response.json()
+    if (data.status !== 'OK' || typeof data.result?.rating !== 'number') return null
+    return { rating: data.result.rating, total: Number(data.result.user_ratings_total) || 0 }
+  } catch {
+    return null
+  }
+}
+
+export default async function Home() {
+  const googleReviews = await getGoogleReviewSummary()
   return (
     <main style={{ minHeight: '100vh', background: '#f8fbff', fontFamily: 'Arial,Helvetica,sans-serif' }}>
       <style>{`
@@ -44,21 +70,12 @@ export default function Home() {
             <div style={{ marginTop: 22 }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 999, background: 'rgba(77,179,230,.12)', border: '1px solid rgba(77,179,230,.35)', color: '#fff', fontSize: 13, fontWeight: 700 }}>
                 <span style={{ color: '#f5c542', letterSpacing: 2 }}>★★★★★</span>
-                <span>5.0 · 106 avis Google</span>
+                {googleReviews && <span>{googleReviews.rating.toFixed(1)} · {googleReviews.total} avis Google</span>}
               </span>
             </div>
           </div>
         </div>
       </div>
-
-      <section className="avis-clients" style={{ padding: '60px 20px', textAlign: 'center' }}>
-        <h2 style={{ color: '#062b59', marginBottom: '12px' }}>Ce que disent nos clients</h2>
-        <p style={{ color: '#555', maxWidth: '600px', margin: '0 auto 20px' }}>
-          La satisfaction de nos clients est au cœur de notre activité. Découvrez
-          les avis laissés après leurs interventions avec ARIA Diagnostics.
-        </p>
-        <TrustindexWidget />
-      </section>
     </main>
   )
 }
