@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { ACCOUNT_TYPE_OPTIONS, createProAccount, getSignupClient } from '@/lib/pro-signup'
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/
 // Minimum exigé par la configuration Auth de ce projet Supabase (constaté via
@@ -11,33 +11,7 @@ const EMAIL_PATTERN = /^\S+@\S+\.\S+$/
 // l'utilisateur découvrir la contrainte seulement après un échec de soumission.
 const MIN_PASSWORD_LENGTH = 8
 
-// Catégories professionnelles uniquement (account_type de client_accounts
-// inclut aussi 'individual', jamais proposé ici — réservé aux dossiers créés
-// par le staff pour un particulier).
-const ACCOUNT_TYPE_OPTIONS: { id: string; label: string }[] = [
-  { id: 'agency', label: 'Agence immobilière' },
-  { id: 'syndic', label: 'Syndic de copropriété' },
-  { id: 'notary', label: 'Notaire' },
-  { id: 'landlord', label: 'Bailleur / Propriétaire' },
-  { id: 'company', label: 'Entreprise' },
-  { id: 'other', label: 'Autre professionnel' },
-]
-
-// Client dédié (pas lib/supabase.ts, qui lève une exception au chargement du
-// module si les variables d'env sont absentes) : /inscription-pro est une
-// page publique, elle doit continuer à s'afficher même si Supabase est mal
-// configuré — seul ce formulaire doit échouer proprement dans ce cas (même
-// principe que getLeadsClient() dans app/assistant/page.tsx). Contrairement
-// à ce client jetable, la persistance de session est activée ici : on crée
-// un vrai compte utilisateur destiné à être réutilisé.
-const getSignupClient = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-  if (!url || !key) return null
-  return createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
-}
-
-type Status = 'idle' | 'submitting' | 'done' | 'error'
+type Status = 'idle' | 'submitting' | 'done' | 'awaiting-confirmation' | 'error'
 
 export default function InscriptionProPage() {
   const [email, setEmail] = useState('')
@@ -51,12 +25,6 @@ export default function InscriptionProPage() {
   const [justificatif, setJustificatif] = useState('')
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
-  // Confirmation email activée sur ce projet Supabase si signUp() ne renvoie
-  // aucune session : on ne peut pas lire ce réglage autrement depuis ce repo
-  // (comme is_internal(), c'est un paramètre du projet Supabase live, jamais
-  // versionné) — on s'adapte donc dynamiquement à la réponse plutôt que de
-  // supposer un réglage fixe.
-  const [emailConfirmationRequired, setEmailConfirmationRequired] = useState(false)
 
   const canSubmit = EMAIL_PATTERN.test(email.trim())
     && password.trim().length >= MIN_PASSWORD_LENGTH
@@ -78,9 +46,29 @@ export default function InscriptionProPage() {
       return
     }
 
+    // Les informations du formulaire sont passées en user_metadata : la
+    // confirmation email étant activée sur ce projet Supabase (constaté lors
+    // d'un test réel), aucune session n'est disponible ici pour écrire tout
+    // de suite dans client_accounts/account_memberships — ces données
+    // doivent survivre jusqu'à ce que l'utilisateur clique le lien de
+    // confirmation et atterrisse sur /inscription-pro/finalisation avec une
+    // vraie session, sans dépendre d'un stockage intermédiaire (localStorage,
+    // etc.) qui ne survivrait pas forcément au changement d'onglet/appareil.
     const { data: signUpData, error: signUpError } = await client.auth.signUp({
       email: email.trim(),
       password,
+      options: {
+        data: {
+          company_name: companyName.trim(),
+          account_type: accountType,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone: phone.trim(),
+          siret: siret.trim(),
+          justificatif: justificatif.trim(),
+        },
+        emailRedirectTo: `${window.location.origin}/inscription-pro/finalisation`,
+      },
     })
 
     if (signUpError) {
@@ -111,59 +99,50 @@ export default function InscriptionProPage() {
       return
     }
 
-    setEmailConfirmationRequired(!signUpData.session)
-
-    // Id choisi côté client plutôt qu'un .select() après insert : si
-    // client_accounts n'accorde pas de droit SELECT à ce rôle, .select()
-    // échouerait silencieusement après un insert pourtant réussi — même
-    // précaution que pour public.leads dans app/assistant/page.tsx.
-    const accountId = crypto.randomUUID()
-    const { error: accountError } = await client.from('client_accounts').insert({
-      id: accountId,
-      account_type: accountType,
-      company_name: companyName.trim(),
-      first_name: firstName.trim(),
-      last_name: lastName.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      siret: siret.trim(),
-      justificatif: justificatif.trim() || null,
-      submitted_at: new Date().toISOString(),
-    })
-
-    if (accountError) {
-      setStatus('error')
-      setError(`Votre compte de connexion a été créé, mais les informations de votre demande n’ont pas pu être enregistrées (${accountError.message}). Merci de nous contacter directement au 06 15 70 36 70.`)
+    // Pas de session renvoyée : confirmation email requise, la création du
+    // compte pro est différée jusqu'à /inscription-pro/finalisation (voir
+    // cette page). Tenter l'insertion ici échouerait de toute façon (rôle
+    // anon, aucune policy ne l'autorise) — inutile de le faire pour ensuite
+    // afficher une erreur qui ne serait due qu'à une étape prématurée.
+    if (!signUpData.session) {
+      setStatus('awaiting-confirmation')
       return
     }
 
-    const { error: membershipError } = await client.from('account_memberships').insert({
-      account_id: accountId,
-      user_id: userId,
-      membership_role: 'owner',
-      active: true,
+    const { error: createError } = await createProAccount(client, userId, email.trim(), {
+      companyName: companyName.trim(),
+      accountType,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      phone: phone.trim(),
+      siret: siret.trim(),
+      justificatif: justificatif.trim(),
     })
 
-    if (membershipError) {
+    if (createError) {
       setStatus('error')
-      setError(`Votre demande a été enregistrée, mais l’association à votre compte de connexion a échoué (${membershipError.message}). Merci de nous contacter directement au 06 15 70 36 70.`)
+      setError(createError)
       return
     }
 
     setStatus('done')
-    fetch('/api/pro-signup/notify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        company_name: companyName.trim(),
-        account_type: accountType,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        siret: siret.trim(),
-      }),
-    }).catch(() => {})
+  }
+
+  if (status === 'awaiting-confirmation') {
+    return (
+      <main className="login-page">
+        <section className="login-card">
+          <div className="login-head"><div className="login-logo">ARIA DIAGNOSTICS</div></div>
+          <div className="login-body">
+            <h1>Vérifiez votre boîte mail</h1>
+            <p>Un email de confirmation vous a été envoyé à {email.trim()}. Cliquez sur le lien qu’il contient pour finaliser votre inscription — votre demande sera alors transmise à notre équipe.</p>
+            <div style={{ marginTop: 14, textAlign: 'center' }}>
+              <Link href="/" style={{ color: '#315f8f', fontWeight: 700, fontSize: 14 }}>Retour à l’accueil</Link>
+            </div>
+          </div>
+        </section>
+      </main>
+    )
   }
 
   if (status === 'done') {
@@ -173,9 +152,6 @@ export default function InscriptionProPage() {
           <div className="login-head"><div className="login-logo">ARIA DIAGNOSTICS</div></div>
           <div className="login-body">
             <h1>Inscription envoyée</h1>
-            {emailConfirmationRequired && (
-              <p>Vérifiez votre boîte mail pour confirmer votre adresse email.</p>
-            )}
             <p>Merci pour votre inscription. Votre demande est en cours d’examen par notre équipe, vous recevrez un email de confirmation dès qu’elle sera validée.</p>
             <div style={{ marginTop: 14, textAlign: 'center' }}>
               <Link href="/" style={{ color: '#315f8f', fontWeight: 700, fontSize: 14 }}>Retour à l’accueil</Link>
