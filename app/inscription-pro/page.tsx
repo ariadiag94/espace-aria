@@ -5,6 +5,11 @@ import { useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/
+// Minimum exigé par la configuration Auth de ce projet Supabase (constaté via
+// l'erreur renvoyée lors d'un test réel, ce réglage n'étant pas visible depuis
+// ce repo) — affiché explicitement sous le champ pour ne pas laisser
+// l'utilisateur découvrir la contrainte seulement après un échec de soumission.
+const MIN_PASSWORD_LENGTH = 8
 
 // Catégories professionnelles uniquement (account_type de client_accounts
 // inclut aussi 'individual', jamais proposé ici — réservé aux dossiers créés
@@ -54,7 +59,7 @@ export default function InscriptionProPage() {
   const [emailConfirmationRequired, setEmailConfirmationRequired] = useState(false)
 
   const canSubmit = EMAIL_PATTERN.test(email.trim())
-    && password.trim().length >= 6
+    && password.trim().length >= MIN_PASSWORD_LENGTH
     && companyName.trim().length > 0
     && firstName.trim().length > 0
     && lastName.trim().length > 0
@@ -191,7 +196,11 @@ export default function InscriptionProPage() {
           {error && <div className="error">{error}</div>}
           <form onSubmit={(e) => { e.preventDefault(); void submit() }}>
             <div className="field"><label>Adresse email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></div>
-            <div className="field"><label>Mot de passe</label><input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" /></div>
+            <div className="field">
+              <label>Mot de passe</label>
+              <input type="password" required minLength={MIN_PASSWORD_LENGTH} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+              <p style={{ margin: '7px 0 0', color: '#6f7d90', fontSize: 12 }}>{MIN_PASSWORD_LENGTH} caractères minimum.</p>
+            </div>
             <div className="field"><label>Nom de la société / structure</label><input required value={companyName} onChange={(e) => setCompanyName(e.target.value)} /></div>
             <div className="field">
               <label>Type de compte</label>
