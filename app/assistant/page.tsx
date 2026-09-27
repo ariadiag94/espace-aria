@@ -1,8 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
+import { getSignupClient } from '@/lib/pro-signup'
 import { buildAssainissementDetail, computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
 import { COMMUNE_RULES, OTHER_COMMUNE_SLUG } from '@/lib/commune-rules'
 import { APARTMENT_ASSAINISSEMENT_PRICE, HOUSE_ASSAINISSEMENT_PRICE } from '@/lib/quote-assistant'
@@ -426,6 +428,42 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
 }
 
 export default function AssistantPage() {
+  const router = useRouter()
+  // Chantier "compte pro", Phase 4 (2026-09-27) : /assistant n'est plus
+  // accessible au grand public. Vérifié côté base (has_assistant_access(),
+  // security definer — voir supabase/migrations/020_assistant_access_control.sql),
+  // jamais supposé côté client. Tant que ce n'est pas confirmé, on affiche un
+  // simple écran de chargement — jamais l'assistant lui-même : en cas de
+  // service Supabase indisponible, on refuse l'accès plutôt que de l'autoriser
+  // par défaut (échec fermé, pas ouvert).
+  const [accessState, setAccessState] = useState<'checking' | 'authorized' | 'unavailable'>('checking')
+
+  useEffect(() => {
+    let cancelled = false
+    const checkAccess = async () => {
+      const client = getSignupClient()
+      if (!client) {
+        if (!cancelled) setAccessState('unavailable')
+        return
+      }
+      const { data: { session } } = await client.auth.getSession()
+      if (!session) {
+        router.replace('/login?reason=anonymous&next=/assistant')
+        return
+      }
+      const { data: hasAccess } = await client.rpc('has_assistant_access')
+      if (hasAccess) {
+        if (!cancelled) setAccessState('authorized')
+        return
+      }
+      const { data: status } = await client.rpc('my_client_account_validation_status')
+      const reason = status === 'pending' ? 'pending' : status === 'rejected' ? 'rejected' : 'no-account'
+      router.replace(`/login?reason=${reason}&next=/assistant`)
+    }
+    void checkAccess()
+    return () => { cancelled = true }
+  }, [router])
+
   const [step, setStep] = useState(0)
   const [communeSlug, setCommuneSlug] = useState<string | null>(null)
   const [purpose, setPurpose] = useState<Purpose | null>(null)
@@ -701,6 +739,18 @@ export default function AssistantPage() {
     yearIndex !== null ? YEAR_BRACKETS[yearIndex].label : null,
     sizeIndex !== null ? sizeLabels[sizeIndex] : null,
   ].filter((b): b is string => Boolean(b))
+
+  if (accessState !== 'authorized') {
+    return (
+      <main style={{ minHeight: '100vh', background: LIGHT, display: 'grid', placeItems: 'center', fontFamily: 'Arial,Helvetica,sans-serif', padding: 24 }}>
+        {accessState === 'unavailable' ? (
+          <p style={{ color: NAVY, fontWeight: 700, textAlign: 'center' }}>Service momentanément indisponible. Merci de réessayer plus tard, ou de nous contacter au 06 15 70 36 70.</p>
+        ) : (
+          <p style={{ color: '#6f7d90' }}>Chargement…</p>
+        )}
+      </main>
+    )
+  }
 
   return (
     <main style={{ minHeight: '100vh', background: LIGHT, fontFamily: 'Arial,Helvetica,sans-serif', padding: '28px 16px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
