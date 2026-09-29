@@ -10,7 +10,7 @@ export const HOUSE_SIZE_LABELS = HOUSE_SIZE_TIERS.map((tier) => tier.label)
 export const HOUSE_QUOTE_ON_REQUEST_INDEX = HOUSE_SIZE_LABELS.length - 1
 
 export const APARTMENT_PACK_PRICES: Record<number, number[]> = {
-  2: [170, 185, 200, 215, 230], // 2026-09-29 : paliers de 15 € (comme le DPE seul)
+  2: [170, 185, 200, 220, 240], // 2026-09-29 : +15 € jusqu au T3, puis +20 € (comme le DPE seul)
   3: [190, 210, 230, 250, 270], // grille A (2026-09-29) : +10 €
   4: [210, 230, 250, 270, 290],
   5: [240, 260, 280, 300, 320],
