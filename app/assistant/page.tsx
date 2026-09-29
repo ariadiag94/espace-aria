@@ -321,9 +321,14 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
   const [heatingCharges, setHeatingCharges] = useState('')
   const [dtgAuditAvailable, setDtgAuditAvailable] = useState<DtgAuditAvailable | null>(null)
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
+  // Envoi automatique du PDF devis + ordre de mission au client (2026-09-29).
+  const [documentsStatus, setDocumentsStatus] = useState<'pending' | 'sent' | 'not_sent'>('pending')
 
   // Bloc chauffage entièrement optionnel : n'entre jamais dans canSubmit.
-  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0 && floor.trim().length > 0 && dependencies.size > 0
+  // Dépendances facultatives (2026-09-29) : elles complètent l'ordre de
+  // mission mais ne doivent jamais bloquer l'envoi de la demande / du devis.
+  const dependenciesOptional = true
+  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0 && floor.trim().length > 0
 
   const toggleDependency = (id: string) => {
     setDependencies((prev) => {
@@ -338,13 +343,26 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
     if (!canSubmit || status === 'submitting') return
     setStatus('submitting')
 
-    const client = getLeadsClient()
+    // Client avec la session de l'utilisateur connecté (/assistant est
+    // réservé aux comptes autorisés depuis la migration 020) : le lead est
+    // ainsi rattaché à son auteur (leads.created_by, migration 024), condition
+    // de l'envoi automatique des documents au client. Repli sur le client
+    // anonyme si la session n'est pas disponible (le lead reste enregistré).
+    const sessionClient = getSignupClient()
+    const { data: sessionData } = sessionClient ? await sessionClient.auth.getSession() : { data: { session: null } }
+    const accessToken = sessionData.session?.access_token || null
+    const client = accessToken ? sessionClient : getLeadsClient()
     if (!client) {
       setStatus('error')
       return
     }
 
+    // Id choisi côté client (pas de .select() après insert : la lecture de
+    // leads reste réservée au staff).
+    const leadId = crypto.randomUUID()
+
     const payload = {
+      id: leadId,
       contact_name: name.trim(),
       contact_phone: phone.trim(),
       contact_email: email.trim(),
@@ -381,12 +399,33 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     }).catch(() => {})
+
+    if (!accessToken) {
+      setDocumentsStatus('not_sent')
+      return
+    }
+    try {
+      const response = await fetch(`/api/leads/${leadId}/client-documents`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      const result = await response.json().catch(() => ({}))
+      setDocumentsStatus(response.ok && result?.sent ? 'sent' : 'not_sent')
+    } catch {
+      setDocumentsStatus('not_sent')
+    }
   }
 
   if (status === 'done') {
     return (
       <div style={{ padding: '16px 18px', borderRadius: 14, background: '#eaf6ee', border: '1px solid #bfe2c8', color: '#1f5c34', fontWeight: 700, fontSize: 14, lineHeight: 1.6, marginBottom: 22 }}>
         ✓ Votre demande a été transmise. Nous vous recontactons sous 24h ouvrées pour confirmer votre devis.
+        {documentsStatus === 'pending' && (
+          <div style={{ fontWeight: 500, fontSize: 13, marginTop: 6 }}>Envoi du devis par e-mail en cours…</div>
+        )}
+        {documentsStatus === 'sent' && (
+          <div style={{ fontWeight: 500, fontSize: 13, marginTop: 6 }}>Le devis estimatif et l’ordre de mission ont été envoyés par e-mail (PDF).</div>
+        )}
       </div>
     )
   }
@@ -405,7 +444,7 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
         <input className="diagassist-input" placeholder="Étage" value={floor} onChange={(e) => setFloor(e.target.value)} />
       </div>
       <div style={{ marginBottom: 14 }}>
-        <div style={{ color: NAVY, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Dépendances</div>
+        <div style={{ color: NAVY, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Dépendances{dependenciesOptional ? ' (facultatif)' : ''}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {DEPENDENCY_OPTIONS.map((option) => (
             <label key={option.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, border: '2px solid #dbe7f2', background: '#fff', color: NAVY, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
@@ -577,6 +616,9 @@ export default function AssistantPage() {
   // autre chemin (sélection libre au lieu du questionnaire). La question
   // d'attestation de surface doit donc être posée ici aussi, pour ne pas
   // dépendre du chemin emprunté pour arriver à "DPE seul".
+  // Diagnostic gaz possible uniquement pour une installation de 15 ans ou
+  // plus (même seuil que computeDiagnostics dans lib/property-alerts.ts).
+  const gasQuestionRelevant = constructionYear !== null && new Date().getFullYear() - constructionYear >= 15
   const alaCarteAskSurfaceAttestation = purpose === 'alaCarte' && checkedItems.size === 1 && checkedItems.has('dpe')
 
   // Parcours dynamique : la commune est demandée en premier. Le mode "à la
@@ -600,13 +642,19 @@ export default function AssistantPage() {
       s.push('result')
       return s
     }
-    s.push('propertyType', 'gas', 'year')
+    // Question gaz corrélée à la mission (2026-09-29) : posée après l'année,
+    // et seulement si l'installation a 15 ans ou plus — sinon aucun
+    // diagnostic gaz n'est possible et la question est inutile.
+    s.push('propertyType', 'year')
+    if (gasQuestionRelevant) {
+      s.push('gas')
+    }
     if (isMinimalMission) {
       s.push('surfaceAttestation')
     }
     s.push('size', 'result')
     return s
-  }, [purpose, isMinimalMission, alaCarteAskSurfaceAttestation])
+  }, [purpose, isMinimalMission, alaCarteAskSurfaceAttestation, gasQuestionRelevant])
 
   const currentScreen = screens[Math.min(step, screens.length - 1)]
 
@@ -643,7 +691,7 @@ export default function AssistantPage() {
   // complet, ce qui change si la question d'attestation doit être posée :
   // on réinitialise la réponse précédente pour ne pas en garder une qui ne
   // correspond plus au bon parcours.
-  const selectYear = (i: number) => { setYearIndex(i); setHasSurfaceAttestation(null); advance() }
+  const selectYear = (i: number) => { setYearIndex(i); setHasSurfaceAttestation(null); setHasGas(null); advance() }
   const selectSize = (i: number) => { setSizeIndex(i); advance() }
   const toggleALaCarteItem = (id: ALaCarteItemId) => {
     setCheckedItems((prev) => {
@@ -1042,6 +1090,7 @@ export default function AssistantPage() {
                       purpose: 'alaCarte',
                       communeSlug,
                       checkedItems: Array.from(alaCarteItems),
+                      surfaceAttestationProvided: alaCarteAskSurfaceAttestation && hasSurfaceAttestation === true,
                       assainissement: alaCarteAssainissement,
                       priceStatus: alaCarteQuoteOnRequest ? 'quote_on_request' : alaCarteNoMatch ? 'no_match' : 'estimated',
                       totalPrice: finalALaCartePrice,
@@ -1170,6 +1219,7 @@ export default function AssistantPage() {
                       communeSlug,
                       constructionYear,
                       hasGas,
+                      surfaceAttestationProvided: isDpeOnly,
                       mandatory: diagnostics.mandatory.map((item) => ({ id: item.id, label: item.label })),
                       toConfirm: diagnostics.toConfirm.filter((item) => !item.optionalAddOn).map((item) => ({ id: item.id, label: item.label })),
                       options: diagnostics.options.map((option) => ({ id: option.id, label: option.label, price: optionPrice(option.id) })),

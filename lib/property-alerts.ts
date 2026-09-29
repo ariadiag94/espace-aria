@@ -91,7 +91,7 @@ export const computeDiagnostics = ({
   // une attestation de surface (Carrez / Boutin / surface habitable selon
   // le cas), le diagnostic de mesurage correspondant n'est ni obligatoire
   // ni facturé — sinon il redevient obligatoire.
-  const SURFACE_ATTESTATION_NOTE = 'Vous devrez nous transmettre cette attestation avant notre intervention.'
+  const SURFACE_ATTESTATION_NOTE = 'Vous devrez nous transmettre cette attestation avant notre intervention. À défaut, le mesurage sera réalisé sur place et facturé en supplément (tarif DPE + surface).'
 
   // Termites : jamais en location (uniquement calculé pour purpose==='sale').
   // La couverture de la commune (lib/commune-rules.ts) détermine si le
@@ -138,7 +138,9 @@ export const computeDiagnostics = ({
     // prix réutilise directement le pack 2 existant : DPE + surface = 2,
     // l'ERP ne doit pas pousser ce compte à 3). En pack complet, l'ERP
     // compte dans le pack comme avant cette règle.
-    mandatory.push({ id: 'erp', label: 'ERP', detail: 'État des risques et pollutions — 25 € offert, inclus automatiquement.', countsTowardPack: isMinimalMission ? false : undefined })
+    // Pack complet : l'ERP compte comme un diagnostic, donc « inclus » (et non
+    // « offert »). Mission minimale : il ne compte pas, il est réellement offert.
+    mandatory.push({ id: 'erp', label: 'ERP', detail: isMinimalMission ? 'État des risques et pollutions — 25 € offert, inclus automatiquement.' : 'État des risques et pollutions — inclus dans le pack.', countsTowardPack: isMinimalMission ? false : undefined })
   } else {
     options.push({ id: 'erp', label: 'ERP (état des risques et pollutions)' })
   }
