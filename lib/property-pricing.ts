@@ -70,8 +70,8 @@ export const ERP_OPTION_PRICE = 25
 // de APARTMENT_PACK_PRICES/HOUSE_PACK_PRICES qui commencent à 2 diagnostics.
 // `null` (maison, >250 m²) = sur devis, déjà couvert par
 // HOUSE_QUOTE_ON_REQUEST_INDEX.
-// Grille A (2026-09-29) : paliers de 20 € à partir de 120 € (T1).
-export const APARTMENT_DPE_ONLY_PRICES: number[] = [120, 140, 160, 180, 200]
+// Grille A ajustée (2026-09-29) : +10 € du T1 au T3.
+export const APARTMENT_DPE_ONLY_PRICES: number[] = [130, 150, 170, 180, 200]
 export const HOUSE_DPE_ONLY_PRICES: (number | null)[] = [150, 180, 210, 240, 270, 300, null]
 
 // Grilles unitaires du mode "Diagnostics à la carte" : prix d'un seul
