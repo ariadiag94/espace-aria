@@ -102,6 +102,10 @@ export default function MonEspacePage() {
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '28px 20px 60px' }}>
         <h1 style={{ color: NAVY, fontSize: 24, margin: '0 0 6px' }}>Mon espace</h1>
         <p style={{ color: '#6f7d90', fontSize: 14, margin: '0 0 24px' }}>Vos dossiers, devis et documents ARIA Diagnostics.</p>
+        <Link href="/ressources" style={{ display: 'block', padding: '16px 18px', borderRadius: 14, background: NAVY, color: '#fff', textDecoration: 'none', marginBottom: 20, borderLeft: '5px solid #23a5df' }}>
+          <b>Ressources professionnelles</b>
+          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 2 }}>Diagnostics obligatoires, DPE, textes de loi, préparation de la visite →</div>
+        </Link>
 
         {loadError && <div style={{ padding: '14px 16px', borderRadius: 12, background: '#fff0f0', border: '1px solid #ffcfcf', color: '#a62d2d', fontSize: 13, marginBottom: 16 }}>{loadError}</div>}
 
