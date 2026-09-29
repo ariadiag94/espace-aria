@@ -498,14 +498,14 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   const addTermsColumns = (termDocs: ContractDocument[]) => {
     const gap = 16
     const colW = (width - gap) / 2
-    const bodySize = 6.4
-    const lineH = 7.5
-    const headSize = 7.3
-    const headLineH = 8.6
-    const bottom = 64
+    const bodySize = 6.1
+    const lineH = 6.75
+    const headSize = 7
+    const headLineH = 8
+    const bottom = 56
     let page = pdf.addPage([595.28, 841.89])
     let col = 0
-    let top = 742
+    let top = 754
     let y = top
 
     const drawHeader = () => {
@@ -526,7 +526,7 @@ export async function generateQuotePdf(input: QuotePdfInput) {
         page = pdf.addPage([595.28, 841.89])
         drawHeader()
         col = 0
-        top = 742
+        top = 754
         y = top
       }
     }
@@ -548,8 +548,7 @@ export async function generateQuotePdf(input: QuotePdfInput) {
       page.drawRectangle({ x: colX(), y: y - titleLines.length * 11 - 3, width: colW, height: titleLines.length * 11 + 9, color: rgb(0.137, 0.647, 0.875) })
       titleLines.forEach((l, i) => page.drawText(l, { x: colX() + 6, y: y - 5 - i * 11, size: 9.5, font: bold, color: white }))
       y -= titleLines.length * 11 + 12
-      if (doc.subtitle) drawLines(wrapText(doc.subtitle, regular, 6.6, colW), colX(), regular, 6.6, 8, gray)
-      y -= 3
+      y -= 1
 
       for (const block of doc.blocks) {
         const headLines = wrapText(block.title, bold, headSize, colW)
@@ -570,9 +569,9 @@ export async function generateQuotePdf(input: QuotePdfInput) {
             page.drawText(l, { x: colX() + indent, y, size: bodySize, font: regular, color: gray })
             y -= lineH
           })
-          y -= 1.6
+          y -= 1.2
         }
-        y -= 2
+        y -= 1.5
       }
     })
   }
