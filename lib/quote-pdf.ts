@@ -217,35 +217,30 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     return 841.89 - yy
   }
 
-  // En-tête : photo, logo, bandeau bleu.
-  try {
-    const photo = await pdf.embedJpg(`data:image/jpeg;base64,${TPL.HEADER_PHOTO_JPEG}`)
-    firstPage.drawImage(photo, { x: 595.28 - 448, y: Y(85), width: 448, height: 85 })
-  } catch { /* photo facultative */ }
+  // En-tête « bloc marine » : logo sur fond blanc, bloc marine en biais
+  // avec le numéro, la date et la validité du devis.
+  const navyC = rgb(0.024, 0.169, 0.349)
   try {
     const logo = await pdf.embedJpg(`data:image/jpeg;base64,${TPL.HEADER_LOGO_JPEG}`)
-    firstPage.drawImage(logo, { x: 36, y: Y(76), width: 145, height: 145 * logo.height / logo.width })
+    firstPage.drawImage(logo, { x: 36, y: Y(78), width: 130, height: 130 * logo.height / logo.width })
   } catch {
     if (ariaLogo) firstPage.drawImage(ariaLogo, { x: 40, y: Y(72), width: 140, height: 52 })
   }
-  firstPage.drawRectangle({ x: 0, y: Y(104), width: 595.28, height: 20, color: sky })
-  firstPage.drawText('Tel. 06 15 70 36 70     contact@aria-diagnostics.fr', { x: 30, y: Y(98), size: 10.5, font: bold, color: white })
-  textRight('DEVIS GRATUIT ET SANS ENGAGEMENT', 574, Y(98), 10.5, regular, white)
+  firstPage.drawSvgPath('M 300 0 L 595.28 0 L 595.28 112 L 250 112 Z', { x: 0, y: 841.89, color: navyC })
+  firstPage.drawSvgPath('M 250 112 L 262 112 L 312 0 L 300 0 Z', { x: 0, y: 841.89, color: sky })
+  firstPage.drawRectangle({ x: 0, y: Y(114), width: 595.28, height: 2, color: sky })
+  textRight('DEVIS', 559, Y(46), 24, bold, white)
+  textRight(`N° ${input.quoteNumber}`, 559, Y(64), 10, bold, white)
+  textRight(`Émis le ${dateFr(input.createdAt)}  ·  Valable 30 jours`, 559, Y(77), 8, regular, rgb(0.78, 0.86, 0.95))
+  textRight('Devis gratuit et sans engagement', 559, Y(96), 7, regular, rgb(0.62, 0.76, 0.9))
+  firstPage.drawText('06 15 70 36 70  ·  contact@aria-diagnostics.fr', { x: 40, y: Y(100), size: 8, font: regular, color: soft })
 
   const c1 = 32, c2 = 248, c3 = 455
   const t1 = 66, t2 = 282, t3 = 489
 
-  // Ligne 1 : devis, dossier, date.
-  iconBox(icons.document, c1, 118)
-  field(t1, 122, 'Votre Devis', [{ text: `N° ${input.quoteNumber}`, bold: true }], 150)
-  iconBox(icons.folder, c2, 118)
-  field(t2, 122, 'Votre Dossier', [{ text: input.dossierRef || '', bold: true }], 150)
-  iconBox(icons.docStar, c3, 118)
-  field(t3, 122, 'Date d’édition du devis', [{ text: dateFr(input.createdAt), bold: true }], 80)
-
-  // Ligne 2 : émetteur, donneur d'ordre, validité.
-  iconBox(icons.send, c1, 172)
-  field(t1, 176, 'Devis édité par', [
+  // Ligne 1 : émetteur, donneur d'ordre, dossier.
+  iconBox(icons.send, c1, 132)
+  field(t1, 136, 'Devis édité par', [
     { text: 'ARIA DIAGNOSTICS', bold: true },
     { text: '18 rue de Budapest' },
     { text: '94140 ALFORTVILLE' },
@@ -253,33 +248,33 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     { text: 'contact@aria-diagnostics.fr' },
     { text: 'SIRET : 988 026 746 00012 - NAF : 7120B' },
   ], 170)
-  iconBox(icons.briefcase, c2, 172)
-  field(t2, 176, 'À l’attention du donneur d’ordre', [
+  iconBox(icons.briefcase, c2, 132)
+  field(t2, 136, 'À l’attention du donneur d’ordre', [
     { text: input.contactName || '', bold: true },
     { text: input.contactPhone || '' },
     { text: input.contactEmail || '' },
   ], 165)
-  iconBox(icons.hourglass, c3, 172)
-  field(t3, 176, 'Devis valable', [{ text: '30 jours' }], 80)
+  iconBox(icons.folder, c3, 132)
+  field(t3, 136, 'Votre Dossier', [{ text: input.dossierRef || '', bold: true }], 80)
 
-  // Ligne 3 : bien, propriétaire, RDV.
-  iconBox(icons.pin, c1, 258)
-  const bienBottom = field(t1, 262, 'Bien objet de l’intervention', [
+  // Ligne 2 : bien, propriétaire, RDV.
+  iconBox(icons.pin, c1, 218)
+  const bienBottom = field(t1, 222, 'Bien objet de l’intervention', [
     { text: input.propertyAddress, bold: true },
     { text: `${input.propertyLabel || 'Bien'}${input.propertySize ? ` - ${input.propertySize}` : ''}` },
   ], 170)
-  iconBox(icons.person, c2, 258)
-  field(t2, 262, 'Propriétaire identifié', [{ text: input.ownerName || '', bold: true }], 165)
-  iconBox(icons.calendar, c3, 258)
-  field(t3, 262, 'RDV prévu le', [{ text: input.appointmentAt ? dateFr(input.appointmentAt) : '' , bold: true }], 80)
+  iconBox(icons.person, c2, 218)
+  field(t2, 222, 'Propriétaire identifié', [{ text: input.ownerName || '', bold: true }], 165)
+  iconBox(icons.calendar, c3, 218)
+  field(t3, 222, 'RDV prévu le', [{ text: input.appointmentAt ? dateFr(input.appointmentAt) : '', bold: true }], 80)
 
   // Prestations à réaliser.
   const prestations = (input.diagnostics && input.diagnostics.length ? input.diagnostics : input.lines.map((l) => l.label)).join(', ')
-  iconBox(icons.checklist, c2, 300)
-  const prestaBottom = field(t2, 304, 'Prestations à réaliser', [{ text: prestations, bold: true }], 280)
+  iconBox(icons.checklist, c2, 260)
+  const prestaBottom = field(t2, 264, 'Prestations à réaliser', [{ text: prestations, bold: true }], 280)
 
   // Dépendances.
-  let top = Math.max(bienBottom, prestaBottom, 360) + 14
+  let top = Math.max(bienBottom, prestaBottom, 320) + 14
   const deps = (input.dependencies || []).map((d) => normalizeKey(d))
   let dx = 66
   firstPage.drawText('Autres dépendances :', { x: dx, y: Y(top), size: 7.8, font: regular, color: soft })
@@ -403,12 +398,24 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   ]
   if (hasDpe(input.lines, input.diagnostics || [])) documents.push(dpeConsentDocument, dpeFiscalDocument)
 
-  const headerPhoto = await pdf.embedJpg(`data:image/jpeg;base64,${TPL.HEADER_PHOTO_JPEG}`).catch(() => null)
   const headerLogo = await pdf.embedJpg(`data:image/jpeg;base64,${TPL.HEADER_LOGO_JPEG}`).catch(() => null)
+  // Version fine du bandeau « bloc marine » pour les pages suivantes.
+  const drawSlimHeader = (page: PDFPage) => {
+    const H = 841.89
+    if (headerLogo) page.drawImage(headerLogo, { x: 36, y: H - 46, width: 90, height: 90 * headerLogo.height / headerLogo.width })
+    else if (ariaLogo) page.drawImage(ariaLogo, { x: left, y: H - 44, width: 76, height: 28 })
+    page.drawSvgPath('M 380 0 L 595.28 0 L 595.28 54 L 356 54 Z', { x: 0, y: H, color: rgb(0.024, 0.169, 0.349) })
+    page.drawSvgPath('M 356 54 L 364 54 L 388 0 L 380 0 Z', { x: 0, y: H, color: rgb(0.137, 0.647, 0.875) })
+    page.drawRectangle({ x: 0, y: H - 56, width: 595.28, height: 1.5, color: rgb(0.137, 0.647, 0.875) })
+    const ref = pdfSafe(`Devis N° ${input.quoteNumber}`)
+    page.drawText(ref, { x: 559 - bold.widthOfTextAtSize(ref, 9), y: H - 30, size: 9, font: bold, color: white })
+    const sub = pdfSafe(`du ${dateFr(input.createdAt)}`)
+    page.drawText(sub, { x: 559 - regular.widthOfTextAtSize(sub, 7), y: H - 41, size: 7, font: regular, color: rgb(0.78, 0.86, 0.95) })
+  }
 
   const addContractDocument = (document: ContractDocument) => {
     let page = pdf.addPage([595.28, 841.89])
-    let currentY = 742
+    let currentY = 758
     const isCompactTerms = /conditions générales/i.test(document.title)
     const bodySize = isCompactTerms ? 7.35 : 8
     const bodyLineHeight = isCompactTerms ? 8.55 : 10.5
@@ -420,18 +427,12 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     const pageBottom = 78
 
     const drawHeader = () => {
-      if (headerPhoto) page.drawImage(headerPhoto, { x: 595.28 - 300, y: 841.89 - 57, width: 300, height: 57 })
-      if (headerLogo) page.drawImage(headerLogo, { x: 36, y: 841.89 - 52, width: 100, height: 100 * headerLogo.height / headerLogo.width })
-      else if (ariaLogo) page.drawImage(ariaLogo, { x: left, y: 799, width: 76, height: 28 })
-      page.drawRectangle({ x: 0, y: 841.89 - 72, width: 595.28, height: 15, color: rgb(0.137, 0.647, 0.875) })
-      page.drawText('Tel. 06 15 70 36 70     contact@aria-diagnostics.fr', { x: 30, y: 841.89 - 67.5, size: 8, font: bold, color: white })
-      const headerRef = pdfSafe(`Devis N° ${input.quoteNumber}`)
-      page.drawText(headerRef, { x: 565 - regular.widthOfTextAtSize(headerRef, 8), y: 841.89 - 67.5, size: 8, font: regular, color: white })
+      drawSlimHeader(page)
     }
 
     const newPage = () => {
       page = pdf.addPage([595.28, 841.89])
-      currentY = 742
+      currentY = 758
       drawHeader()
     }
 
@@ -505,16 +506,11 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     const bottom = 56
     let page = pdf.addPage([595.28, 841.89])
     let col = 0
-    let top = 754
+    let top = 766
     let y = top
 
     const drawHeader = () => {
-      if (headerPhoto) page.drawImage(headerPhoto, { x: 595.28 - 300, y: 841.89 - 57, width: 300, height: 57 })
-      if (headerLogo) page.drawImage(headerLogo, { x: 36, y: 841.89 - 52, width: 100, height: 100 * headerLogo.height / headerLogo.width })
-      page.drawRectangle({ x: 0, y: 841.89 - 72, width: 595.28, height: 15, color: rgb(0.137, 0.647, 0.875) })
-      page.drawText('Tel. 06 15 70 36 70     contact@aria-diagnostics.fr', { x: 30, y: 841.89 - 67.5, size: 8, font: bold, color: white })
-      const headerRef = pdfSafe(`Devis N° ${input.quoteNumber}`)
-      page.drawText(headerRef, { x: 565 - regular.widthOfTextAtSize(headerRef, 8), y: 841.89 - 67.5, size: 8, font: regular, color: white })
+      drawSlimHeader(page)
     }
     const colX = () => left + col * (colW + gap)
     const ensure = (needed: number) => {
@@ -526,7 +522,7 @@ export async function generateQuotePdf(input: QuotePdfInput) {
         page = pdf.addPage([595.28, 841.89])
         drawHeader()
         col = 0
-        top = 754
+        top = 766
         y = top
       }
     }
@@ -581,10 +577,9 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   documents.slice(3).forEach(addContractDocument)
 
   const pages = pdf.getPages()
-  const footerSky = rgb(0.565, 0.808, 1)
   pages.forEach((page, index) => {
-    page.drawRectangle({ x: 0, y: 0, width: 595.28, height: 46, color: rgb(0.137, 0.647, 0.875) })
-    page.drawRectangle({ x: 0, y: 46, width: 595.28, height: 2, color: footerSky })
+    page.drawRectangle({ x: 0, y: 0, width: 595.28, height: 46, color: rgb(0.024, 0.169, 0.349) })
+    page.drawRectangle({ x: 0, y: 46, width: 595.28, height: 2, color: rgb(0.137, 0.647, 0.875) })
     page.drawText('ARIA DIAGNOSTICS   www.aria-diagnostics.fr', { x: 32, y: 32, size: 8.5, font: bold, color: white })
     const legalLines = [
       'SIRET : 988 026 746 00012 - Code APE : 7120B - Capital social : 1 000 € - N° TVA : FR34988026746',
