@@ -217,30 +217,29 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     return 841.89 - yy
   }
 
-  // En-tête « bloc marine » : logo sur fond blanc, bloc marine en biais
-  // avec le numéro, la date et la validité du devis.
+  // En-tête « bloc marine » (version compacte) : logo sur fond blanc, bloc
+  // marine en biais avec le numéro, la date et la validité du devis.
   const navyC = rgb(0.024, 0.169, 0.349)
   try {
     const logo = await pdf.embedJpg(`data:image/jpeg;base64,${TPL.HEADER_LOGO_JPEG}`)
-    firstPage.drawImage(logo, { x: 36, y: Y(78), width: 130, height: 130 * logo.height / logo.width })
+    firstPage.drawImage(logo, { x: 36, y: Y(58), width: 105, height: 105 * logo.height / logo.width })
   } catch {
-    if (ariaLogo) firstPage.drawImage(ariaLogo, { x: 40, y: Y(72), width: 140, height: 52 })
+    if (ariaLogo) firstPage.drawImage(ariaLogo, { x: 40, y: Y(56), width: 110, height: 41 })
   }
-  firstPage.drawSvgPath('M 300 0 L 595.28 0 L 595.28 112 L 250 112 Z', { x: 0, y: 841.89, color: navyC })
-  firstPage.drawSvgPath('M 250 112 L 262 112 L 312 0 L 300 0 Z', { x: 0, y: 841.89, color: sky })
-  firstPage.drawRectangle({ x: 0, y: Y(114), width: 595.28, height: 2, color: sky })
-  textRight('DEVIS', 559, Y(46), 24, bold, white)
-  textRight(`N° ${input.quoteNumber}`, 559, Y(64), 10, bold, white)
-  textRight(`Émis le ${dateFr(input.createdAt)}  ·  Valable 30 jours`, 559, Y(77), 8, regular, rgb(0.78, 0.86, 0.95))
-  textRight('Devis gratuit et sans engagement', 559, Y(96), 7, regular, rgb(0.62, 0.76, 0.9))
-  firstPage.drawText('06 15 70 36 70  ·  contact@aria-diagnostics.fr', { x: 40, y: Y(100), size: 8, font: regular, color: soft })
+  firstPage.drawSvgPath('M 360 0 L 595.28 0 L 595.28 76 L 326 76 Z', { x: 0, y: 841.89, color: navyC })
+  firstPage.drawSvgPath('M 326 76 L 334 76 L 368 0 L 360 0 Z', { x: 0, y: 841.89, color: sky })
+  firstPage.drawRectangle({ x: 0, y: Y(78), width: 595.28, height: 1.5, color: sky })
+  textRight(`DEVIS  N° ${input.quoteNumber}`, 559, Y(34), 14, bold, white)
+  textRight(`Émis le ${dateFr(input.createdAt)}  ·  Valable 30 jours`, 559, Y(48), 7.8, regular, rgb(0.78, 0.86, 0.95))
+  textRight('Devis gratuit et sans engagement', 559, Y(60), 6.8, regular, rgb(0.62, 0.76, 0.9))
+  firstPage.drawText('06 15 70 36 70  ·  contact@aria-diagnostics.fr', { x: 40, y: Y(69), size: 7.4, font: regular, color: soft })
 
   const c1 = 32, c2 = 248, c3 = 455
   const t1 = 66, t2 = 282, t3 = 489
 
   // Ligne 1 : émetteur, donneur d'ordre, dossier.
-  iconBox(icons.send, c1, 132)
-  field(t1, 136, 'Devis édité par', [
+  iconBox(icons.send, c1, 96)
+  field(t1, 100, 'Devis édité par', [
     { text: 'ARIA DIAGNOSTICS', bold: true },
     { text: '18 rue de Budapest' },
     { text: '94140 ALFORTVILLE' },
@@ -248,33 +247,33 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     { text: 'contact@aria-diagnostics.fr' },
     { text: 'SIRET : 988 026 746 00012 - NAF : 7120B' },
   ], 170)
-  iconBox(icons.briefcase, c2, 132)
-  field(t2, 136, 'À l’attention du donneur d’ordre', [
+  iconBox(icons.briefcase, c2, 96)
+  field(t2, 100, 'À l’attention du donneur d’ordre', [
     { text: input.contactName || '', bold: true },
     { text: input.contactPhone || '' },
     { text: input.contactEmail || '' },
   ], 165)
-  iconBox(icons.folder, c3, 132)
-  field(t3, 136, 'Votre Dossier', [{ text: input.dossierRef || '', bold: true }], 80)
+  iconBox(icons.folder, c3, 96)
+  field(t3, 100, 'Votre Dossier', [{ text: input.dossierRef || '', bold: true }], 80)
 
   // Ligne 2 : bien, propriétaire, RDV.
-  iconBox(icons.pin, c1, 218)
-  const bienBottom = field(t1, 222, 'Bien objet de l’intervention', [
+  iconBox(icons.pin, c1, 182)
+  const bienBottom = field(t1, 186, 'Bien objet de l’intervention', [
     { text: input.propertyAddress, bold: true },
     { text: `${input.propertyLabel || 'Bien'}${input.propertySize ? ` - ${input.propertySize}` : ''}` },
   ], 170)
-  iconBox(icons.person, c2, 218)
-  field(t2, 222, 'Propriétaire identifié', [{ text: input.ownerName || '', bold: true }], 165)
-  iconBox(icons.calendar, c3, 218)
-  field(t3, 222, 'RDV prévu le', [{ text: input.appointmentAt ? dateFr(input.appointmentAt) : '', bold: true }], 80)
+  iconBox(icons.person, c2, 182)
+  field(t2, 186, 'Propriétaire identifié', [{ text: input.ownerName || '', bold: true }], 165)
+  iconBox(icons.calendar, c3, 182)
+  field(t3, 186, 'RDV prévu le', [{ text: input.appointmentAt ? dateFr(input.appointmentAt) : '', bold: true }], 80)
 
   // Prestations à réaliser.
   const prestations = (input.diagnostics && input.diagnostics.length ? input.diagnostics : input.lines.map((l) => l.label)).join(', ')
-  iconBox(icons.checklist, c2, 260)
-  const prestaBottom = field(t2, 264, 'Prestations à réaliser', [{ text: prestations, bold: true }], 280)
+  iconBox(icons.checklist, c2, 224)
+  const prestaBottom = field(t2, 228, 'Prestations à réaliser', [{ text: prestations, bold: true }], 280)
 
   // Dépendances.
-  let top = Math.max(bienBottom, prestaBottom, 320) + 14
+  let top = Math.max(bienBottom, prestaBottom, 284) + 14
   const deps = (input.dependencies || []).map((d) => normalizeKey(d))
   let dx = 66
   firstPage.drawText('Autres dépendances :', { x: dx, y: Y(top), size: 7.8, font: regular, color: soft })
