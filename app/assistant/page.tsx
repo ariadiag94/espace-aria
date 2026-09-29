@@ -321,6 +321,8 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
   const [heatingCharges, setHeatingCharges] = useState('')
   const [dtgAuditAvailable, setDtgAuditAvailable] = useState<DtgAuditAvailable | null>(null)
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
+  // Envoi automatique du PDF devis + ordre de mission au client (2026-09-29).
+  const [documentsStatus, setDocumentsStatus] = useState<'pending' | 'sent' | 'not_sent'>('pending')
 
   // Bloc chauffage entièrement optionnel : n'entre jamais dans canSubmit.
   const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0 && floor.trim().length > 0 && dependencies.size > 0
@@ -338,13 +340,26 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
     if (!canSubmit || status === 'submitting') return
     setStatus('submitting')
 
-    const client = getLeadsClient()
+    // Client avec la session de l'utilisateur connecté (/assistant est
+    // réservé aux comptes autorisés depuis la migration 020) : le lead est
+    // ainsi rattaché à son auteur (leads.created_by, migration 024), condition
+    // de l'envoi automatique des documents au client. Repli sur le client
+    // anonyme si la session n'est pas disponible (le lead reste enregistré).
+    const sessionClient = getSignupClient()
+    const { data: sessionData } = sessionClient ? await sessionClient.auth.getSession() : { data: { session: null } }
+    const accessToken = sessionData.session?.access_token || null
+    const client = accessToken ? sessionClient : getLeadsClient()
     if (!client) {
       setStatus('error')
       return
     }
 
+    // Id choisi côté client (pas de .select() après insert : la lecture de
+    // leads reste réservée au staff).
+    const leadId = crypto.randomUUID()
+
     const payload = {
+      id: leadId,
       contact_name: name.trim(),
       contact_phone: phone.trim(),
       contact_email: email.trim(),
@@ -381,12 +396,33 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     }).catch(() => {})
+
+    if (!accessToken) {
+      setDocumentsStatus('not_sent')
+      return
+    }
+    try {
+      const response = await fetch(`/api/leads/${leadId}/client-documents`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      const result = await response.json().catch(() => ({}))
+      setDocumentsStatus(response.ok && result?.sent ? 'sent' : 'not_sent')
+    } catch {
+      setDocumentsStatus('not_sent')
+    }
   }
 
   if (status === 'done') {
     return (
       <div style={{ padding: '16px 18px', borderRadius: 14, background: '#eaf6ee', border: '1px solid #bfe2c8', color: '#1f5c34', fontWeight: 700, fontSize: 14, lineHeight: 1.6, marginBottom: 22 }}>
         ✓ Votre demande a été transmise. Nous vous recontactons sous 24h ouvrées pour confirmer votre devis.
+        {documentsStatus === 'pending' && (
+          <div style={{ fontWeight: 500, fontSize: 13, marginTop: 6 }}>Envoi du devis par e-mail en cours…</div>
+        )}
+        {documentsStatus === 'sent' && (
+          <div style={{ fontWeight: 500, fontSize: 13, marginTop: 6 }}>Le devis estimatif et l’ordre de mission ont été envoyés par e-mail (PDF).</div>
+        )}
       </div>
     )
   }

@@ -379,6 +379,7 @@ export const missionDocument = (
   contactName: string | null | undefined,
   lines: ContractLine[],
   diagnostics: string[] = [],
+  technicalInfo: string[] = [],
 ): ContractDocument => ({
   title: 'Ordre de mission',
   subtitle: 'Définition contractuelle du périmètre d’intervention',
@@ -398,6 +399,11 @@ export const missionDocument = (
           ? diagnostics.map((diagnostic) => `• ${diagnostic}`)
           : ['• Détail des diagnostics à compléter avant acceptation du devis.'],
     },
+    // Bloc facultatif (envoi automatique depuis /assistant) : informations
+    // techniques déclarées, pour préparer l'intervention.
+    ...(technicalInfo.length
+      ? [{ title: 'Informations techniques du bien', paragraphs: technicalInfo.map((info) => `• ${info}`) }]
+      : []),
     {
       title: 'Tarification',
       paragraphs: lines.map(

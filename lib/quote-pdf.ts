@@ -28,6 +28,9 @@ type QuotePdfInput = {
   lines: QuotePdfLine[]
   diagnostics?: string[]
   origin?: string
+  // Informations techniques déclarées, ajoutées à l'ordre de mission
+  // (envoi automatique depuis /assistant, voir lib/lead-quote.ts).
+  missionTechnicalInfo?: string[]
 }
 
 const euro = (value: number) =>
@@ -60,6 +63,7 @@ const pdfSafe = (value: string) =>
     .replaceAll('—', '-')
     .replaceAll('–', '-')
     .replaceAll('\u00a0', ' ')
+    .replaceAll('²', '2')
 
 const wrapText = (value: string, font: PDFFont, size: number, maxWidth: number) => {
   const source = pdfSafe(value)
@@ -254,7 +258,7 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   firstPage.drawRectangle({ x: left + 285, y: y - 98, width: 210, height: 28, borderColor: border, borderWidth: 1 })
 
   const documents: ContractDocument[] = [
-    missionDocument(input.quoteNumber, input.propertyAddress, input.contactName, input.lines, input.diagnostics || []),
+    missionDocument(input.quoteNumber, input.propertyAddress, input.contactName, input.lines, input.diagnostics || [], input.missionTechnicalInfo || []),
     generalTerms,
     interventionTerms(input.lines, input.diagnostics || []),
     withdrawalDocument,
