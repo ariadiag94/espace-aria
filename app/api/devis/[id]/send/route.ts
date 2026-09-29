@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { generateQuotePdf } from '@/lib/quote-pdf'
+import { loadDossierPdfExtras } from '@/lib/dossier-pdf-extras'
 
 const escapeHtml = (value: string) =>
   value
@@ -75,7 +76,7 @@ export async function POST(
     await Promise.all([
       supabase
         .from('dossiers')
-        .select('id,dossier_name,property_address,contact_name,contact_email,contact_phone,diagnostics')
+        .select('*')
         .eq('id', quote.dossier_id)
         .single(),
       supabase
@@ -146,7 +147,9 @@ export async function POST(
           .map((value) => value.trim())
           .filter(Boolean)
 
+    const extras = await loadDossierPdfExtras(supabase, dossier as Record<string, unknown>)
     const pdfBytes = await generateQuotePdf({
+      ...extras,
       quoteNumber: quote.quote_number,
       createdAt: quote.created_at,
       contactName: dossier.contact_name,

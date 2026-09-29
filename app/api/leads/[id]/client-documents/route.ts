@@ -95,6 +95,7 @@ export async function POST(
       diagnostics: content.diagnostics,
       missionTechnicalInfo: content.technicalInfo,
       dependencies: Array.isArray(lead.dependencies) ? lead.dependencies : [],
+      lotFloor: lead.floor ? `Étage ${lead.floor}` : null,
       origin: new URL(request.url).origin,
       lines: content.lines,
     })

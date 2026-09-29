@@ -37,6 +37,7 @@ type QuotePdfInput = {
   ownerName?: string | null
   appointmentAt?: string | null
   dependencies?: string[]
+  lotFloor?: string | null
 }
 
 const euro = (value: number) =>
@@ -591,7 +592,7 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     tl = row(M, tl, 'Surface', input.propertySize || '', half)
     tl = row(M, tl, 'Date de visite', input.appointmentAt ? dateFr(input.appointmentAt) : '', half)
     tl = row(M, tl, 'Remise des clés', '', half)
-    tl = row(M, tl, 'Lot(s) / étage', '', half)
+    tl = row(M, tl, 'Lot(s) / étage', input.lotFloor || '', half)
     const deps = (input.dependencies || []).map((d) => normalizeKey(d))
     Tm('Dépendances :', x2, tr, 7.3, regular, soft)
     let dx = x2 + 54
