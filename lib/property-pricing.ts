@@ -10,8 +10,8 @@ export const HOUSE_SIZE_LABELS = HOUSE_SIZE_TIERS.map((tier) => tier.label)
 export const HOUSE_QUOTE_ON_REQUEST_INDEX = HOUSE_SIZE_LABELS.length - 1
 
 export const APARTMENT_PACK_PRICES: Record<number, number[]> = {
-  2: [150, 170, 190, 210, 230],
-  3: [180, 200, 220, 240, 260],
+  2: [170, 190, 210, 230, 250], // grille A (2026-09-29) : +20 €
+  3: [190, 210, 230, 250, 270], // grille A (2026-09-29) : +10 €
   4: [210, 230, 250, 270, 290],
   5: [240, 260, 280, 300, 320],
   6: [270, 290, 310, 330, 350],
@@ -70,7 +70,8 @@ export const ERP_OPTION_PRICE = 25
 // de APARTMENT_PACK_PRICES/HOUSE_PACK_PRICES qui commencent à 2 diagnostics.
 // `null` (maison, >250 m²) = sur devis, déjà couvert par
 // HOUSE_QUOTE_ON_REQUEST_INDEX.
-export const APARTMENT_DPE_ONLY_PRICES: number[] = [110, 130, 150, 170, 190]
+// Grille A (2026-09-29) : paliers de 20 € à partir de 120 € (T1).
+export const APARTMENT_DPE_ONLY_PRICES: number[] = [120, 140, 160, 180, 200]
 export const HOUSE_DPE_ONLY_PRICES: (number | null)[] = [150, 180, 210, 240, 270, 300, null]
 
 // Grilles unitaires du mode "Diagnostics à la carte" : prix d'un seul
