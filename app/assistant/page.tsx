@@ -616,6 +616,9 @@ export default function AssistantPage() {
   // autre chemin (sélection libre au lieu du questionnaire). La question
   // d'attestation de surface doit donc être posée ici aussi, pour ne pas
   // dépendre du chemin emprunté pour arriver à "DPE seul".
+  // Diagnostic gaz possible uniquement pour une installation de 15 ans ou
+  // plus (même seuil que computeDiagnostics dans lib/property-alerts.ts).
+  const gasQuestionRelevant = constructionYear !== null && new Date().getFullYear() - constructionYear >= 15
   const alaCarteAskSurfaceAttestation = purpose === 'alaCarte' && checkedItems.size === 1 && checkedItems.has('dpe')
 
   // Parcours dynamique : la commune est demandée en premier. Le mode "à la
@@ -639,13 +642,19 @@ export default function AssistantPage() {
       s.push('result')
       return s
     }
-    s.push('propertyType', 'gas', 'year')
+    // Question gaz corrélée à la mission (2026-09-29) : posée après l'année,
+    // et seulement si l'installation a 15 ans ou plus — sinon aucun
+    // diagnostic gaz n'est possible et la question est inutile.
+    s.push('propertyType', 'year')
+    if (gasQuestionRelevant) {
+      s.push('gas')
+    }
     if (isMinimalMission) {
       s.push('surfaceAttestation')
     }
     s.push('size', 'result')
     return s
-  }, [purpose, isMinimalMission, alaCarteAskSurfaceAttestation])
+  }, [purpose, isMinimalMission, alaCarteAskSurfaceAttestation, gasQuestionRelevant])
 
   const currentScreen = screens[Math.min(step, screens.length - 1)]
 
@@ -682,7 +691,7 @@ export default function AssistantPage() {
   // complet, ce qui change si la question d'attestation doit être posée :
   // on réinitialise la réponse précédente pour ne pas en garder une qui ne
   // correspond plus au bon parcours.
-  const selectYear = (i: number) => { setYearIndex(i); setHasSurfaceAttestation(null); advance() }
+  const selectYear = (i: number) => { setYearIndex(i); setHasSurfaceAttestation(null); setHasGas(null); advance() }
   const selectSize = (i: number) => { setSizeIndex(i); advance() }
   const toggleALaCarteItem = (id: ALaCarteItemId) => {
     setCheckedItems((prev) => {
