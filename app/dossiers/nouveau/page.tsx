@@ -131,14 +131,37 @@ export default function NewDossierPage() {
     }
 
     setSaving(true)
-    const { data: propertySource, error: propertySourceError } = await supabase
+
+    // Session vérifiée AVANT toute lecture : si la session active n'est pas
+    // celle d'un compte interne (ex. un compte pro/client connecté dans le
+    // même navigateur), la RLS de `properties` renvoie zéro ligne sans erreur,
+    // ce qui produisait le message générique « Impossible de préparer la
+    // fiche du bien » (erreur « transitoire » observée le 27/09).
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      setError('Session expirée : reconnecte-toi puis réessaie.')
+      setSaving(false)
+      return
+    }
+
+    const readPropertySource = () => supabase
       .from('properties')
       .select('*')
       .limit(1)
       .maybeSingle()
 
+    let { data: propertySource, error: propertySourceError } = await readPropertySource()
+    if (!propertySourceError && !propertySource) {
+      // Une seconde tentative couvre un jeton en cours de rafraîchissement.
+      await supabase.auth.refreshSession()
+      ;({ data: propertySource, error: propertySourceError } = await readPropertySource())
+    }
+
     if (propertySourceError || !propertySource) {
-      setError(propertySourceError?.message || 'Impossible de préparer la fiche du bien.')
+      setError(
+        propertySourceError?.message ||
+        `Impossible de préparer la fiche du bien : aucun bien n’est visible pour le compte connecté (${session.user.email ?? 'inconnu'}). Vérifie que tu es connecté avec le compte administrateur.`,
+      )
       setSaving(false)
       return
     }
@@ -158,10 +181,9 @@ export default function NewDossierPage() {
     assignKnown(['property_type', 'type'], form.property_type)
     assignKnown(['name', 'title', 'property_name'], form.dossier_name.trim())
 
-    const { data: { user } } = await supabase.auth.getUser()
     const identityColumns = ['created_by', 'user_id', 'owner_id']
     identityColumns.forEach((name) => {
-      if (propertyColumns.has(name) && user?.id) propertyPayload[name] = user.id
+      if (propertyColumns.has(name)) propertyPayload[name] = session.user.id
     })
 
     const { data: property, error: propertyError } = await supabase
@@ -195,6 +217,8 @@ export default function NewDossierPage() {
       .single()
 
     if (insertError || !data) {
+      // Évite une fiche `properties` orpheline si le dossier n'a pas pu être créé.
+      await supabase.from('properties').delete().eq('id', property.id)
       setError(insertError?.message || 'Impossible de créer le dossier.')
       setSaving(false)
       return
