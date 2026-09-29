@@ -325,10 +325,10 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
   const [documentsStatus, setDocumentsStatus] = useState<'pending' | 'sent' | 'not_sent'>('pending')
 
   // Bloc chauffage entièrement optionnel : n'entre jamais dans canSubmit.
-  // DPE seul (attestation de surface fournie) : les dépendances n'entrent pas
-  // dans le DPE, leur saisie devient facultative.
-  const dependenciesOptional = context.diagnosticsSummary.surfaceAttestationProvided === true
-  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0 && floor.trim().length > 0 && (dependenciesOptional || dependencies.size > 0)
+  // Dépendances facultatives (2026-09-29) : elles complètent l'ordre de
+  // mission mais ne doivent jamais bloquer l'envoi de la demande / du devis.
+  const dependenciesOptional = true
+  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0 && floor.trim().length > 0
 
   const toggleDependency = (id: string) => {
     setDependencies((prev) => {
