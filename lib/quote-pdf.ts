@@ -37,6 +37,7 @@ type QuotePdfInput = {
   ownerName?: string | null
   appointmentAt?: string | null
   dependencies?: string[]
+  headerVariant?: 'C' | 'P' | 'Q'
 }
 
 const euro = (value: number) =>
@@ -217,22 +218,49 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     return 841.89 - yy
   }
 
-  // En-tête « bloc marine » (version compacte) : logo sur fond blanc, bloc
-  // marine en biais avec le numéro, la date et la validité du devis.
+  // En-tête de la première page. Variante choisie via headerVariant
+  // (aperçu) ; 'C' = bloc marine compact.
   const navyC = rgb(0.024, 0.169, 0.349)
-  try {
-    const logo = await pdf.embedJpg(`data:image/jpeg;base64,${TPL.HEADER_LOGO_JPEG}`)
-    firstPage.drawImage(logo, { x: 36, y: Y(58), width: 105, height: 105 * logo.height / logo.width })
-  } catch {
-    if (ariaLogo) firstPage.drawImage(ariaLogo, { x: 40, y: Y(56), width: 110, height: 41 })
+  const variant = input.headerVariant || 'C'
+  const drawLogo = async (width: number, top: number) => {
+    try {
+      const logo = await pdf.embedJpg(`data:image/jpeg;base64,${TPL.HEADER_LOGO_JPEG}`)
+      firstPage.drawImage(logo, { x: 36, y: Y(top) - width * logo.height / logo.width, width, height: width * logo.height / logo.width })
+    } catch {
+      if (ariaLogo) firstPage.drawImage(ariaLogo, { x: 40, y: Y(top + 40), width, height: width * 0.37 })
+    }
   }
-  firstPage.drawSvgPath('M 360 0 L 595.28 0 L 595.28 76 L 326 76 Z', { x: 0, y: 841.89, color: navyC })
-  firstPage.drawSvgPath('M 326 76 L 334 76 L 368 0 L 360 0 Z', { x: 0, y: 841.89, color: sky })
-  firstPage.drawRectangle({ x: 0, y: Y(78), width: 595.28, height: 1.5, color: sky })
-  textRight(`DEVIS  N° ${input.quoteNumber}`, 559, Y(34), 14, bold, white)
-  textRight(`Émis le ${dateFr(input.createdAt)}  ·  Valable 30 jours`, 559, Y(48), 7.8, regular, rgb(0.78, 0.86, 0.95))
-  textRight('Devis gratuit et sans engagement', 559, Y(60), 6.8, regular, rgb(0.62, 0.76, 0.9))
-  firstPage.drawText('06 15 70 36 70  ·  contact@aria-diagnostics.fr', { x: 40, y: Y(69), size: 7.4, font: regular, color: soft })
+  if (variant === 'P') {
+    await drawLogo(100, 14)
+    textRight(`DEVIS N° ${input.quoteNumber}`, 559, Y(34), 13, bold, navyC)
+    textRight(`Émis le ${dateFr(input.createdAt)}  ·  Valable 30 jours  ·  Devis gratuit et sans engagement`, 559, Y(47), 7.6, regular, soft)
+    firstPage.drawText('06 15 70 36 70  ·  contact@aria-diagnostics.fr', { x: 40, y: Y(64), size: 7.4, font: regular, color: soft })
+    firstPage.drawRectangle({ x: 36, y: Y(74), width: 523.28, height: 2, color: navyC })
+    firstPage.drawRectangle({ x: 36, y: Y(77), width: 120, height: 2, color: sky })
+  } else if (variant === 'Q') {
+    await drawLogo(100, 12)
+    firstPage.drawSvgPath('M 400 0 L 595.28 0 L 595.28 30 L 386 30 Z', { x: 0, y: 841.89, color: navyC })
+    firstPage.drawSvgPath('M 386 30 L 392 30 L 406 0 L 400 0 Z', { x: 0, y: 841.89, color: sky })
+    textRight(`DEVIS  N° ${input.quoteNumber}`, 559, Y(20), 10.5, bold, white)
+    textRight(`Émis le ${dateFr(input.createdAt)}  ·  Valable 30 jours`, 559, Y(46), 8, regular, soft)
+    textRight('Devis gratuit et sans engagement', 559, Y(58), 7, regular, soft)
+    firstPage.drawText('06 15 70 36 70  ·  contact@aria-diagnostics.fr', { x: 40, y: Y(62), size: 7.4, font: regular, color: soft })
+    firstPage.drawRectangle({ x: 0, y: Y(72), width: 595.28, height: 1.5, color: sky })
+  } else {
+    try {
+      const logo = await pdf.embedJpg(`data:image/jpeg;base64,${TPL.HEADER_LOGO_JPEG}`)
+      firstPage.drawImage(logo, { x: 36, y: Y(58), width: 105, height: 105 * logo.height / logo.width })
+    } catch {
+      if (ariaLogo) firstPage.drawImage(ariaLogo, { x: 40, y: Y(56), width: 110, height: 41 })
+    }
+    firstPage.drawSvgPath('M 360 0 L 595.28 0 L 595.28 76 L 326 76 Z', { x: 0, y: 841.89, color: navyC })
+    firstPage.drawSvgPath('M 326 76 L 334 76 L 368 0 L 360 0 Z', { x: 0, y: 841.89, color: sky })
+    firstPage.drawRectangle({ x: 0, y: Y(78), width: 595.28, height: 1.5, color: sky })
+    textRight(`DEVIS  N° ${input.quoteNumber}`, 559, Y(34), 14, bold, white)
+    textRight(`Émis le ${dateFr(input.createdAt)}  ·  Valable 30 jours`, 559, Y(48), 7.8, regular, rgb(0.78, 0.86, 0.95))
+    textRight('Devis gratuit et sans engagement', 559, Y(60), 6.8, regular, rgb(0.62, 0.76, 0.9))
+    firstPage.drawText('06 15 70 36 70  ·  contact@aria-diagnostics.fr', { x: 40, y: Y(69), size: 7.4, font: regular, color: soft })
+  }
 
   const c1 = 32, c2 = 248, c3 = 455
   const t1 = 66, t2 = 282, t3 = 489
