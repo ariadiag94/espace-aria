@@ -29,13 +29,11 @@ export const HOUSE_PACK_PRICES: Record<number, number[]> = {
 export type PackPropertyType = 'apartment' | 'house'
 export type PackPurpose = 'sale' | 'rental'
 
-// Remise de 10 % sur le prix du pack de diagnostics en location, par rapport
-// au même pack en vente (nombre de diagnostics et tranche de taille
-// identiques), arrondie à l'euro le plus proche. Ne s'applique qu'au prix du
-// pack : les options (mesurage, assainissement, DAPP...) gardent leur prix
-// actuel quel que soit l'objet. Source unique lue par /assistant et /devis,
-// pour que le prix en location ne puisse pas diverger entre les deux pages.
-export const RENTAL_PACK_DISCOUNT_RATE = 0.10
+// Plus de remise location depuis le 2026-09-29 : mêmes contraintes
+// techniques qu'en vente, donc même tarif. Constante conservée (à 0) pour
+// pouvoir réintroduire une remise sans toucher aux appelants. Source unique
+// lue par /assistant et /devis.
+export const RENTAL_PACK_DISCOUNT_RATE = 0
 
 export const getPackPrice = (
   propertyType: PackPropertyType,
