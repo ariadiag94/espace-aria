@@ -138,7 +138,9 @@ export const computeDiagnostics = ({
     // prix réutilise directement le pack 2 existant : DPE + surface = 2,
     // l'ERP ne doit pas pousser ce compte à 3). En pack complet, l'ERP
     // compte dans le pack comme avant cette règle.
-    mandatory.push({ id: 'erp', label: 'ERP', detail: 'État des risques et pollutions — 25 € offert, inclus automatiquement.', countsTowardPack: isMinimalMission ? false : undefined })
+    // Pack complet : l'ERP compte comme un diagnostic, donc « inclus » (et non
+    // « offert »). Mission minimale : il ne compte pas, il est réellement offert.
+    mandatory.push({ id: 'erp', label: 'ERP', detail: isMinimalMission ? 'État des risques et pollutions — 25 € offert, inclus automatiquement.' : 'État des risques et pollutions — inclus dans le pack.', countsTowardPack: isMinimalMission ? false : undefined })
   } else {
     options.push({ id: 'erp', label: 'ERP (état des risques et pollutions)' })
   }
