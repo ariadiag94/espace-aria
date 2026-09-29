@@ -493,7 +493,93 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     }
   }
 
-  documents.forEach(addContractDocument)
+  // CGV + CGI : texte compact sur deux colonnes, les deux documents à la
+  // suite (sans saut de page), pour limiter le nombre de pages du devis.
+  const addTermsColumns = (termDocs: ContractDocument[]) => {
+    const gap = 16
+    const colW = (width - gap) / 2
+    const bodySize = 6.4
+    const lineH = 7.5
+    const headSize = 7.3
+    const headLineH = 8.6
+    const bottom = 64
+    let page = pdf.addPage([595.28, 841.89])
+    let col = 0
+    let top = 742
+    let y = top
+
+    const drawHeader = () => {
+      if (headerPhoto) page.drawImage(headerPhoto, { x: 595.28 - 300, y: 841.89 - 57, width: 300, height: 57 })
+      if (headerLogo) page.drawImage(headerLogo, { x: 36, y: 841.89 - 52, width: 100, height: 100 * headerLogo.height / headerLogo.width })
+      page.drawRectangle({ x: 0, y: 841.89 - 72, width: 595.28, height: 15, color: rgb(0.137, 0.647, 0.875) })
+      page.drawText('Tel. 06 15 70 36 70     contact@aria-diagnostics.fr', { x: 30, y: 841.89 - 67.5, size: 8, font: bold, color: white })
+      const headerRef = pdfSafe(`Devis N° ${input.quoteNumber}`)
+      page.drawText(headerRef, { x: 565 - regular.widthOfTextAtSize(headerRef, 8), y: 841.89 - 67.5, size: 8, font: regular, color: white })
+    }
+    const colX = () => left + col * (colW + gap)
+    const ensure = (needed: number) => {
+      if (y - needed >= bottom) return
+      if (col === 0) {
+        col = 1
+        y = top
+      } else {
+        page = pdf.addPage([595.28, 841.89])
+        drawHeader()
+        col = 0
+        top = 742
+        y = top
+      }
+    }
+    const drawLines = (lines: string[], x: number, font: PDFFont, size: number, lh: number, color = gray) => {
+      for (const l of lines) {
+        ensure(lh)
+        page.drawText(l, { x, y, size, font, color })
+        y -= lh
+      }
+    }
+
+    drawHeader()
+    termDocs.forEach((doc, docIndex) => {
+      // Titre du document sur toute la largeur quand il ouvre une colonne
+      // gauche vide, sinon en tête de colonne.
+      const titleLines = wrapText(doc.title.toUpperCase(), bold, 9.5, colW)
+      if (docIndex > 0) y -= 8
+      ensure(titleLines.length * 11 + 30)
+      page.drawRectangle({ x: colX(), y: y - titleLines.length * 11 - 3, width: colW, height: titleLines.length * 11 + 9, color: rgb(0.137, 0.647, 0.875) })
+      titleLines.forEach((l, i) => page.drawText(l, { x: colX() + 6, y: y - 5 - i * 11, size: 9.5, font: bold, color: white }))
+      y -= titleLines.length * 11 + 12
+      if (doc.subtitle) drawLines(wrapText(doc.subtitle, regular, 6.6, colW), colX(), regular, 6.6, 8, gray)
+      y -= 3
+
+      for (const block of doc.blocks) {
+        const headLines = wrapText(block.title, bold, headSize, colW)
+        ensure(headLines.length * headLineH + 2 * lineH)
+        y -= 2
+        headLines.forEach((l) => {
+          page.drawText(l, { x: colX(), y, size: headSize, font: bold, color: blue })
+          y -= headLineH
+        })
+        for (const paragraph of block.paragraphs) {
+          const isBullet = /^•\s/.test(paragraph)
+          const body = isBullet ? paragraph.replace(/^•\s*/, '') : paragraph
+          const indent = isBullet ? 7 : 0
+          const lines = wrapText(body, regular, bodySize, colW - indent)
+          lines.forEach((l, i) => {
+            ensure(lineH)
+            if (isBullet && i === 0) page.drawRectangle({ x: colX() + 1, y: y + 1.8, width: 2.2, height: 2.2, color: midBlue })
+            page.drawText(l, { x: colX() + indent, y, size: bodySize, font: regular, color: gray })
+            y -= lineH
+          })
+          y -= 1.6
+        }
+        y -= 2
+      }
+    })
+  }
+
+  addContractDocument(documents[0])
+  addTermsColumns([documents[1], documents[2]])
+  documents.slice(3).forEach(addContractDocument)
 
   const pages = pdf.getPages()
   const footerSky = rgb(0.565, 0.808, 1)
