@@ -60,13 +60,14 @@ export const generalTerms: ContractDocument = {
     {
       title: '6. Rendez-vous empêché et contre-visite',
       paragraphs: [
-        'Lorsqu’un déplacement ne permet pas de réaliser ou d’achever la mission en raison d’une absence, d’un défaut de clé, d’un accès refusé, d’un local non ouvert ou d’un équipement inaccessible relevant du donneur d’ordre, le déplacement, le temps mobilisé et la contre-visite peuvent faire l’objet d’une facturation distincte conformément au devis ou au tarif applicable.',
+        'Lorsqu’un déplacement ne permet pas de réaliser ou d’achever la mission en raison d’une absence, d’un défaut de clé, d’un accès refusé, d’un local non ouvert ou d’un équipement inaccessible relevant du donneur d’ordre, le déplacement et le temps mobilisé peuvent être facturés, et la contre-visite fait l’objet d’un devis complémentaire soumis à l’accord préalable du donneur d’ordre.',
+        'Le donneur d’ordre peut annuler ou reporter le rendez-vous sans frais en prévenant ARIA Diagnostics au plus tard la veille ouvrée de l’intervention.',
       ],
     },
     {
       title: '7. Laboratoires, prestataires et analyses',
       paragraphs: [
-        'La commande autorise le recours, lorsque nécessaire, à un laboratoire accrédité ou à un prestataire compétent. Les analyses, prélèvements, moyens d’accès, interventions spécialisées et prestations extérieures non inclus au devis sont facturés en supplément après information du donneur d’ordre.',
+        'La commande autorise le recours, lorsque nécessaire, à un laboratoire accrédité ou à un prestataire compétent. Les analyses, prélèvements, moyens d’accès, interventions spécialisées et prestations extérieures non inclus au devis sont facturés en supplément, après accord exprès du donneur d’ordre sur leur prix.',
       ],
     },
     {
@@ -74,6 +75,13 @@ export const generalTerms: ContractDocument = {
       paragraphs: [
         'En cas d’analyse en attente, d’impossibilité d’accès, de défaut de sécurité, de limitation technique ou d’information indispensable manquante, ARIA Diagnostics peut émettre un pré-rapport, un document provisoire ou un rapport avec réserves. Les opérations réellement accomplies restent facturables.',
         'La levée des réserves peut nécessiter une visite, une analyse ou une mission additionnelle. Les rapports successifs doivent être conservés et lus ensemble sauf mention expresse d’annulation et remplacement.',
+      ],
+    },
+    {
+      title: '8 bis. Délai de remise des rapports',
+      paragraphs: [
+        'Sauf délai particulier prévu au devis, les rapports sont remis dans un délai maximal de 30 jours suivant la visite.',
+        'Ce délai est suspendu tant que les éléments dépendant d’un tiers ne sont pas disponibles : résultats d’analyses de laboratoire, documents ou données transmis par le syndic, le gestionnaire ou l’exploitant (notamment pour un chauffage ou une production d’eau chaude collectifs). À défaut de réponse de ce tiers dans un délai raisonnable, et après information du donneur d’ordre, le DPE peut être établi avec les valeurs par défaut prévues par la méthode réglementaire.',
       ],
     },
     {
@@ -92,8 +100,9 @@ export const generalTerms: ContractDocument = {
     {
       title: '11. Prix, facturation et paiement',
       paragraphs: [
-        'Le prix est celui du devis accepté ou du tarif applicable à la mission décrite. Il peut être ajusté lorsqu’une caractéristique réelle diffère sensiblement des informations communiquées : surface, nombre de lots ou bâtiments, dépendances, accès, complexité, analyses ou nature de la mission.',
-        'Les factures sont payables à réception sauf stipulation écrite différente. Pour les clients professionnels, tout retard entraîne les pénalités indiquées sur le devis ou la facture et, lorsque les conditions légales sont réunies, l’indemnité forfaitaire de 40 euros pour frais de recouvrement.',
+        'Le prix est celui du devis accepté ou du tarif applicable à la mission décrite. Il peut être ajusté lorsqu’une caractéristique réelle diffère sensiblement des informations communiquées : surface, nombre de lots ou bâtiments, dépendances, accès, complexité, analyses ou nature de la mission. Tout ajustement est notifié au donneur d’ordre et soumis à son accord avant l’intervention ; à défaut d’accord, chaque partie peut renoncer à la mission sans frais.',
+        'Les factures sont payables à réception sauf stipulation écrite différente. Aucun escompte n’est accordé pour paiement anticipé.',
+        'Pour les clients professionnels, tout retard de paiement entraîne de plein droit des pénalités au taux égal à trois fois le taux d’intérêt légal, ainsi qu’une indemnité forfaitaire de 40 euros pour frais de recouvrement (article L441-10 du Code de commerce).',
       ],
     },
     {
@@ -106,7 +115,8 @@ export const generalTerms: ContractDocument = {
     {
       title: '13. Données personnelles',
       paragraphs: [
-        'Les données sont traitées pour la gestion de la commande, la planification, les diagnostics, la facturation, la gestion documentaire, les contrôles de certification et les transmissions réglementaires. Les droits d’accès, rectification, effacement, limitation et, selon les cas, opposition peuvent être exercés auprès de contact@aria-diagnostics.fr.',
+        'Les données sont traitées par ARIA Diagnostics, responsable de traitement, pour la gestion de la commande, la planification, les diagnostics, la facturation, la gestion documentaire, les contrôles de certification et les transmissions réglementaires (ADEME notamment). Ces traitements reposent sur l’exécution du contrat et le respect des obligations légales.',
+        'Les données sont conservées pendant la durée nécessaire à la mission puis pendant les durées de prescription et d’archivage légales (10 ans pour les pièces comptables). Les droits d’accès, rectification, effacement, limitation, portabilité et, selon les cas, opposition peuvent être exercés auprès de contact@aria-diagnostics.fr. Une réclamation peut être introduite auprès de la CNIL (www.cnil.fr).',
       ],
     },
     {
@@ -127,6 +137,7 @@ export const generalTerms: ContractDocument = {
       title: '16. Droit applicable',
       paragraphs: [
         'Le contrat est soumis au droit français. Aucune clause ne prive un consommateur ou un non-professionnel des droits impératifs qui lui sont reconnus. Si une clause est déclarée inapplicable, les autres dispositions demeurent applicables.',
+        'Entre professionnels, tout litige relève de la compétence du tribunal de commerce de Créteil.',
       ],
     },
   ],
@@ -298,9 +309,10 @@ export const withdrawalDocument: ContractDocument = {
     {
       title: 'Exercice du droit de rétractation',
       paragraphs: [
-        'À l’attention de ARIA Diagnostics — 18 rue de Budapest, 94140 Alfortville — contact@aria-diagnostics.fr.',
+        'À l’attention d’ARIA Diagnostics — 18 rue de Budapest, 94140 Alfortville — contact@aria-diagnostics.fr.',
         'Je vous notifie par la présente ma rétractation du contrat portant sur la prestation de services désignée dans le devis joint.',
         'Numéro du devis : ____________________________________',
+        'Commandé le : ________________________________________',
         'Nom du consommateur : ________________________________',
         'Adresse du consommateur : ______________________________',
         'Date : ____________________    Signature : ______________________________',
@@ -410,6 +422,13 @@ export const missionDocument = (
         (line) =>
           `• ${line.label} — quantité ${Number(line.quantity || 0).toLocaleString('fr-FR')}`,
       ),
+    },
+    {
+      title: 'Attestation sur l’honneur (article R271-3 du CCH)',
+      paragraphs: [
+        'ARIA Diagnostics atteste sur l’honneur être en situation régulière au regard de l’article L271-6 du Code de la construction et de l’habitation : certifications en cours de validité pour les diagnostics réalisés, assurance de responsabilité civile professionnelle, et absence de tout lien de nature à porter atteinte à son impartialité et à son indépendance à l’égard du propriétaire, de son mandataire ou d’une entreprise pouvant réaliser des travaux sur les ouvrages concernés.',
+        'ARIA Diagnostics atteste également disposer des moyens en matériel et en personnel nécessaires à l’établissement des diagnostics commandés.',
+      ],
     },
     {
       title: 'Mission confiée à ARIA Diagnostics',

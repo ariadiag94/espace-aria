@@ -174,8 +174,9 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   text('18 rue de Budapest · 94140 Alfortville', left + 10, y - 29, 7.5, regular, gray)
   text('06 15 70 36 70 · contact@aria-diagnostics.fr', left + 10, y - 41, 7.5, regular, gray)
   text('www.aria-diagnostics.fr', left + 10, y - 53, 7.5, regular, gray)
-  text('SASU · SIRET 988 026 746 00012 · TVA FR34 988026746', left + 10, y - 68, 6.5, regular, gray)
-  text('RCP AXA n°10988009704 · Certification Bureau Veritas', left + 10, y - 78, 6.5, regular, gray)
+  text('SASU · SIRET 988 026 746 00012 · TVA FR34 988026746', left + 10, y - 62, 6.5, regular, gray)
+  text('RCP AXA France IARD n°10988009704 · Certification Bureau Veritas', left + 10, y - 71, 6.5, regular, gray)
+  text('AXA : 313 Terrasses de l’Arche, 92727 Nanterre · couverture : France', left + 10, y - 80, 6.5, regular, gray)
 
   const rx = left + cardW + cardGap + 10
   text("À l’attention du donneur d’ordre", rx, y - 15, 8.5, bold, midBlue)
