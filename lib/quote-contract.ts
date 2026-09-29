@@ -443,9 +443,7 @@ export const missionDocument = (
       paragraphs: [
         'Je reconnais avoir pris connaissance du devis, du présent ordre de mission, des CGV, des CGI et des annexes applicables.',
         'Nom / qualité : ________________________________________',
-        'Date : ____________________    Signature précédée de « Bon pour accord » :',
-        '',
-        '______________________________________________________________________',
+        'Date : ____________________    Signature, précédée de « Bon pour accord » : ______________________________',
       ],
     },
   ],
