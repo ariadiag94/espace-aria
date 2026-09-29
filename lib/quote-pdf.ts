@@ -603,7 +603,7 @@ export async function generateQuotePdf(input: QuotePdfInput) {
       dx += w
     }
     tr += 14
-    const tech = (input.missionTechnicalInfo || []).filter((info) => !/^(type de bien|objet|surface déclarée)/i.test(info))
+    const tech = (input.missionTechnicalInfo || []).filter((info) => !/^(type de bien|objet|surface déclarée|dépendances)/i.test(info))
     Tm('Informations déclarées :', x2, tr, 7.3, regular, soft)
     tr += 10
     if (tech.length) {

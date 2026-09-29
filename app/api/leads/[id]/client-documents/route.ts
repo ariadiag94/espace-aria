@@ -94,6 +94,7 @@ export async function POST(
       notes: `Devis estimatif sur informations déclarées${content.proDiscount ? ', tarif partenaire -10 % inclus' : ''}.${content.surfaceAttestationProvided ? ' À défaut d’attestation de surface transmise avant l’intervention, le mesurage sera réalisé sur place et facturé en supplément, au tarif du pack DPE + surface.' : ''}`,
       diagnostics: content.diagnostics,
       missionTechnicalInfo: content.technicalInfo,
+      dependencies: Array.isArray(lead.dependencies) ? lead.dependencies : [],
       origin: new URL(request.url).origin,
       lines: content.lines,
     })
