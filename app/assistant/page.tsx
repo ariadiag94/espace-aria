@@ -266,6 +266,9 @@ type LeadContext = {
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/
 
+// Communes affichées en premier dans la liste (secteur d'intervention ARIA).
+const PRIORITY_COMMUNES = ['alfortville', 'maisons-alfort']
+
 // Valeurs alignées sur la contrainte CHECK de public.leads (supabase/migrations/012_leads_extra_fields.sql).
 const DEPENDENCY_OPTIONS: { id: string; label: string }[] = [
   { id: 'cave', label: 'Cave' },
@@ -321,6 +324,25 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
   const [heatingCharges, setHeatingCharges] = useState('')
   const [dtgAuditAvailable, setDtgAuditAvailable] = useState<DtgAuditAvailable | null>(null)
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
+  // Suggestions d'adresses (rues de la commune choisie), via /api/adresse.
+  const [suggestions, setSuggestions] = useState<{ label: string; lat: number | null; lon: number | null }[]>([])
+  const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(null)
+  const [addressPicked, setAddressPicked] = useState(false)
+  const communeName = (() => {
+    const slug = context.diagnosticsSummary.communeSlug
+    return typeof slug === 'string' ? COMMUNE_RULES.find((c) => c.slug === slug)?.name || '' : ''
+  })()
+  useEffect(() => {
+    if (addressPicked || address.trim().length < 3) { setSuggestions([]); return }
+    const ctrl = new AbortController()
+    const t = setTimeout(() => {
+      fetch(`/api/adresse?q=${encodeURIComponent(address.trim())}&city=${encodeURIComponent(communeName)}`, { signal: ctrl.signal })
+        .then((r) => r.json())
+        .then((d) => setSuggestions(Array.isArray(d?.results) ? d.results : []))
+        .catch(() => {})
+    }, 250)
+    return () => { clearTimeout(t); ctrl.abort() }
+  }, [address, communeName, addressPicked])
   // Envoi automatique du PDF devis + ordre de mission au client (2026-09-29).
   const [documentsStatus, setDocumentsStatus] = useState<'pending' | 'sent' | 'not_sent'>('pending')
 
@@ -440,7 +462,29 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
         <input className="diagassist-input" placeholder="Nom et prénom" value={name} onChange={(e) => setName(e.target.value)} />
         <input className="diagassist-input" placeholder="Téléphone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
         <input className="diagassist-input" placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input className="diagassist-input" placeholder="Adresse du bien" value={address} onChange={(e) => setAddress(e.target.value)} />
+        <div style={{ position: 'relative' }}>
+          <input className="diagassist-input" placeholder={communeName ? `Adresse du bien (${communeName})` : 'Adresse du bien'} value={address} autoComplete="off"
+            onChange={(e) => { setAddress(e.target.value); setAddressPicked(false); setPicked(null) }} style={{ width: '100%' }} />
+          {suggestions.length > 0 && (
+            <div style={{ position: 'absolute', zIndex: 20, left: 0, right: 0, top: '100%', marginTop: 4, background: '#fff', border: '2px solid #dbe7f2', borderRadius: 12, overflow: 'hidden', boxShadow: '0 8px 20px rgba(6,43,89,.12)' }}>
+              {suggestions.map((s) => (
+                <button key={s.label} type="button" onClick={() => { setAddress(s.label); setAddressPicked(true); setSuggestions([]); setPicked(s.lat != null && s.lon != null && Number.isFinite(s.lat) && Number.isFinite(s.lon) ? { lat: s.lat, lon: s.lon } : null) }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none', borderBottom: '1px solid #eef2f6', background: '#fff', color: NAVY, fontSize: 14, cursor: 'pointer' }}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {picked && (
+          <figure style={{ margin: 0 }}>
+            {/* Vue aérienne du bien : orthophoto IGN (Géoplateforme), service public gratuit. */}
+            <img alt="Vue aérienne du bien" loading="lazy"
+              src={`https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=ORTHOIMAGERY.ORTHOPHOTOS&STYLES=&CRS=EPSG:4326&BBOX=${picked.lat - 0.0006},${picked.lon - 0.0012},${picked.lat + 0.0006},${picked.lon + 0.0012}&WIDTH=640&HEIGHT=320&FORMAT=image/jpeg`}
+              style={{ width: '100%', borderRadius: 12, border: '2px solid #dbe7f2', display: 'block' }} />
+            <figcaption style={{ fontSize: 11, color: '#6f7d90', marginTop: 4 }}>Vue aérienne © IGN – Géoplateforme. Vérifiez qu’il s’agit bien du bien concerné.</figcaption>
+          </figure>
+        )}
         <input className="diagassist-input" placeholder="Étage" value={floor} onChange={(e) => setFloor(e.target.value)} />
       </div>
       <div style={{ marginBottom: 14 }}>
@@ -935,9 +979,17 @@ export default function AssistantPage() {
                   style={{ width: '100%', padding: '16px 18px', borderRadius: 14, border: '2px solid #dbe7f2', background: '#fff', color: NAVY, fontSize: 16, fontWeight: 700, fontFamily: 'inherit' }}
                 >
                   <option value="" disabled>Sélectionnez une commune</option>
-                  {COMMUNE_RULES.map((c) => (
-                    <option key={c.slug} value={c.slug}>{c.name}</option>
-                  ))}
+                  {/* Communes du secteur d'ARIA mises en avant (2026-09-30). */}
+                  <optgroup label="Secteur ARIA">
+                    {COMMUNE_RULES.filter((c) => PRIORITY_COMMUNES.includes(c.slug)).sort((a, b) => PRIORITY_COMMUNES.indexOf(a.slug) - PRIORITY_COMMUNES.indexOf(b.slug)).map((c) => (
+                      <option key={c.slug} value={c.slug}>{c.name}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Autres communes du Val-de-Marne et Paris">
+                    {COMMUNE_RULES.filter((c) => !PRIORITY_COMMUNES.includes(c.slug)).map((c) => (
+                      <option key={c.slug} value={c.slug}>{c.name}</option>
+                    ))}
+                  </optgroup>
                   <option value={OTHER_COMMUNE_SLUG}>Autre commune</option>
                 </select>
               </>
