@@ -1,5 +1,6 @@
 import { PDFDocument, PDFFont, PDFImage, PDFPage, StandardFonts, rgb } from 'pdf-lib'
 import { ARIA_LOGO_JPEG_BASE64 } from '@/lib/aria-logo-generated'
+import * as TPL from '@/lib/quote-template-assets'
 import {
   ContractDocument,
   ContractLine,
@@ -31,6 +32,11 @@ type QuotePdfInput = {
   // Informations techniques déclarées, ajoutées à l'ordre de mission
   // (envoi automatique depuis /assistant, voir lib/lead-quote.ts).
   missionTechnicalInfo?: string[]
+  // Champs facultatifs du modèle de devis ARIA (laissés vides si inconnus).
+  dossierRef?: string | null
+  ownerName?: string | null
+  appointmentAt?: string | null
+  dependencies?: string[]
 }
 
 const euro = (value: number) =>
@@ -104,6 +110,9 @@ const drawWrapped = (
   return y - lines.length * lineHeight
 }
 
+const normalizeKey = (value: string) =>
+  String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+
 const loadAriaLogo = async (pdf: PDFDocument): Promise<PDFImage | null> => {
   if (!ARIA_LOGO_JPEG_BASE64) return null
   try {
@@ -149,137 +158,242 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     })
   }
 
-  const pale = rgb(0.957, 0.976, 0.992)
-  const zebra = rgb(0.972, 0.979, 0.986)
-  const textRight = (value: string, xRight: number, yy: number, size = 9, font: PDFFont = regular, color = blue) => {
+  // ---- Première page : reprise du modèle de devis Word d'ARIA Diagnostics ----
+  const sky = rgb(0.137, 0.647, 0.875)
+  const ink = rgb(0.15, 0.2, 0.27)
+  const soft = rgb(0.45, 0.5, 0.56)
+  const rule = rgb(0.8, 0.83, 0.86)
+  const textRight = (value: string, xRight: number, yy: number, size = 9, font: PDFFont = regular, color = ink) => {
     const safe = pdfSafe(value)
     firstPage.drawText(safe, { x: xRight - font.widthOfTextAtSize(safe, size), y: yy, size, font, color })
   }
-  const label = (value: string, x: number, yy: number, color = midBlue) => text(value.toUpperCase(), x, yy, 6.8, bold, color)
-
-  // En-tête : logo à gauche, titre et références à droite.
-  if (ariaLogo) {
-    firstPage.drawImage(ariaLogo, { x: left, y: 764, width: 130, height: 48 })
-  } else {
-    text('ARIA DIAGNOSTICS', left, 790, 18, bold, blue)
+  const textCenter = (value: string, xMid: number, yy: number, size = 9, font: PDFFont = regular, color = ink) => {
+    const safe = pdfSafe(value)
+    firstPage.drawText(safe, { x: xMid - font.widthOfTextAtSize(safe, size) / 2, y: yy, size, font, color })
   }
-  textRight('DEVIS', right, 790, 24, bold, blue)
-  const meta: Array<[string, string]> = [
-    ['N°', input.quoteNumber],
-    ['Émis le', dateFr(input.createdAt)],
-    ['Validité', '30 jours'],
-  ]
-  meta.forEach(([key, value], index) => {
-    const yy = 770 - index * 12
-    textRight(value, right, yy, 8.5, bold, blue)
-    const valueW = bold.widthOfTextAtSize(pdfSafe(value), 8.5)
-    textRight(key, right - valueW - 8, yy, 8, regular, gray)
-  })
-  firstPage.drawRectangle({ x: left, y: 735, width, height: 3, color: midBlue })
+  const embedPng = async (b64: string) => {
+    try { return await pdf.embedPng(`data:image/png;base64,${b64}`) } catch { return null }
+  }
+  const icons = {
+    document: await embedPng(TPL.ICON_DOCUMENT_PNG),
+    folder: await embedPng(TPL.ICON_FOLDER_PNG),
+    docStar: await embedPng(TPL.ICON_DOCSTAR_PNG),
+    send: await embedPng(TPL.ICON_SEND_PNG),
+    briefcase: await embedPng(TPL.ICON_BRIEFCASE_PNG),
+    hourglass: await embedPng(TPL.ICON_HOURGLASS_PNG),
+    pin: await embedPng(TPL.ICON_PIN_PNG),
+    person: await embedPng(TPL.ICON_PERSON_PNG),
+    calendar: await embedPng(TPL.ICON_CALENDAR_PNG),
+    checklist: await embedPng(TPL.ICON_CHECKLIST_PNG),
+    info: await embedPng(TPL.ICON_INFO_PNG),
+    microscope: await embedPng(TPL.ICON_MICROSCOPE_PNG),
+    sign: await embedPng(TPL.ICON_SIGN_PNG),
+  }
+  const iconBox = (icon: PDFImage | null, x: number, top: number, size = 26) => {
+    const yy = 841.89 - top - size
+    firstPage.drawRectangle({ x, y: yy, width: size, height: size, color: sky })
+    if (icon) {
+      const scale = Math.min((size - 8) / icon.width, (size - 8) / icon.height)
+      const w = icon.width * scale
+      const h = icon.height * scale
+      firstPage.drawImage(icon, { x: x + (size - w) / 2, y: yy + (size - h) / 2, width: w, height: h })
+    }
+  }
+  // top = distance depuis le haut de la page (repère du modèle Word).
+  const Y = (top: number) => 841.89 - top
+  const field = (x: number, top: number, labelText: string, lines: Array<{ text: string; bold?: boolean }>, maxW = 175) => {
+    firstPage.drawLine({ start: { x, y: Y(top - 4) }, end: { x: x + maxW, y: Y(top - 4) }, color: rule, thickness: 0.7 })
+    firstPage.drawText(pdfSafe(labelText), { x, y: Y(top + 7), size: 7.5, font: regular, color: soft })
+    let yy = Y(top + 18)
+    for (const line of lines) {
+      if (!line.text) continue
+      const font = line.bold ? bold : regular
+      const size = line.bold ? 8.6 : 7.6
+      for (const wrapped of wrapText(line.text, font, size, maxW)) {
+        firstPage.drawText(wrapped, { x, y: yy, size, font, color: ink })
+        yy -= size + 2.4
+      }
+    }
+    return 841.89 - yy
+  }
 
-  // Émetteur / donneur d'ordre.
-  y = 718
-  const cardGap = 16
-  const cardW = (width - cardGap) / 2
-  label('Émetteur', left, y - 4)
-  text('ARIA Diagnostics', left, y - 20, 11, bold)
-  text('18 rue de Budapest · 94140 Alfortville', left, y - 34, 8, regular, gray)
-  text('06 15 70 36 70 · contact@aria-diagnostics.fr', left, y - 46, 8, regular, gray)
-  text('www.aria-diagnostics.fr', left, y - 58, 8, regular, gray)
+  // En-tête : photo, logo, bandeau bleu.
+  try {
+    const photo = await pdf.embedJpg(`data:image/jpeg;base64,${TPL.HEADER_PHOTO_JPEG}`)
+    firstPage.drawImage(photo, { x: 595.28 - 448, y: Y(85), width: 448, height: 85 })
+  } catch { /* photo facultative */ }
+  try {
+    const logo = await pdf.embedJpg(`data:image/jpeg;base64,${TPL.HEADER_LOGO_JPEG}`)
+    firstPage.drawImage(logo, { x: 36, y: Y(76), width: 145, height: 145 * logo.height / logo.width })
+  } catch {
+    if (ariaLogo) firstPage.drawImage(ariaLogo, { x: 40, y: Y(72), width: 140, height: 52 })
+  }
+  firstPage.drawRectangle({ x: 0, y: Y(104), width: 595.28, height: 20, color: sky })
+  firstPage.drawText('Tel. 06 15 70 36 70     contact@aria-diagnostics.fr', { x: 30, y: Y(98), size: 10.5, font: bold, color: white })
+  textRight('DEVIS GRATUIT ET SANS ENGAGEMENT', 574, Y(98), 10.5, regular, white)
 
-  const rx = left + cardW + cardGap
-  firstPage.drawRectangle({ x: rx, y: y - 72, width: cardW, height: 78, color: pale })
-  firstPage.drawRectangle({ x: rx, y: y - 72, width: 3, height: 78, color: midBlue })
-  label('Donneur d’ordre', rx + 14, y - 8)
-  text(input.contactName || 'Contact non renseigné', rx + 14, y - 25, 11, bold)
-  if (input.contactPhone) text(input.contactPhone, rx + 14, y - 40, 8, regular, gray)
-  if (input.contactEmail) text(input.contactEmail, rx + 14, y - 52, 8, regular, gray)
+  const c1 = 32, c2 = 248, c3 = 455
+  const t1 = 66, t2 = 282, t3 = 489
 
-  // Bien concerné.
-  y -= 92
-  firstPage.drawRectangle({ x: left, y: y - 46, width, height: 46, borderColor: border, borderWidth: 1, color: white })
-  label('Bien concerné par la mission', left + 12, y - 13)
-  text(input.propertyAddress, left + 12, y - 28, 10, bold)
-  text(`${input.propertyLabel || 'Bien'}${input.propertySize ? ` · ${input.propertySize}` : ''}`, left + 12, y - 40, 8, regular, gray)
+  // Ligne 1 : devis, dossier, date.
+  iconBox(icons.document, c1, 118)
+  field(t1, 122, 'Votre Devis', [{ text: `N° ${input.quoteNumber}`, bold: true }], 150)
+  iconBox(icons.folder, c2, 118)
+  field(t2, 122, 'Votre Dossier', [{ text: input.dossierRef || '', bold: true }], 150)
+  iconBox(icons.docStar, c3, 118)
+  field(t3, 122, 'Date d’édition du devis', [{ text: dateFr(input.createdAt), bold: true }], 80)
+
+  // Ligne 2 : émetteur, donneur d'ordre, validité.
+  iconBox(icons.send, c1, 172)
+  field(t1, 176, 'Devis édité par', [
+    { text: 'ARIA DIAGNOSTICS', bold: true },
+    { text: '18 rue de Budapest' },
+    { text: '94140 ALFORTVILLE' },
+    { text: '06 15 70 36 70' },
+    { text: 'contact@aria-diagnostics.fr' },
+    { text: 'SIRET : 988 026 746 00012 - NAF : 7120B' },
+  ], 170)
+  iconBox(icons.briefcase, c2, 172)
+  field(t2, 176, 'À l’attention du donneur d’ordre', [
+    { text: input.contactName || '', bold: true },
+    { text: input.contactPhone || '' },
+    { text: input.contactEmail || '' },
+  ], 165)
+  iconBox(icons.hourglass, c3, 172)
+  field(t3, 176, 'Devis valable', [{ text: '30 jours' }], 80)
+
+  // Ligne 3 : bien, propriétaire, RDV.
+  iconBox(icons.pin, c1, 258)
+  const bienBottom = field(t1, 262, 'Bien objet de l’intervention', [
+    { text: input.propertyAddress, bold: true },
+    { text: `${input.propertyLabel || 'Bien'}${input.propertySize ? ` - ${input.propertySize}` : ''}` },
+  ], 170)
+  iconBox(icons.person, c2, 258)
+  field(t2, 262, 'Propriétaire identifié', [{ text: input.ownerName || '', bold: true }], 165)
+  iconBox(icons.calendar, c3, 258)
+  field(t3, 262, 'RDV prévu le', [{ text: input.appointmentAt ? dateFr(input.appointmentAt) : '' , bold: true }], 80)
+
+  // Prestations à réaliser.
+  const prestations = (input.diagnostics && input.diagnostics.length ? input.diagnostics : input.lines.map((l) => l.label)).join(', ')
+  iconBox(icons.checklist, c2, 300)
+  const prestaBottom = field(t2, 304, 'Prestations à réaliser', [{ text: prestations, bold: true }], 280)
+
+  // Dépendances.
+  let top = Math.max(bienBottom, prestaBottom, 360) + 14
+  const deps = (input.dependencies || []).map((d) => normalizeKey(d))
+  let dx = 66
+  firstPage.drawText('Autres dépendances :', { x: dx, y: Y(top), size: 7.8, font: regular, color: soft })
+  dx += regular.widthOfTextAtSize('Autres dépendances :', 7.8) + 8
+  for (const dep of ['Ascenseur', 'Cave', 'Garage', 'Parking', 'Terrain', 'Autre']) {
+    const checked = deps.includes(normalizeKey(dep))
+    firstPage.drawRectangle({ x: dx, y: Y(top) - 1, width: 8, height: 8, borderColor: ink, borderWidth: 0.8 })
+    if (checked) {
+      firstPage.drawLine({ start: { x: dx + 1.5, y: Y(top) + 0.5 }, end: { x: dx + 6.5, y: Y(top) + 5.5 }, color: ink, thickness: 1 })
+      firstPage.drawLine({ start: { x: dx + 1.5, y: Y(top) + 5.5 }, end: { x: dx + 6.5, y: Y(top) + 0.5 }, color: ink, thickness: 1 })
+    }
+    firstPage.drawText(dep, { x: dx + 11, y: Y(top), size: 7.8, font: regular, color: ink })
+    dx += 11 + regular.widthOfTextAtSize(dep, 7.8) + 12
+  }
 
   // Tableau des prestations.
-  y -= 64
-  const colLabelW = 300
-  const colQty = left + 330
-  const colUnitRight = left + 430
-  const colTotalRight = right - 10
-  firstPage.drawRectangle({ x: left, y: y - 20, width, height: 20, color: blue })
-  text('Désignation', left + 10, y - 13.5, 7.5, bold, white)
-  text('Qté', colQty, y - 13.5, 7.5, bold, white)
-  textRight('P.U. TTC', colUnitRight, y - 13.5, 7.5, bold, white)
-  textRight('Total TTC', colTotalRight, y - 13.5, 7.5, bold, white)
-  y -= 20
+  top += 12
+  const tcols = [32, 92, 300, 350, 382, 414, 466, 514, 565]
+  const heads = ['Référence', 'Désignation', 'P Unit € HT', 'Taux TVA', 'Quant.', 'Montant € HT', 'Montant TVA', 'Montant € TTC']
+  const headH = 22
+  firstPage.drawRectangle({ x: tcols[0], y: Y(top + headH), width: tcols[8] - tcols[0], height: headH, color: sky })
+  heads.forEach((h, i) => {
+    const mid = (tcols[i] + tcols[i + 1]) / 2
+    const parts = wrapText(h, bold, 6.8, tcols[i + 1] - tcols[i] - 4)
+    parts.forEach((part, k) => textCenter(part, mid, Y(top + (parts.length > 1 ? 10 : 14) + k * 8), 6.8, bold, white))
+  })
+  top += headH
 
   const calculatedTotal = input.lines.reduce(
     (sum, line) => sum + Number(line.quantity || 0) * Number(line.unit_ttc || 0),
     0,
   )
+  const round2 = (v: number) => Math.round(v * 100) / 100
+  const num = (v: number) => v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-  input.lines.forEach((line, index) => {
-    const labelLines = wrapText(String(line.label || 'Prestation'), regular, 8, colLabelW)
-    const rowH = Math.max(22, 10 + labelLines.length * 10.5)
-    if (index % 2 === 1) firstPage.drawRectangle({ x: left, y: y - rowH, width, height: rowH, color: zebra })
-    labelLines.forEach((l, i) => firstPage.drawText(l, { x: left + 10, y: y - 14 - i * 10.5, size: 8, font: regular, color: blue }))
-    text(String(Number(line.quantity || 0).toLocaleString('fr-FR')), colQty + 4, y - 14, 8, regular, blue)
-    textRight(euro(Number(line.unit_ttc || 0)), colUnitRight, y - 14, 8, regular, blue)
-    textRight(euro(Number(line.quantity || 0) * Number(line.unit_ttc || 0)), colTotalRight, y - 14, 8, bold, blue)
-    y -= rowH
+  for (const line of input.lines) {
+    const qty = Number(line.quantity || 0)
+    const unitTtc = Number(line.unit_ttc || 0)
+    const unitHt = round2(unitTtc / 1.2)
+    const lineTtc = round2(qty * unitTtc)
+    const lineHt = round2(lineTtc / 1.2)
+    const lineTva = round2(lineTtc - lineHt)
+    const labelLines = wrapText(String(line.label || 'Prestation'), regular, 7.6, tcols[2] - tcols[1] - 10)
+    const ref = /pack/i.test(line.label) ? ['Pack', 'diagnostics'] : ['Prestation']
+    const rowH = Math.max(24, 8 + Math.max(labelLines.length, ref.length) * 9.5)
+    firstPage.drawRectangle({ x: tcols[0], y: Y(top + rowH), width: tcols[8] - tcols[0], height: rowH, borderColor: rule, borderWidth: 0.7 })
+    for (let i = 1; i < 8; i++) {
+      firstPage.drawLine({ start: { x: tcols[i], y: Y(top) }, end: { x: tcols[i], y: Y(top + rowH) }, color: rule, thickness: 0.7 })
+    }
+    const firstBase = top + rowH / 2 + 3 - ((Math.max(labelLines.length, 1) - 1) * 9.5) / 2
+    ref.forEach((r, k) => textCenter(r, (tcols[0] + tcols[1]) / 2, Y(top + rowH / 2 + 3 - ((ref.length - 1) * 9.5) / 2 + k * 9.5), 7.6, bold, ink))
+    labelLines.forEach((l, k) => firstPage.drawText(l, { x: tcols[1] + 5, y: Y(firstBase + k * 9.5), size: 7.6, font: regular, color: ink }))
+    const mid = Y(top + rowH / 2 + 3)
+    textRight(num(unitHt), tcols[3] - 5, mid, 7.6)
+    textCenter('20', (tcols[3] + tcols[4]) / 2, mid, 7.6)
+    textCenter(String(qty.toLocaleString('fr-FR')), (tcols[4] + tcols[5]) / 2, mid, 7.6)
+    textRight(num(lineHt), tcols[6] - 5, mid, 7.6)
+    textRight(num(lineTva), tcols[7] - 5, mid, 7.6)
+    textRight(num(lineTtc), tcols[8] - 5, mid, 7.6)
+    top += rowH
+  }
+
+  // Mentions (gauche) et totaux (droite).
+  top += 18
+  const totalHt = round2(calculatedTotal / 1.2)
+  const vat = round2(calculatedTotal - totalHt)
+  const tx = 418, tmid = 482, tend = 565, th = 17
+  const totals: Array<[string, string, boolean]> = [
+    ['Total HT', euro(totalHt), false],
+    ['Détail TVA', `TVA 20% : ${euro(vat)}`, false],
+    ['Total TVA', euro(vat), false],
+    ['Total TTC', euro(calculatedTotal), true],
+  ]
+  totals.forEach(([k, v, strong], i) => {
+    const yy = Y(top + (i + 1) * th)
+    firstPage.drawRectangle({ x: tx, y: yy, width: tmid - tx, height: th, color: sky, borderColor: white, borderWidth: 0.7 })
+    firstPage.drawRectangle({ x: tmid, y: yy, width: tend - tmid, height: th, color: strong ? rgb(0.93, 0.94, 0.95) : white, borderColor: rule, borderWidth: 0.7 })
+    textRight(k, tmid - 6, yy + 5.5, 8.4, bold, white)
+    textRight(v, tend - 5, yy + 5.5, 8.2, strong ? bold : regular, ink)
   })
-  firstPage.drawLine({ start: { x: left, y }, end: { x: right, y }, color: border, thickness: 1 })
 
-  // Conditions (gauche) et totaux (droite).
-  y -= 18
-  const totalHt = Math.round((calculatedTotal / 1.2) * 100) / 100
-  const vat = Math.round((calculatedTotal - totalHt) * 100) / 100
-  const totalsW = 190
-  const totalsX = right - totalsW
-
-  text('Total HT', totalsX + 10, y - 10, 8, regular, gray)
-  textRight(euro(totalHt), right - 10, y - 10, 8.5, bold)
-  text('TVA 20 %', totalsX + 10, y - 26, 8, regular, gray)
-  textRight(euro(vat), right - 10, y - 26, 8.5, bold)
-  firstPage.drawRectangle({ x: totalsX, y: y - 62, width: totalsW, height: 26, color: blue })
-  text('TOTAL TTC', totalsX + 10, y - 53, 9, bold, white)
-  textRight(euro(calculatedTotal), right - 10, y - 53.5, 12, bold, white)
-
-  const condW = width - totalsW - 24
-  label('Conditions', left, y - 8)
-  let cy = drawWrapped(firstPage, 'Paiement à réception. Validité du devis : 30 jours à compter de sa date d’émission.', left, y - 22, condW, regular, 7.4, gray, 9.5)
-  cy = drawWrapped(firstPage, 'Le devis, l’ordre de mission, les CGV, les CGI et les annexes forment l’ensemble contractuel.', left, cy - 2, condW, regular, 7.4, gray, 9.5)
+  iconBox(icons.info, c1, top + 2)
+  let ly = top + 9
+  const para = (value: string, x: number, w: number, font: PDFFont = regular, size = 7.4) => {
+    for (const l of wrapText(value, font, size, w)) {
+      firstPage.drawText(l, { x, y: Y(ly), size, font, color: ink })
+      ly += size + 2.3
+    }
+  }
+  para('Pour les professionnels :', 66, 330, bold)
+  para('Pénalités de retard : trois fois le taux d’intérêt légal. Une indemnité forfaitaire de 40 € pour frais de recouvrement est due en cas de retard de paiement (article L441-10 du Code de commerce). Aucun escompte pour paiement anticipé.', 66, 330)
+  ly += 3
+  para('Pour les particuliers :', 66, 350, bold)
+  para('Médiateur de la consommation : CM2C, 49 rue de Ponthieu, 75008 Paris - www.cm2c.net (après réclamation écrite préalable auprès d’ARIA Diagnostics).', 66, 330)
+  ly += 3
+  para('Paiement à réception. Le devis, l’ordre de mission, les CGV, les CGI et les annexes forment l’ensemble contractuel.', 66, 330)
   if (input.notes) {
-    cy = drawWrapped(firstPage, String(input.notes), left, cy - 2, condW, regular, 7.4, gray, 9.5)
+    ly += 3
+    para(`Précisions : ${String(input.notes)}`, 66, 330)
+  }
+
+  top = Math.max(ly, top + 4 * th) + 16
+  const hasAmiante = /amiante|dapp/i.test([...input.lines.map((l) => l.label), ...(input.diagnostics || [])].join(' '))
+  if (hasAmiante) {
+    iconBox(icons.microscope, c1, top)
+    ly = top + 8
+    para('Ce tarif est hors coût éventuel de prélèvement et d’analyse de matériaux ou produits susceptibles de contenir de l’amiante, facturés après accord exprès du donneur d’ordre.', 66, 305)
   }
 
   // Bon pour accord.
-  y = Math.min(y - 80, cy - 16)
-  const signH = 104
-  firstPage.drawRectangle({ x: left, y: y - signH, width, height: signH, borderColor: border, borderWidth: 1, color: white })
-  firstPage.drawRectangle({ x: left, y: y - 22, width, height: 22, color: pale })
-  text('BON POUR ACCORD', left + 12, y - 14.5, 8, bold, midBlue)
-  text('Je reconnais avoir pris connaissance du devis et de ses annexes et en accepter les conditions.', left + 12, y - 38, 7.4, regular, gray)
-  const fieldY = y - 72
-  text('Date', left + 12, fieldY + 12, 7, regular, gray)
-  firstPage.drawLine({ start: { x: left + 12, y: fieldY }, end: { x: left + 132, y: fieldY }, color: border, thickness: 1 })
-  text('Nom / qualité', left + 150, fieldY + 12, 7, regular, gray)
-  firstPage.drawLine({ start: { x: left + 150, y: fieldY }, end: { x: left + 300, y: fieldY }, color: border, thickness: 1 })
-  text('Signature, précédée de « Bon pour accord »', left + 318, y - 38 - 12, 7, regular, gray)
-  firstPage.drawRectangle({ x: left + 318, y: y - signH + 10, width: width - 330, height: 40, borderColor: border, borderWidth: 1 })
-
-  // Mentions légales de l'émetteur, en bas de la première page.
-  const legal = [
-    'ARIA Diagnostics · SASU · SIRET 988 026 746 00012 · TVA FR34 988026746 · Certification Bureau Veritas',
-    'RCP AXA France IARD, 313 Terrasses de l’Arche, 92727 Nanterre Cedex · contrat n°10988009704 · couverture géographique : France',
-  ]
-  legal.forEach((line, index) => {
-    const safe = pdfSafe(line)
-    const w = regular.widthOfTextAtSize(safe, 6.3)
-    firstPage.drawText(safe, { x: left + (width - w) / 2, y: 60 - index * 8.5, size: 6.3, font: regular, color: gray })
-  })
+  iconBox(icons.sign, 395, top)
+  firstPage.drawText('BON POUR ACCORD', { x: 428, y: Y(top + 9), size: 8.6, font: bold, color: ink })
+  firstPage.drawText('Date + signature + mention « Bon pour accord »', { x: 428, y: Y(top + 19), size: 6.8, font: regular, color: soft })
+  firstPage.drawRectangle({ x: 395, y: Y(top + 80), width: 170, height: 52, borderColor: rule, borderWidth: 0.8 })
 
   const documents: ContractDocument[] = [
     missionDocument(input.quoteNumber, input.propertyAddress, input.contactName, input.lines, input.diagnostics || [], input.missionTechnicalInfo || []),
@@ -289,9 +403,12 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   ]
   if (hasDpe(input.lines, input.diagnostics || [])) documents.push(dpeConsentDocument, dpeFiscalDocument)
 
+  const headerPhoto = await pdf.embedJpg(`data:image/jpeg;base64,${TPL.HEADER_PHOTO_JPEG}`).catch(() => null)
+  const headerLogo = await pdf.embedJpg(`data:image/jpeg;base64,${TPL.HEADER_LOGO_JPEG}`).catch(() => null)
+
   const addContractDocument = (document: ContractDocument) => {
     let page = pdf.addPage([595.28, 841.89])
-    let currentY = 765
+    let currentY = 742
     const isCompactTerms = /conditions générales/i.test(document.title)
     const bodySize = isCompactTerms ? 7.35 : 8
     const bodyLineHeight = isCompactTerms ? 8.55 : 10.5
@@ -300,22 +417,21 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     const headingSize = isCompactTerms ? 9.2 : 10
     const headingLineHeight = isCompactTerms ? 10.8 : 13
     const headingGap = isCompactTerms ? 2.5 : 5
-    const pageBottom = 62
+    const pageBottom = 78
 
     const drawHeader = () => {
-      if (ariaLogo) {
-        page.drawImage(ariaLogo, { x: left, y: 799, width: 76, height: 28 })
-      } else {
-        page.drawText('ARIA DIAGNOSTICS', { x: left, y: 807, size: 8, font: bold, color: blue })
-      }
-      const headerRef = pdfSafe(`Devis n° ${input.quoteNumber}`)
-      page.drawText(headerRef, { x: right - regular.widthOfTextAtSize(headerRef, 7.5), y: 807, size: 7.5, font: regular, color: gray })
-      page.drawRectangle({ x: left, y: 791, width, height: 1.5, color: midBlue })
+      if (headerPhoto) page.drawImage(headerPhoto, { x: 595.28 - 300, y: 841.89 - 57, width: 300, height: 57 })
+      if (headerLogo) page.drawImage(headerLogo, { x: 36, y: 841.89 - 52, width: 100, height: 100 * headerLogo.height / headerLogo.width })
+      else if (ariaLogo) page.drawImage(ariaLogo, { x: left, y: 799, width: 76, height: 28 })
+      page.drawRectangle({ x: 0, y: 841.89 - 72, width: 595.28, height: 15, color: rgb(0.137, 0.647, 0.875) })
+      page.drawText('Tel. 06 15 70 36 70     contact@aria-diagnostics.fr', { x: 30, y: 841.89 - 67.5, size: 8, font: bold, color: white })
+      const headerRef = pdfSafe(`Devis N° ${input.quoteNumber}`)
+      page.drawText(headerRef, { x: 565 - regular.widthOfTextAtSize(headerRef, 8), y: 841.89 - 67.5, size: 8, font: regular, color: white })
     }
 
     const newPage = () => {
       page = pdf.addPage([595.28, 841.89])
-      currentY = 765
+      currentY = 742
       drawHeader()
     }
 
@@ -330,7 +446,7 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     currentY -= isCompactTerms ? 12 : 18
 
     for (const block of document.blocks) {
-      if (currentY < (isCompactTerms ? 82 : 105)) newPage()
+      if (currentY < (isCompactTerms ? 98 : 120)) newPage()
 
       page.drawRectangle({ x: left, y: currentY - 4, width: 3, height: 14, color: midBlue })
       currentY = drawWrapped(page, block.title, left + 9, currentY, width - 9, bold, headingSize, blue, headingLineHeight)
@@ -380,17 +496,26 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   documents.forEach(addContractDocument)
 
   const pages = pdf.getPages()
+  const footerSky = rgb(0.565, 0.808, 1)
   pages.forEach((page, index) => {
-    page.drawRectangle({ x: left, y: 38, width, height: 2, color: rgb(0.345, 0.765, 0.898) })
-    page.drawText('ARIA Diagnostics · 18 rue de Budapest, 94140 Alfortville · contact@aria-diagnostics.fr', { x: left, y: 23, size: 6.3, font: regular, color: gray })
-    const pageLabel = `Devis ${input.quoteNumber} · page ${index + 1}/${pages.length}`
-    page.drawText(pdfSafe(pageLabel), { x: right - bold.widthOfTextAtSize(pageLabel, 6.3), y: 23, size: 6.3, font: bold, color: gray })
+    page.drawRectangle({ x: 0, y: 0, width: 595.28, height: 46, color: rgb(0.137, 0.647, 0.875) })
+    page.drawRectangle({ x: 0, y: 46, width: 595.28, height: 2, color: footerSky })
+    page.drawText('ARIA DIAGNOSTICS   www.aria-diagnostics.fr', { x: 32, y: 32, size: 8.5, font: bold, color: white })
+    const legalLines = [
+      'SIRET : 988 026 746 00012 - Code APE : 7120B - Capital social : 1 000 € - N° TVA : FR34988026746',
+      'Assurance RCP : AXA France IARD, 313 Terrasses de l’Arche, 92727 Nanterre - contrat n° 10988009704 - couverture : France',
+    ]
+    legalLines.forEach((line, k) => page.drawText(pdfSafe(line), { x: 32, y: 21 - k * 8, size: 5.9, font: regular, color: white }))
+    const pageLabel = `PAGE ${index + 1}/${pages.length}`
+    page.drawText(pageLabel, { x: 563 - bold.widthOfTextAtSize(pageLabel, 8), y: 30, size: 8, font: bold, color: white })
+    const ref = pdfSafe(`Devis N° ${input.quoteNumber} du ${dateFr(input.createdAt)}`)
+    page.drawText(ref, { x: 563 - regular.widthOfTextAtSize(ref, 6), y: 19, size: 6, font: regular, color: white })
   })
 
   const finalPage = pages[pages.length - 1]
   const noticeLines = wrapText(mediatorNotice, regular, 6.2, width)
   noticeLines.slice(0, 3).forEach((line, index) => {
-    finalPage.drawText(line, { x: left, y: 48 + (noticeLines.length - index) * 7.5, size: 6.2, font: regular, color: gray })
+    finalPage.drawText(line, { x: left, y: 52 + (Math.min(noticeLines.length, 3) - index) * 7.5, size: 6.2, font: regular, color: gray })
   })
 
   return pdf.save()
