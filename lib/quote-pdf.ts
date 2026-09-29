@@ -470,7 +470,171 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     })
   }
 
-  addContractDocument(documents[0])
+  // Ordre de mission en grille (reprise du modèle ARIA) : cases cochées
+  // automatiquement selon les diagnostics commandés.
+  const addMissionPage = () => {
+    const page = pdf.addPage([595.28, 841.89])
+    drawSlimHeader(page)
+    const H = 841.89
+    const sky = rgb(0.137, 0.647, 0.875)
+    const navyM = rgb(0.024, 0.169, 0.349)
+    const ink = rgb(0.15, 0.2, 0.27)
+    const soft = rgb(0.45, 0.5, 0.56)
+    const rule = rgb(0.84, 0.87, 0.9)
+    const pale = rgb(0.94, 0.97, 0.99)
+    const M = 40
+    const W = 595.28 - 2 * M
+    const Tm = (value: string, x: number, top: number, size: number, font: PDFFont = regular, color = ink) =>
+      page.drawText(pdfSafe(value), { x, y: H - top, size, font, color })
+    const wrapM = (value: string, x: number, top: number, maxW: number, size: number, font: PDFFont = regular, color = ink, lh = size + 2.4) => {
+      let t = top
+      for (const l of wrapText(value, font, size, maxW)) { page.drawText(l, { x, y: H - t, size, font, color }); t += lh }
+      return t
+    }
+    const checkbox = (x: number, top: number, checked: boolean) => {
+      page.drawRectangle({ x, y: H - top - 1, width: 7.5, height: 7.5, borderColor: navyM, borderWidth: 0.7, color: checked ? sky : undefined })
+      if (checked) {
+        page.drawLine({ start: { x: x + 1.5, y: H - top + 2.8 }, end: { x: x + 3.2, y: H - top + 1 }, color: white, thickness: 1.2 })
+        page.drawLine({ start: { x: x + 3.2, y: H - top + 1 }, end: { x: x + 6.2, y: H - top + 5.2 }, color: white, thickness: 1.2 })
+      }
+    }
+    const section = (roman: string, title: string, x: number, top: number, w: number) => {
+      page.drawRectangle({ x, y: H - top - 16, width: w, height: 16, color: pale })
+      if (roman) {
+        page.drawRectangle({ x, y: H - top - 16, width: 20, height: 16, color: navyM })
+        const rw = bold.widthOfTextAtSize(roman, 8)
+        page.drawText(roman, { x: x + 10 - rw / 2, y: H - top - 11.5, size: 8, font: bold, color: white })
+      }
+      page.drawText(pdfSafe(title.toUpperCase()), { x: x + (roman ? 28 : 8), y: H - top - 11.5, size: 7.8, font: bold, color: navyM })
+      page.drawRectangle({ x, y: H - top - 17.5, width: w, height: 1.5, color: sky })
+      return top + 28
+    }
+    const row = (x: number, top: number, key: string, value: string, w: number, keyW = 78) => {
+      Tm(key, x, top, 7.3, regular, soft)
+      const end = value ? wrapM(value, x + keyW, top, w - keyW, 7.8, regular, ink, 9.6) : top + 9.6
+      page.drawLine({ start: { x: x + keyW, y: H - end + 6.5 }, end: { x: x + w, y: H - end + 6.5 }, color: rule, thickness: 0.5 })
+      return end + 3
+    }
+
+    let top = 76
+    Tm('Ordre de mission', M, top, 19, bold, navyM)
+    Tm('Tient lieu de bon de commande en cas d’acceptation du devis', M, top + 14, 8, regular, soft)
+    page.drawRectangle({ x: M, y: H - top - 22, width: 60, height: 2, color: sky })
+    top += 34
+
+    // I. Objet de la mission
+    top = section('I', 'Objet de la mission', M, top, W)
+    const ordered = normalizeKey([...(input.diagnostics || []), ...input.lines.map((l) => l.label)].join(' | '))
+    const has = (re: RegExp) => re.test(ordered)
+    const groups: Array<[string, Array<[string, boolean]>]> = [
+      ['Diagnostics transactionnels', [
+        ['Constat amiante avant-vente', has(/amiante/) && !has(/dapp|parties privatives|travaux|demolition|dossier technique|\bdta\b/)],
+        ['Amiante parties privatives (DAPP)', has(/dapp|parties privatives/)],
+        ['Plomb (CREP)', has(/plomb|crep/) && !has(/plomb[^|]*travaux/)],
+        ['Termites', has(/termite/)],
+        ['État de l’installation gaz', has(/gaz/)],
+        ['État de l’installation électrique', has(/electri/)],
+        ['État des risques et pollutions', has(/\berp\b|risques/)],
+      ]],
+      ['Surfaces et énergie', [
+        ['Mesurage Loi Carrez', has(/carrez/)],
+        ['Surface habitable (Boutin)', has(/boutin|surface habitable|metrage|mesurage/) && !has(/carrez/)],
+        ['Diagnostic de performance énergétique', has(/\bdpe\b|performance energetique/)],
+        ['Audit énergétique', has(/audit/)],
+        ['Thermographie infrarouge', has(/thermographie/)],
+      ]],
+      ['Amiante et plomb', [
+        ['Dossier technique amiante (DTA)', has(/dossier technique amiante|\bdta\b/)],
+        ['Repérage amiante avant travaux', has(/amiante[^|]*travaux|travaux[^|]*amiante|raat/)],
+        ['Repérage amiante avant démolition', has(/demolition/)],
+        ['Examen visuel après travaux', has(/examen visuel/)],
+        ['Plomb avant travaux', has(/plomb[^|]*travaux/)],
+      ]],
+      ['Autres missions', [
+        ['Assainissement', has(/assainissement/)],
+        ['Accessibilité handicapés', has(/accessibilite/)],
+        ['Autre (préciser) :', false],
+      ]],
+    ]
+    const gW = W / 4
+    let maxTop = top
+    groups.forEach(([title, items], gi) => {
+      const x = M + gi * gW
+      Tm(title.toUpperCase(), x, top, 6.4, bold, sky)
+      let t = top + 12
+      for (const [lab, checked] of items) {
+        checkbox(x, t, checked)
+        t = wrapM(lab, x + 11, t, gW - 16, 7.1, checked ? bold : regular, checked ? navyM : ink, 8.4) + 3
+      }
+      maxTop = Math.max(maxTop, t)
+    })
+    top = maxTop + 6
+
+    // II. Donneur d'ordre / III. Propriétaire
+    const half = (W - 14) / 2
+    const x2 = M + half + 14
+    let tl = section('II', 'Donneur d’ordre', M, top, half)
+    let tr = section('III', 'Propriétaire', x2, top, half)
+    tl = row(M, tl, 'Nom / société', input.contactName || '', half)
+    tl = row(M, tl, 'Téléphone', input.contactPhone || '', half)
+    tl = row(M, tl, 'E-mail', input.contactEmail || '', half)
+    tr = row(x2, tr, 'Nom / société', input.ownerName || '', half)
+    tr = row(x2, tr, 'Adresse', input.ownerName ? '' : '', half)
+    tr = row(x2, tr, 'Téléphone / e-mail', '', half)
+    top = Math.max(tl, tr) + 6
+
+    // IV. Détails de la mission / V. Environnement
+    tl = section('IV', 'Détails de la mission', M, top, half)
+    tr = section('V', 'Environnement', x2, top, half)
+    tl = row(M, tl, 'Adresse du bien', input.propertyAddress, half)
+    tl = row(M, tl, 'Type de bien', input.propertyLabel || '', half)
+    tl = row(M, tl, 'Surface', input.propertySize || '', half)
+    tl = row(M, tl, 'Date de visite', input.appointmentAt ? dateFr(input.appointmentAt) : '', half)
+    tl = row(M, tl, 'Remise des clés', '', half)
+    tl = row(M, tl, 'Lot(s) / étage', '', half)
+    const deps = (input.dependencies || []).map((d) => normalizeKey(d))
+    Tm('Dépendances :', x2, tr, 7.3, regular, soft)
+    let dx = x2 + 54
+    for (const dep of ['Cave', 'Garage', 'Parking', 'Terrain', 'Autre']) {
+      const w = 10 + regular.widthOfTextAtSize(dep, 7.1) + 6
+      if (dx + w > x2 + half) { tr += 11; dx = x2 + 54 }
+      checkbox(dx, tr, deps.includes(normalizeKey(dep)))
+      Tm(dep, dx + 10, tr, 7.1)
+      dx += w
+    }
+    tr += 14
+    const tech = (input.missionTechnicalInfo || []).filter((info) => !/^(type de bien|objet|surface déclarée)/i.test(info))
+    Tm('Informations déclarées :', x2, tr, 7.3, regular, soft)
+    tr += 10
+    if (tech.length) {
+      for (const info of tech) tr = wrapM(`• ${info}`, x2 + 4, tr, half - 8, 7, regular, ink, 8.6) + 1
+    } else {
+      for (let k = 0; k < 3; k++) { page.drawLine({ start: { x: x2, y: H - tr - 2 }, end: { x: x2 + half, y: H - tr - 2 }, color: rule, thickness: 0.5 }); tr += 12 }
+    }
+    top = Math.max(tl, tr) + 6
+
+    // VI. Occupant / VII. Périmètre
+    tl = section('VI', 'Occupant / exploitant', M, top, half)
+    tr = section('VII', 'Périmètre d’intervention', x2, top, half)
+    tl = row(M, tl, 'Nom', '', half)
+    tl = row(M, tl, 'Téléphone', '', half)
+    tr = wrapM('Toutes parties accessibles, sans démontage ni destruction, selon les référentiels applicables et les conditions générales d’intervention.', x2, tr, half, 7.3, regular, ink, 9) + 2
+    top = Math.max(tl, tr) + 8
+
+    // Attestation sur l'honneur + acceptation.
+    top = section('', 'Attestation sur l’honneur (art. R271-3 du CCH)', M, top, W)
+    top = wrapM('ARIA Diagnostics atteste sur l’honneur être en situation régulière au regard de l’article L271-6 du CCH (certifications en cours de validité, assurance RCP, absence de lien portant atteinte à son impartialité et à son indépendance à l’égard du propriétaire, de son mandataire ou d’une entreprise de travaux) et disposer des moyens en matériel et en personnel nécessaires à la mission.', M, top, W, 7, regular, ink, 8.8) + 8
+
+    const boxH = 70
+    page.drawRectangle({ x: M, y: H - top - boxH, width: W, height: boxH, borderColor: rule, borderWidth: 0.8 })
+    page.drawRectangle({ x: M, y: H - top - boxH, width: 3, height: boxH, color: sky })
+    Tm('ACCEPTATION DU DONNEUR D’ORDRE', M + 12, top + 14, 8, bold, navyM)
+    wrapM('Je reconnais avoir pris connaissance du devis, du présent ordre de mission, des CGV, des CGI et des annexes, et confie la mission à ARIA Diagnostics.', M + 12, top + 26, W / 2 - 10, 6.9, regular, soft, 8.6)
+    Tm('Nom / qualité :', M + 12, top + 58, 7.2, regular, soft)
+    page.drawLine({ start: { x: M + 70, y: H - top - 60 }, end: { x: M + W / 2 - 10, y: H - top - 60 }, color: rule, thickness: 0.6 })
+    Tm('Date, signature et « Bon pour accord » :', M + W / 2 + 10, top + 14, 7.2, regular, soft)
+  }
+  addMissionPage()
   addTermsColumns([documents[1], documents[2]])
   documents.slice(3).forEach(addContractDocument)
 
