@@ -65,6 +65,7 @@ export type LeadQuoteContent = {
   technicalInfo: string[]
   total: number
   proDiscount: boolean
+  surfaceAttestationProvided: boolean
 }
 
 export function buildLeadQuote(lead: LeadRow): LeadQuoteContent {
@@ -118,7 +119,7 @@ export function buildLeadQuote(lead: LeadRow): LeadQuoteContent {
   }
   technicalInfo.push('Informations déclarées par le donneur d’ordre, à confirmer lors de la visite.')
 
-  const base = { proDiscount: Boolean(lead.payer_type), quoteNumber, propertyLabel, propertySize, diagnostics, technicalInfo, total: Number.isFinite(total) ? total : 0 }
+  const base = { surfaceAttestationProvided: summary.surfaceAttestationProvided === true, proDiscount: Boolean(lead.payer_type), quoteNumber, propertyLabel, propertySize, diagnostics, technicalInfo, total: Number.isFinite(total) ? total : 0 }
 
   if (priceStatus !== 'estimated' || !Number.isFinite(total) || total <= 0) {
     return { ...base, eligible: false, reason: 'Prix hors grille : devis personnalisé à établir par ARIA.', lines: [] }

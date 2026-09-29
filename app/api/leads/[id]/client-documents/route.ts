@@ -91,7 +91,7 @@ export async function POST(
       propertyAddress,
       propertyLabel: content.propertyLabel,
       propertySize: content.propertySize,
-      notes: `Devis estimatif sur informations déclarées${content.proDiscount ? ', tarif partenaire -10 % inclus' : ''}.`,
+      notes: `Devis estimatif sur informations déclarées${content.proDiscount ? ', tarif partenaire -10 % inclus' : ''}.${content.surfaceAttestationProvided ? ' À défaut d’attestation de surface transmise avant l’intervention, le mesurage sera réalisé sur place et facturé en supplément, au tarif du pack DPE + surface.' : ''}`,
       diagnostics: content.diagnostics,
       missionTechnicalInfo: content.technicalInfo,
       origin: new URL(request.url).origin,
@@ -114,6 +114,7 @@ export async function POST(
       <p>Bonjour ${contactName},</p>
       <p>Merci pour votre demande concernant <strong>${escapeHtml(propertyAddress)}</strong>.</p>
       <p>Vous trouverez ci-joint votre devis estimatif <strong>${escapeHtml(content.quoteNumber)}</strong> (${escapeHtml(euro(content.total))} TTC), accompagné de l’ordre de mission, des conditions générales et des annexes applicables.</p>
+      ${content.surfaceAttestationProvided ? '<p>Ce devis est établi sur la base de votre attestation de surface : merci de nous la transmettre en réponse à cet e-mail avant l’intervention. À défaut, le mesurage sera réalisé sur place et facturé en supplément.</p>' : ''}
       <p>Pour confirmer la mission, il vous suffit de nous retourner l’ordre de mission signé (mention « Bon pour accord »), en réponse à cet e-mail. Nous vous recontactons sous 24 h ouvrées pour fixer le rendez-vous.</p>
       <p style="color:#66788c;font-size:12px">Devis établi sur la base des informations déclarées, sous réserve de conformité du bien constatée par ARIA Diagnostics.</p>
       <p style="margin-top:24px">Cordialement,<br><strong>ARIA Diagnostics</strong><br>06 15 70 36 70<br>contact@aria-diagnostics.fr</p>

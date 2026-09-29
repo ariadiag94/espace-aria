@@ -91,7 +91,7 @@ export const computeDiagnostics = ({
   // une attestation de surface (Carrez / Boutin / surface habitable selon
   // le cas), le diagnostic de mesurage correspondant n'est ni obligatoire
   // ni facturé — sinon il redevient obligatoire.
-  const SURFACE_ATTESTATION_NOTE = 'Vous devrez nous transmettre cette attestation avant notre intervention.'
+  const SURFACE_ATTESTATION_NOTE = 'Vous devrez nous transmettre cette attestation avant notre intervention. À défaut, le mesurage sera réalisé sur place et facturé en supplément (tarif DPE + surface).'
 
   // Termites : jamais en location (uniquement calculé pour purpose==='sale').
   // La couverture de la commune (lib/commune-rules.ts) détermine si le

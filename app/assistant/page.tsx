@@ -325,7 +325,10 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
   const [documentsStatus, setDocumentsStatus] = useState<'pending' | 'sent' | 'not_sent'>('pending')
 
   // Bloc chauffage entièrement optionnel : n'entre jamais dans canSubmit.
-  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0 && floor.trim().length > 0 && dependencies.size > 0
+  // DPE seul (attestation de surface fournie) : les dépendances n'entrent pas
+  // dans le DPE, leur saisie devient facultative.
+  const dependenciesOptional = context.diagnosticsSummary.surfaceAttestationProvided === true
+  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && address.trim().length > 0 && floor.trim().length > 0 && (dependenciesOptional || dependencies.size > 0)
 
   const toggleDependency = (id: string) => {
     setDependencies((prev) => {
@@ -441,7 +444,7 @@ function LeadCaptureForm({ context }: { context: LeadContext }) {
         <input className="diagassist-input" placeholder="Étage" value={floor} onChange={(e) => setFloor(e.target.value)} />
       </div>
       <div style={{ marginBottom: 14 }}>
-        <div style={{ color: NAVY, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Dépendances</div>
+        <div style={{ color: NAVY, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Dépendances{dependenciesOptional ? ' (facultatif)' : ''}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {DEPENDENCY_OPTIONS.map((option) => (
             <label key={option.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, border: '2px solid #dbe7f2', background: '#fff', color: NAVY, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
@@ -1078,6 +1081,7 @@ export default function AssistantPage() {
                       purpose: 'alaCarte',
                       communeSlug,
                       checkedItems: Array.from(alaCarteItems),
+                      surfaceAttestationProvided: alaCarteAskSurfaceAttestation && hasSurfaceAttestation === true,
                       assainissement: alaCarteAssainissement,
                       priceStatus: alaCarteQuoteOnRequest ? 'quote_on_request' : alaCarteNoMatch ? 'no_match' : 'estimated',
                       totalPrice: finalALaCartePrice,
@@ -1206,6 +1210,7 @@ export default function AssistantPage() {
                       communeSlug,
                       constructionYear,
                       hasGas,
+                      surfaceAttestationProvided: isDpeOnly,
                       mandatory: diagnostics.mandatory.map((item) => ({ id: item.id, label: item.label })),
                       toConfirm: diagnostics.toConfirm.filter((item) => !item.optionalAddOn).map((item) => ({ id: item.id, label: item.label })),
                       options: diagnostics.options.map((option) => ({ id: option.id, label: option.label, price: optionPrice(option.id) })),
