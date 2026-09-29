@@ -37,7 +37,7 @@ type QuotePdfInput = {
   ownerName?: string | null
   appointmentAt?: string | null
   dependencies?: string[]
-  headerVariant?: 'C' | 'P' | 'Q'
+  headerVariant?: 'C' | 'P' | 'Q' | 'T' | 'U'
 }
 
 const euro = (value: number) =>
@@ -237,6 +237,30 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     firstPage.drawText('06 15 70 36 70  ·  contact@aria-diagnostics.fr', { x: 40, y: Y(64), size: 7.4, font: regular, color: soft })
     firstPage.drawRectangle({ x: 36, y: Y(74), width: 523.28, height: 2, color: navyC })
     firstPage.drawRectangle({ x: 36, y: Y(77), width: 120, height: 2, color: sky })
+  } else if (variant === 'T') {
+    await drawLogo(100, 14)
+    firstPage.drawText('06 15 70 36 70  ·  contact@aria-diagnostics.fr', { x: 40, y: Y(64), size: 7.4, font: regular, color: soft })
+    const paleC = rgb(0.91, 0.96, 0.99)
+    const lightC = rgb(0.78, 0.86, 0.95)
+    const cells: Array<[string, string]> = [['DEVIS N°', input.quoteNumber], ['ÉMIS LE', dateFr(input.createdAt)], ['VALIDITÉ', '30 jours']]
+    cells.forEach(([k, v], i) => {
+      const x = 559 - 3 * 96 + i * 96 + 4
+      const w = 90, h = 40, r = 6, t = 18
+      firstPage.drawSvgPath(`M ${x + r} ${t} L ${x + w - r} ${t} Q ${x + w} ${t} ${x + w} ${t + r} L ${x + w} ${t + h - r} Q ${x + w} ${t + h} ${x + w - r} ${t + h} L ${x + r} ${t + h} Q ${x} ${t + h} ${x} ${t + h - r} L ${x} ${t + r} Q ${x} ${t} ${x + r} ${t} Z`, { x: 0, y: 841.89, color: i === 0 ? navyC : paleC })
+      textCenter(k, x + w / 2, Y(32), 6.5, bold, i === 0 ? lightC : soft)
+      textCenter(v, x + w / 2, Y(46), 10, bold, i === 0 ? white : navyC)
+    })
+    textRight('Devis gratuit et sans engagement', 559, Y(68), 6.8, regular, soft)
+    firstPage.drawLine({ start: { x: 36, y: Y(76) }, end: { x: 559, y: Y(76) }, color: rule, thickness: 0.8 })
+  } else if (variant === 'U') {
+    await drawLogo(100, 14)
+    firstPage.drawText('06 15 70 36 70  ·  contact@aria-diagnostics.fr', { x: 40, y: Y(64), size: 7.4, font: regular, color: soft })
+    const bx = 559 - 180
+    firstPage.drawRectangle({ x: bx, y: Y(66), width: 3, height: 50, color: sky })
+    firstPage.drawText('DEVIS', { x: bx + 12, y: Y(30), size: 9, font: bold, color: sky })
+    firstPage.drawText(pdfSafe(`N° ${input.quoteNumber}`), { x: bx + 12, y: Y(45), size: 13, font: bold, color: navyC })
+    firstPage.drawText(pdfSafe(`Émis le ${dateFr(input.createdAt)}  ·  Valable 30 jours`), { x: bx + 12, y: Y(59), size: 7.5, font: regular, color: soft })
+    firstPage.drawRectangle({ x: 0, y: Y(78), width: 595.28, height: 4, color: navyC })
   } else if (variant === 'Q') {
     await drawLogo(100, 12)
     firstPage.drawSvgPath('M 400 0 L 595.28 0 L 595.28 30 L 386 30 Z', { x: 0, y: 841.89, color: navyC })
