@@ -14,6 +14,8 @@ type ClientAccount = {
   account_type: string | null
 }
 
+const NEW_ACCOUNT = '__new__'
+
 const accountLabel = (account: ClientAccount) =>
   account.company_name || [account.first_name, account.last_name].filter(Boolean).join(' ') || 'Compte sans nom'
 
@@ -95,6 +97,7 @@ export default function NewDossierPage() {
       }
       const sorted = [...(data || [])].sort((a, b) => accountLabel(a).localeCompare(accountLabel(b), 'fr'))
       setAccounts(sorted)
+      if (!sorted.length) setForm((current) => ({ ...current, account_id: current.account_id || NEW_ACCOUNT }))
     })()
   }, [])
 
@@ -144,30 +147,27 @@ export default function NewDossierPage() {
       return
     }
 
-    const readPropertySource = () => supabase
-      .from('properties')
-      .select('*')
-      .limit(1)
-      .maybeSingle()
-
-    let { data: propertySource, error: propertySourceError } = await readPropertySource()
-    if (!propertySourceError && !propertySource) {
-      // Une seconde tentative couvre un jeton en cours de rafraîchissement.
-      await supabase.auth.refreshSession()
-      ;({ data: propertySource, error: propertySourceError } = await readPropertySource())
+    // Nouveau client particulier créé à partir du donneur d'ordre (base vide
+    // ou client jamais vu) : plus besoin de passer par un autre écran.
+    let accountId = form.account_id
+    if (accountId === NEW_ACCOUNT) {
+      const { data: account, error: accountError } = await supabase
+        .from('client_accounts')
+        .insert({ account_type: 'individual', last_name: form.contact_name.trim(), email: emails[0] || null, phone: form.contact_phone.trim() || null, validation_status: 'validated' })
+        .select('id')
+        .single()
+      if (accountError || !account) {
+        setError(accountError?.message || 'Impossible de créer le compte client.')
+        setSaving(false)
+        return
+      }
+      accountId = account.id
     }
 
-    if (propertySourceError || !propertySource) {
-      setError(
-        propertySourceError?.message ||
-        `Impossible de préparer la fiche du bien : aucun bien n’est visible pour le compte connecté (${session.user.email ?? 'inconnu'}). Vérifie que tu es connecté avec le compte administrateur.`,
-      )
-      setSaving(false)
-      return
-    }
-
-    const propertyColumns = new Set(Object.keys(propertySource))
-    const propertyPayload: Record<string, unknown> = { account_id: form.account_id }
+    // Colonnes réelles de public.properties (le schéma n'est plus déduit d'un
+    // bien existant, ce qui bloquait la création quand la base était vide).
+    const propertyColumns = new Set(['account_id', 'property_type', 'address_line1', 'postal_code', 'city'])
+    const propertyPayload: Record<string, unknown> = { account_id: accountId }
     const assignKnown = (names: string[], value: unknown) => {
       names.forEach((name) => {
         if (propertyColumns.has(name)) propertyPayload[name] = value
@@ -201,7 +201,7 @@ export default function NewDossierPage() {
     const { data, error: insertError } = await supabase
       .from('dossiers')
       .insert({
-        account_id: form.account_id,
+        account_id: accountId,
         property_id: property.id,
         dossier_name: form.dossier_name.trim(),
         status: 'draft',
@@ -246,6 +246,7 @@ export default function NewDossierPage() {
               <span>Compte client *</span>
               <select value={form.account_id} onChange={(event) => setField('account_id', event.target.value)}>
                 <option value="">Choisir un compte…</option>
+                <option value={NEW_ACCOUNT}>＋ Nouveau client particulier (nom du donneur d’ordre)</option>
                 {accounts.map((account) => (
                   <option key={account.id} value={account.id}>{accountLabel(account)}</option>
                 ))}
