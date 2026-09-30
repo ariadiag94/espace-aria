@@ -1,7 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { getPackPrice } from '@/lib/property-pricing'
 
 // Page publique de présentation aux professionnels (agences, syndics,
 // notaires, bailleurs) : à envoyer avec l'invitation. Prix calculés depuis la
@@ -15,8 +14,6 @@ export const metadata: Metadata = {
 
 const NAVY = '#062b59'
 const SKY = '#23a5df'
-const pro = (price: number | null) => (price ? Math.ceil(price * 0.9) : null)
-const euro = (n: number | null) => (n ? `${n} €` : '—')
 
 const BENEFITS = [
   { title: 'Tarif partenaire -10 %', text: 'Sur toute la grille, appliqué automatiquement à chaque devis dès que votre compte est validé.' },
@@ -34,11 +31,6 @@ const STEPS = [
 ]
 
 export default function PartenairesPage() {
-  const rows = [0, 1, 2, 3, 4].map((i) => ({
-    size: `T${i + 1}`,
-    p2: getPackPrice('apartment', 2, i, 'sale'),
-    p4: getPackPrice('apartment', 4, i, 'sale'),
-  }))
   return (
     <main style={{ minHeight: '100vh', background: '#f8fbff', fontFamily: 'Arial,Helvetica,sans-serif', color: '#14243b' }}>
       <style>{`
@@ -47,10 +39,7 @@ export default function PartenairesPage() {
         .p-cta { display: inline-flex; align-items: center; justify-content: center; background: #fff; color: ${NAVY}; border: 2px solid ${SKY}; border-radius: 14px; padding: 14px 28px; font-weight: 900; font-size: 16px; text-decoration: none; }
         .p-link { color: #c9d8e8; font-weight: 700; font-size: 14px; text-decoration: none; }
         .p-card { background: #fff; border: 1px solid #dce6f0; border-radius: 16px; padding: 18px; box-shadow: 0 10px 28px rgba(17,48,87,.07); }
-        table.p-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        table.p-table th, table.p-table td { padding: 10px 12px; text-align: right; border-bottom: 1px solid #edf2f7; }
-        table.p-table th:first-child, table.p-table td:first-child { text-align: left; }
-        @media (max-width: 760px) { .p-old { display: none; } .p-grid, .p-steps { grid-template-columns: 1fr; } .p-cta { width: 100%; } .p-hero { padding: 28px 16px 64px !important; } }
+        @media (max-width: 760px) { .p-grid, .p-steps { grid-template-columns: 1fr; } .p-cta { width: 100%; } .p-hero { padding: 28px 16px 64px !important; } }
       `}</style>
 
       <section className="p-hero" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #041d3d 100%)`, padding: '36px 24px 72px', textAlign: 'center', borderBottom: `4px solid ${SKY}` }}>
@@ -83,27 +72,6 @@ export default function PartenairesPage() {
               <div><b style={{ color: NAVY }}>{s.title}</b><p style={{ margin: '6px 0 0', color: '#50627a', fontSize: 14, lineHeight: 1.5 }}>{s.text}</p></div>
             </div>
           ))}
-        </div>
-
-        <h2 style={{ color: NAVY, fontSize: 22, margin: '40px 0 6px' }}>Exemples de tarifs partenaires</h2>
-        <p style={{ margin: '0 0 14px', color: '#50627a', fontSize: 14 }}>Appartement, prix TTC, vente ou location, état des risques (ERP) inclus. Le devis exact est donné par DiagAssist selon votre bien.</p>
-        <div className="p-card" style={{ padding: 6, overflowX: 'auto' }}>
-          <table className="p-table">
-            <thead>
-              <tr style={{ color: '#6f7d90', fontSize: 12 }}><th>Taille</th><th className="p-old">Pack 2 diagnostics</th><th style={{ color: SKY }}>Pack 2 · partenaire</th><th className="p-old">Pack 4 diagnostics</th><th style={{ color: SKY }}>Pack 4 · partenaire</th></tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.size}>
-                  <td><b>{r.size}</b></td>
-                  <td className="p-old" style={{ color: '#8a98a8', textDecoration: 'line-through' }}>{euro(r.p2)}</td>
-                  <td><b style={{ color: NAVY }}>{euro(pro(r.p2))}</b></td>
-                  <td className="p-old" style={{ color: '#8a98a8', textDecoration: 'line-through' }}>{euro(r.p4)}</td>
-                  <td><b style={{ color: NAVY }}>{euro(pro(r.p4))}</b></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
 
         <div className="p-card" style={{ marginTop: 40, background: NAVY, color: '#fff', display: 'flex', gap: 20, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', borderLeft: `6px solid ${SKY}` }}>
