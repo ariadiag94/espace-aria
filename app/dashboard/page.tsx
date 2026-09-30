@@ -21,13 +21,20 @@ export default function DashboardPage() {
   const [loading,setLoading]=useState(true)
   const [dossiers,setDossiers]=useState<Dossier[]>([])
   const [metrics,setMetrics]=useState({sent:0,active:0,reports:0,payments:0})
+  const [counts,setCounts]=useState({leads:0,pros:0,dossiers:0})
 
   useEffect(()=>{ (async()=>{
     const { data:{ session } } = await supabase.auth.getSession()
     if (!session) { router.replace('/login'); return }
-    const { data, error } = await supabase.from('dossiers').select('id,dossier_name,status,created_at').order('created_at',{ascending:false}).limit(8)
+    // Indicateurs calculés sur TOUS les dossiers (pas seulement les 8 derniers).
+    const [{ data, error }, l, p] = await Promise.all([
+      supabase.from('dossiers').select('id,dossier_name,status,created_at').order('created_at',{ascending:false}),
+      supabase.from('leads').select('id',{count:'exact',head:true}).neq('status','converted'),
+      supabase.from('client_accounts').select('id',{count:'exact',head:true}).eq('validation_status','pending'),
+    ])
+    setCounts({leads:l.count||0,pros:p.count||0,dossiers:data?.length||0})
     if (!error && data) {
-      setDossiers(data)
+      setDossiers(data.slice(0,8))
       setMetrics({
         sent:data.filter(x=>x.status==='quote_sent').length,
         active:data.filter(x=>!['completed','cancelled','archived'].includes(x.status)).length,
@@ -54,13 +61,16 @@ export default function DashboardPage() {
         <div className="quick-grid">
           <Link href="/dossiers" className="card quick"><b>Dossiers en cours</b><span>Ouvrir la liste complète</span></Link>
           <Link href="/devis" className="card quick"><b>Devis rapides</b><span>Créer et chiffrer un devis</span></Link>
-          <Link href="/demandes" className="card quick"><b>Demandes reçues</b><span>Transformer une demande en dossier</span></Link>
+          <Link href="/demandes" className="card quick"><b>Demandes reçues{counts.leads?` (${counts.leads})`:''}</b><span>{counts.leads?`${counts.leads} à traiter`:'Aucune en attente'} · transformer en dossier</span></Link>
           <Link href="/agenda" className="card quick"><b>Agenda / RDV</b><span>Vue jour et semaine des interventions</span></Link>
+          <Link href="/admin/comptes-pro" className="card quick"><b>Comptes pro{counts.pros?` (${counts.pros})`:''}</b><span>{counts.pros?`${counts.pros} en attente de validation`:'Agences, syndics, notaires'}</span></Link>
+          <Link href="/assistant" className="card quick"><b>DiagAssist</b><span>L’assistant côté client, comme le voient les pros</span></Link>
+          <Link href="/ressources" className="card quick"><b>Guide pro</b><span>Contenu réglementaire des pros</span></Link>
           <div className="card quick"><b>Paiements</b><span>Qonto et déblocage rapports</span></div>
         </div>
       </section>
       <section className="section">
-        <div className="section-title"><h2>Derniers dossiers</h2><Link className="back" href="/dossiers">Voir tout →</Link></div>
+        <div className="section-title"><h2>Derniers dossiers</h2><Link className="back" href="/dossiers">Voir les {counts.dossiers} dossiers →</Link></div>
         <div className="card table-card">
           <div className="table-head"><div>Dossier</div><div>Statut</div><div>Créé le</div><div></div></div>
           {dossiers.length===0 ? <div className="table-row"><div>Aucun dossier.</div></div> : dossiers.map(d=><Link href={`/dossiers/${d.id}`} className="table-row" key={d.id}><div><b>{d.dossier_name}</b></div><div><span className="status">{labelStatus(d.status)}</span></div><div>{new Date(d.created_at).toLocaleDateString('fr-FR')}</div><div className="back">Ouvrir</div></Link>)}
