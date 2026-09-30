@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
+import { TeamPanel } from '@/components/TeamPanel'
 import { supabase } from '@/lib/supabase'
 import { ACCOUNT_TYPE_OPTIONS } from '@/lib/pro-signup'
 
@@ -35,6 +36,7 @@ export default function AdminComptesProPage() {
   const [processed, setProcessed] = useState<ClientAccountRow[]>([])
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [rowError, setRowError] = useState<Record<string, string>>({})
+  const [teamOpen, setTeamOpen] = useState<string | null>(null)
 
   const columns = 'id,company_name,account_type,siret,justificatif,email,phone,first_name,last_name,submitted_at,validation_status,validated_at'
 
@@ -155,11 +157,14 @@ export default function AdminComptesProPage() {
             <div className="card table-card">
               <div className="table-head"><div>Société</div><div>Type</div><div>Statut</div><div>Traité le</div></div>
               {processed.map((row) => (
-                <div className="table-row" key={row.id}>
-                  <div><b>{row.company_name || '—'}</b><div className="subline">{row.email}</div></div>
+                <div key={row.id}>
+                <div className="table-row">
+                  <div><b>{row.company_name || '—'}</b><div className="subline">{row.email}</div>{row.validation_status === 'validated' && <button type="button" className="ghost-btn" style={{ marginTop: 6 }} onClick={() => setTeamOpen(teamOpen === row.id ? null : row.id)}>{teamOpen === row.id ? 'Masquer l’équipe' : 'Équipe / collaborateurs'}</button>}</div>
                   <div>{accountTypeLabel(row.account_type)}</div>
                   <div><span className="status">{STATUS_LABEL[row.validation_status] || row.validation_status}</span></div>
                   <div>{dateFr(row.validated_at)}</div>
+                </div>
+                {teamOpen === row.id && <div style={{ padding: '4px 16px 16px', background: '#f7fafd' }}><TeamPanel client={supabase} accountId={row.id} canManage /></div>}
                 </div>
               ))}
             </div>

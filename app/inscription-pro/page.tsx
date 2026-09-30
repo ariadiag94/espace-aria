@@ -46,6 +46,15 @@ export default function InscriptionProPage() {
       return
     }
 
+    // Agence déjà inscrite (même SIRET) : le collaborateur doit être invité
+    // par son responsable plutôt que de créer un second compte agence.
+    const { data: siretTaken } = await client.rpc('pro_account_exists_for_siret', { p_siret: siret.trim() })
+    if (siretTaken) {
+      setStatus('error')
+      setError('Votre agence a déjà un compte ARIA. Demandez à votre responsable de vous inviter depuis son espace (rubrique « Mon équipe »), ou appelez-nous au 06 15 70 36 70.')
+      return
+    }
+
     // Les informations du formulaire sont passées en user_metadata : la
     // confirmation email étant activée sur ce projet Supabase (constaté lors
     // d'un test réel), aucune session n'est disponible ici pour écrire tout

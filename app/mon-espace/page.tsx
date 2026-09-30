@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { getSignupClient } from '@/lib/pro-signup'
 import { ChatWidget } from '@/components/ChatWidget'
 import { TabBar } from '@/components/TabBar'
+import { TeamPanel } from '@/components/TeamPanel'
 import { dossierStatusLabel } from '@/lib/dossier-status-labels'
 
 const NAVY = '#062b59'
@@ -17,6 +18,7 @@ type DossierRow = {
   property_address: string | null
   status: string | null
   created_at: string
+  requested_by_name?: string | null
 }
 
 type AccessState = 'checking' | 'authorized' | 'unavailable'
@@ -31,6 +33,8 @@ export default function MonEspacePage() {
   const [accessState, setAccessState] = useState<AccessState>('checking')
   const [dossiers, setDossiers] = useState<DossierRow[]>([])
   const [loadError, setLoadError] = useState('')
+  const [teamClient] = useState(() => getSignupClient())
+  const [team, setTeam] = useState<{ account_id: string; company_name: string | null; team_role: string } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -61,12 +65,14 @@ export default function MonEspacePage() {
       // lieu de la révéler.
       const { data, error } = await client
         .from('dossiers')
-        .select('id, dossier_name, property_address, status, created_at')
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (!cancelled) {
         if (error) setLoadError(error.message)
         setDossiers((data || []) as DossierRow[])
+        const { data: t } = await client.rpc('my_team_account')
+        setTeam(Array.isArray(t) && t[0] ? t[0] : null)
         setAccessState('authorized')
       }
     }
@@ -130,6 +136,7 @@ export default function MonEspacePage() {
             >
               <div style={{ color: NAVY, fontWeight: 700, fontSize: 15 }}>{dossier.dossier_name || 'Dossier'}</div>
               <div style={{ color: '#6f7d90', fontSize: 13, marginTop: 2 }}>{dossier.property_address || '—'}</div>
+              {dossier.requested_by_name && <div style={{ color: '#23a5df', fontSize: 12, fontWeight: 700, marginTop: 4 }}>Demandé par {dossier.requested_by_name}</div>}
               {dossier.status && (
                 <span style={{ display: 'inline-flex', marginTop: 8, borderRadius: 999, padding: '4px 10px', fontSize: 12, fontWeight: 700, background: LIGHT, color: NAVY }}>
                   {dossierStatusLabel(dossier.status)}
@@ -138,6 +145,13 @@ export default function MonEspacePage() {
             </Link>
           ))}
         </div>
+        {team && teamClient && (
+          <section style={{ marginTop: 28 }}>
+            <h2 style={{ color: NAVY, fontSize: 18, margin: '0 0 4px' }}>Mon équipe{team.company_name ? ` · ${team.company_name}` : ''}</h2>
+            <p style={{ color: '#6f7d90', fontSize: 13, margin: '0 0 12px' }}>Tous les collaborateurs voient les dossiers de l’agence et bénéficient du tarif partenaire.</p>
+            <TeamPanel client={teamClient} accountId={team.account_id} canManage={team.team_role === 'owner'} />
+          </section>
+        )}
       </div>
       <TabBar variant="pro" active="pro-dossiers" />
       <ChatWidget page="mon-espace" context="L'utilisateur est un professionnel dans son espace (suivi de ses dossiers)." />
