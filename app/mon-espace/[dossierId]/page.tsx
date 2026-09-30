@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getSignupClient } from '@/lib/pro-signup'
 import { quoteStatusLabel } from '@/lib/dossier-status-labels'
+import { ChatWidget } from '@/components/ChatWidget'
 
 const NAVY = '#062b59'
 const SKY = '#4db3e6'
@@ -296,6 +297,7 @@ export default function MonEspaceDossierPage() {
           ))}
         </div>
       </div>
+      <ChatWidget page="mon-espace-dossier" context="L'utilisateur consulte le suivi d'un de ses dossiers (devis, décision, documents)." />
     </main>
   )
 }
