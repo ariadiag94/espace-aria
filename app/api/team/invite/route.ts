@@ -23,6 +23,28 @@ export async function POST(request: Request) {
   const lastName = String(body?.lastName || '').trim().slice(0, 80)
   if (!firstName || !lastName) return Response.json({ error: 'Prénom et nom du collaborateur requis.' }, { status: 400 })
 
+  // Invitation dans l'équipe interne ARIA (assistante / stagiaire), admin seul.
+  if (body?.kind === 'staff') {
+    const { data: staffToken, error: staffError } = await supabase.rpc('invite_staff', { p_email: email, p_first_name: firstName, p_last_name: lastName })
+    if (staffError || !staffToken) return Response.json({ error: staffError?.message || 'Invitation impossible.' }, { status: 400 })
+    const staffLink = `${new URL(request.url).origin}/invitation/${staffToken}`
+    const staffHtml = `
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#24374c;line-height:1.55;max-width:620px;margin:auto">
+      <div style="border-bottom:3px solid #23A5DF;padding-bottom:12px;margin-bottom:20px"><div style="font-size:22px;font-weight:700;color:#062b59">ARIA Diagnostics</div></div>
+      <p>Bonjour ${esc(firstName)},</p>
+      <p>Erman Solakoglu vous donne accès à l’<strong>Espace ARIA</strong> (dossiers et agenda des interventions).</p>
+      <p style="margin:24px 0"><a href="${staffLink}" style="background:#062b59;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:bold">Activer mon accès →</a></p>
+      <p style="color:#66788c;font-size:13px">Lien personnel, valable 30 jours.</p>
+    </div>`
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'ARIA Diagnostics <contact@aria-diagnostics.fr>', reply_to: 'contact@aria-diagnostics.fr', to: [email], subject: 'Votre accès à l’Espace ARIA', html: staffHtml }),
+    })
+    if (!r.ok) return Response.json({ error: `Invitation créée mais e-mail non envoyé. Lien à transmettre : ${staffLink}` }, { status: 502 })
+    return Response.json({ ok: true })
+  }
+
   const { data: mine } = await supabase.rpc('my_team_account')
   const myRow = Array.isArray(mine) ? mine[0] : null
   let accountId = typeof body?.accountId === 'string' ? body.accountId : ''

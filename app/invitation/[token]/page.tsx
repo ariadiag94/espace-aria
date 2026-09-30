@@ -11,7 +11,7 @@ import { getSignupClient } from '@/lib/pro-signup'
 //   rattachement, immédiatement ou après confirmation de l'e-mail (retour ici).
 // - Compte existant : connexion puis retour ici.
 
-type Invitation = { company_name: string; email: string; first_name: string | null; last_name: string | null; accepted: boolean }
+type Invitation = { company_name: string; email: string; first_name: string | null; last_name: string | null; accepted: boolean; staff?: boolean }
 const NAVY = '#062b59'
 const SKY = '#23a5df'
 
@@ -25,19 +25,26 @@ export default function InvitationPage() {
   const [error, setError] = useState('')
   const client = getSignupClient()
 
-  const accept = async () => {
+  const accept = async (current?: Invitation | null) => {
+    const staff = (current ?? inv)?.staff
     if (!client) return
     setState('joining'); setError('')
-    const { error: e } = await client.rpc('accept_invitation', { p_token: token })
+    const { error: e } = await client.rpc(staff ? 'accept_staff_invitation' : 'accept_invitation', { p_token: token })
     if (e) { setError(e.message); setState('ready'); return }
-    router.replace('/mon-espace')
+    router.replace(staff ? '/dashboard' : '/mon-espace')
   }
 
   useEffect(() => {
     void (async () => {
       if (!client) { setState('invalid'); return }
       const { data } = await client.rpc('get_invitation', { p_token: token })
-      const row = (Array.isArray(data) ? data[0] : null) as Invitation | null
+      let row = (Array.isArray(data) ? data[0] : null) as Invitation | null
+      if (!row) {
+        // Invitation dans l'équipe interne ARIA (assistante / stagiaire)
+        const { data: s } = await client.rpc('get_staff_invitation', { p_token: token })
+        const r = Array.isArray(s) ? s[0] : null
+        if (r) row = { ...r, company_name: 'l’équipe ARIA Diagnostics', staff: true }
+      }
       if (!row) { setState('invalid'); return }
       setInv(row)
       const { data: { session } } = await client.auth.getSession()
@@ -45,8 +52,8 @@ export default function InvitationPage() {
         const email = (session.user.email || '').toLowerCase()
         setSessionEmail(email)
         if (email !== row.email.toLowerCase()) { setState('wrong-user'); return }
-        if (!row.accepted) { await accept(); return }
-        router.replace('/mon-espace'); return
+        if (!row.accepted) { await accept(row); return }
+        router.replace(row.staff ? '/dashboard' : '/mon-espace'); return
       }
       setState('ready')
     })()
@@ -65,7 +72,7 @@ export default function InvitationPage() {
     if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
       setError('Un compte existe déjà avec cette adresse : connectez-vous.'); setState('ready'); return
     }
-    if (data.session) { await accept(); return }
+    if (data.session) { await accept(inv); return }
     setState('check-email')
   }
 
@@ -81,7 +88,7 @@ export default function InvitationPage() {
           {inv && state !== 'invalid' && state !== 'loading' && (
             <>
               <h1 style={{ color: NAVY, fontSize: 22, margin: '0 0 6px' }}>Rejoindre {inv.company_name}</h1>
-              <p style={{ color: '#6f7d90', margin: '0 0 18px', fontSize: 14 }}>{name ? `${name}, v` : 'V'}ous êtes invité(e) sur l’espace ARIA de votre agence : demandes de devis, tarif partenaire et dossiers partagés.</p>
+              <p style={{ color: '#6f7d90', margin: '0 0 18px', fontSize: 14 }}>{name ? `${name}, v` : 'V'}ous êtes invité(e) {inv.staff ? 'sur l’Espace ARIA : dossiers et agenda des interventions.' : 'sur l’espace ARIA de votre agence : demandes de devis, tarif partenaire et dossiers partagés.'}</p>
               {state === 'wrong-user' && (
                 <div style={{ fontSize: 14 }}>
                   <p>Vous êtes connecté(e) avec <b>{sessionEmail}</b>, mais l’invitation a été envoyée à <b>{inv.email}</b>.</p>

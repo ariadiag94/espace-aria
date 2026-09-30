@@ -76,10 +76,10 @@ export default function QuoteDetailPage(){
   }catch{setError('Impossible de contacter le service d’envoi.');setSending(false)}
  }
 
- if(loading)return <AppShell active="devis"><div className="loading">Chargement du devis…</div></AppShell>
- if(!quote)return <AppShell active="devis"><main className="page"><div className="error">{error||'Devis introuvable.'}</div></main></AppShell>
+ if(loading)return <AppShell active="devis" adminOnly><div className="loading">Chargement du devis…</div></AppShell>
+ if(!quote)return <AppShell active="devis" adminOnly><main className="page"><div className="error">{error||'Devis introuvable.'}</div></main></AppShell>
 
- return <AppShell active="devis"><main className="page" style={{maxWidth:1240}}>
+ return <AppShell active="devis" adminOnly><main className="page" style={{maxWidth:1240}}>
   <Link href="/devis" className="back">← Retour aux devis</Link>
   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:16,flexWrap:'wrap',margin:'14px 0 18px'}}>
    <div><div className="eyebrow">DEVIS</div><h1 style={{margin:'4px 0 6px'}}>{quote.quote_number}</h1><div style={{display:'flex',gap:9,alignItems:'center',flexWrap:'wrap'}}><span className="status">{statusLabel(quote.status)}</span><span style={{color:'#6f7d90'}}>Créé le {dateFr(quote.created_at)}</span></div></div>
