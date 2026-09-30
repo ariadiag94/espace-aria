@@ -23,6 +23,20 @@ export const openAriaChat = (question?: string) => {
   window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: { question } }))
 }
 
+// Le chat n'apparaît que si la clé Anthropic est configurée sur le serveur
+// (GET /api/chat) : tant qu'il n'est pas activé, seuls les conseils des
+// cartes ChatCoach s'affichent, sans lien vers le chat.
+let enabledPromise: Promise<boolean> | null = null
+const fetchChatEnabled = () => {
+  enabledPromise ??= fetch('/api/chat').then((r) => r.json()).then((d) => d?.enabled === true).catch(() => false)
+  return enabledPromise
+}
+const useChatEnabled = () => {
+  const [enabled, setEnabled] = useState(false)
+  useEffect(() => { let alive = true; void fetchChatEnabled().then((v) => { if (alive) setEnabled(v) }); return () => { alive = false } }, [])
+  return enabled
+}
+
 const loadTurns = (): Turn[] | null => {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
@@ -93,6 +107,8 @@ export function ChatWidget({ context, page }: { context?: string; page?: string 
   }
 
   sendRef.current = (text: string) => { void send(text) }
+  const enabled = useChatEnabled()
+  if (!enabled) return null
 
   const reset = () => { setTurns([WELCOME]); setError('') }
 
@@ -161,14 +177,15 @@ export function ChatWidget({ context, page }: { context?: string; page?: string 
 // Carte « Assistant ARIA » affichée dans le parcours, à chaque étape : un
 // conseil immédiat (sans attente ni coût) + accès direct au chat.
 export function ChatCoach({ tip, question }: { tip: string; question?: string }) {
+  const enabled = useChatEnabled()
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 18, padding: '12px 14px', borderRadius: 14, background: PALE, border: `1px solid #cfe7f6`, fontFamily: 'Arial,Helvetica,sans-serif' }}>
       <span aria-hidden style={{ flex: '0 0 auto', width: 30, height: 30, borderRadius: '50%', background: NAVY, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 13, borderBottom: `2px solid ${SKY}` }}>A</span>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 13.5, lineHeight: 1.45, color: '#14243b' }}>{tip}</div>
-        <button type="button" onClick={() => openAriaChat(question)} style={{ marginTop: 8, border: 0, background: 'none', padding: 0, color: '#0b65b5', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+        {enabled && <button type="button" onClick={() => openAriaChat(question)} style={{ marginTop: 8, border: 0, background: 'none', padding: 0, color: '#0b65b5', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
           {question ? `« ${question} » →` : 'Poser une question à l’assistant →'}
-        </button>
+        </button>}
       </div>
     </div>
   )
