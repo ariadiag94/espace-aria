@@ -141,7 +141,7 @@ export default function InscriptionProPage() {
     return (
       <main className="login-page">
         <section className="login-card">
-          <div className="login-head"><div className="login-logo">ARIA DIAGNOSTICS</div></div>
+          <div className="login-head"><div className="login-logo"><img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 58, width: 'auto', display: 'block', margin: '0 auto' }} /></div></div>
           <div className="login-body">
             <h1>Vérifiez votre boîte mail</h1>
             <p>Un email de confirmation vous a été envoyé à {email.trim()}. Cliquez sur le lien qu’il contient pour finaliser votre inscription — votre demande sera alors transmise à notre équipe.</p>
@@ -158,7 +158,7 @@ export default function InscriptionProPage() {
     return (
       <main className="login-page">
         <section className="login-card">
-          <div className="login-head"><div className="login-logo">ARIA DIAGNOSTICS</div></div>
+          <div className="login-head"><div className="login-logo"><img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 58, width: 'auto', display: 'block', margin: '0 auto' }} /></div></div>
           <div className="login-body">
             <h1>Inscription envoyée</h1>
             <p>Merci pour votre inscription. Votre demande est en cours d’examen par notre équipe, vous recevrez un email de confirmation dès qu’elle sera validée.</p>
@@ -174,7 +174,7 @@ export default function InscriptionProPage() {
   return (
     <main className="login-page">
       <section className="login-card" style={{ width: 'min(560px, 100%)' }}>
-        <div className="login-head"><div className="login-logo">ARIA DIAGNOSTICS</div></div>
+        <div className="login-head"><div className="login-logo"><img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 58, width: 'auto', display: 'block', margin: '0 auto' }} /></div></div>
         <div className="login-body">
           <h1>Créer un compte professionnel</h1>
           <p>Agences, syndics, notaires, bailleurs... Créez votre compte pro pour accéder à l’assistant de diagnostics ARIA. Votre demande sera examinée par notre équipe avant activation.</p>

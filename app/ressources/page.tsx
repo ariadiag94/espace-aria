@@ -81,7 +81,7 @@ export default function RessourcesPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f3f6f9' }}>
       <div style={{ background: NAVY, padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `3px solid ${SKY}` }}>
-        <span style={{ color: '#fff', fontWeight: 900, letterSpacing: '.04em' }}>ARIA DIAGNOSTICS</span>
+        <img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 40, width: 'auto', display: 'block' }} />
         <div style={{ display: 'flex', gap: 14 }}>
           <Link href="/assistant" style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>Demander un devis</Link>
           <Link href="/mon-espace" style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>Mon espace</Link>

@@ -215,7 +215,7 @@ export default function MonEspaceDossierPage() {
   return (
     <main style={{ minHeight: '100vh', background: LIGHT, fontFamily: 'Arial,Helvetica,sans-serif' }}>
       <div style={{ background: NAVY, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ color: '#fff', fontWeight: 900, letterSpacing: '.04em' }}>ARIA DIAGNOSTICS</span>
+        <img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 40, width: 'auto', display: 'block' }} />
         <Link href="/mon-espace" style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>← Mon espace</Link>
       </div>
 

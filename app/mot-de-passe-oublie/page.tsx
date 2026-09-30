@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
     setSent(true)
   }
 
-  return <main className="login-page"><section className="login-card"><div className="login-head"><div className="login-logo">ARIA DIAGNOSTICS</div></div><div className="login-body">
+  return <main className="login-page"><section className="login-card"><div className="login-head"><div className="login-logo"><img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 58, width: 'auto', display: 'block', margin: '0 auto' }} /></div></div><div className="login-body">
     <h1>Mot de passe oublié</h1>
     <p>Reçois un lien sécurisé pour choisir un nouveau mot de passe.</p>
     {error&&<div className="error">{error}</div>}
