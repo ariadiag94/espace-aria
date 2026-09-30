@@ -119,7 +119,7 @@ export function ChatWidget({ context, page }: { context?: string; page?: string 
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Ouvrir l’assistant"
-          style={{ position: 'fixed', right: 16, bottom: 'calc(84px + env(safe-area-inset-bottom))', zIndex: 60, border: 0, borderRadius: 999, padding: '12px 18px', background: NAVY, color: '#fff', fontWeight: 800, fontSize: 14, boxShadow: '0 10px 28px rgba(6,43,89,.35)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'Arial,Helvetica,sans-serif' }}
+          style={{ position: 'fixed', right: 16, bottom: 'calc(90px + env(safe-area-inset-bottom))', zIndex: 60, border: 0, borderRadius: 999, padding: '12px 18px', background: NAVY, color: '#fff', fontWeight: 800, fontSize: 14, boxShadow: '0 10px 28px rgba(6,43,89,.35)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'Arial,Helvetica,sans-serif' }}
         >
           <span style={{ width: 10, height: 10, borderRadius: '50%', background: SKY, display: 'inline-block' }} />
           Une question ?

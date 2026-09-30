@@ -10,3 +10,24 @@
 @media(max-width:620px){.topbar{height:68px;padding:0 16px}.page{padding:20px 14px 86px}.grid,.quick-grid{grid-template-columns:1fr 1fr;gap:10px}.metric{min-height:108px;padding:14px}.hero-row h1{font-size:25px}.mobile-nav{position:fixed;display:grid;grid-template-columns:repeat(5,1fr);left:0;right:0;bottom:0;background:white;border-top:1px solid var(--line);z-index:30}.mobile-nav a{text-align:center;padding:14px 4px;font-size:11px;color:#5b6b7d}.mobile-nav a.active{color:#0b5faf;font-weight:800}.kv{grid-template-columns:1fr}.quote-row>div{flex-direction:column}.dossier-hero h1{font-size:25px}.dossier-summary-grid{grid-template-columns:1fr 1fr;gap:9px}.summary-card{padding:12px}.summary-card b{font-size:18px}.info-grid{grid-template-columns:1fr}.dossier-section{padding:15px}.hero-actions{width:100%}.action-btn{flex:1;text-align:center}.workspace-grid{gap:12px}.workspace-main,.workspace-side{gap:12px}.access-grid,.access-grid-v21{grid-template-columns:1fr}.diagnostic-grid{grid-template-columns:1fr 1fr}.modal-backdrop{padding:10px}.edit-modal{padding:16px;max-height:94vh}.edit-grid{grid-template-columns:1fr}.edit-field.wide{grid-column:auto}.edit-modal-actions{position:sticky;bottom:-16px;background:#fff;padding-bottom:4px}.tag-row{margin-top:10px}.field-row{grid-template-columns:1fr}}
 
 .edit-field select,.edit-field textarea{width:100%;border:1px solid #d3e0ea;border-radius:10px;padding:11px 12px;outline:none;background:#fff;font:inherit}.edit-field select:focus,.edit-field textarea:focus{border-color:#5ebde0;box-shadow:0 0 0 3px rgba(88,195,229,.15)}
+
+/* Barre d'onglets façon iPhone (components/TabBar.tsx) */
+.mobile-nav{display:none!important}
+.tabbar-spacer{height:calc(76px + env(safe-area-inset-bottom))}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:space-around;align-items:flex-start;padding:7px 6px calc(6px + env(safe-area-inset-bottom));background:rgba(255,255,255,.92);-webkit-backdrop-filter:saturate(180%) blur(16px);backdrop-filter:saturate(180%) blur(16px);border-top:1px solid #dce6f0;font-family:-apple-system,BlinkMacSystemFont,Arial,Helvetica,sans-serif}
+.tabbar .tab{flex:1;max-width:96px;display:flex;flex-direction:column;align-items:center;gap:3px;color:#8a98a8;text-decoration:none;font-size:10.5px;font-weight:600;-webkit-tap-highlight-color:transparent}
+.tabbar .tab-icon{position:relative;display:grid;place-items:center;width:28px;height:28px}
+.tabbar .tab-icon svg{width:26px;height:26px}
+.tabbar .tab.on{color:#062b59;font-weight:800}
+.tabbar .tab.on .tab-icon{color:#23A5DF}
+.tabbar .tab-big{width:48px;height:48px;margin-top:-20px;border-radius:50%;background:#23A5DF;color:#fff!important;box-shadow:0 6px 16px rgba(35,165,223,.45);border:3px solid #fff}
+.tabbar .tab-big svg{width:24px;height:24px}
+.tabbar .tab-badge{position:absolute;top:-5px;right:-10px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#e5484d;color:#fff;font-size:10.5px;font-weight:800;display:grid;place-items:center;border:2px solid #fff}
+.tabbar .tab:active .tab-icon{transform:scale(.92)}
+@media(min-width:900px){
+  .tabbar-spacer{height:104px}
+  .tabbar{left:50%;right:auto;bottom:18px;transform:translateX(-50%);gap:6px;padding:8px 14px;border:1px solid #dce6f0;border-radius:22px;box-shadow:0 14px 40px rgba(6,43,89,.18)}
+  .tabbar .tab{width:84px;flex:0 0 auto;font-size:11.5px;border-radius:14px;padding:4px 0}
+  .tabbar .tab:hover{background:#f1f6fb;color:#062b59}
+  .tabbar .tab-big{margin-top:-2px;width:40px;height:40px;box-shadow:0 4px 12px rgba(35,165,223,.4)}
+}
