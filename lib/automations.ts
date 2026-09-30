@@ -78,7 +78,7 @@ async function quotePdfBase64(supabase: SupabaseClient, quote: Row, dossier: Row
     contactEmail: dossier.contact_email,
     contactPhone: dossier.contact_phone,
     propertyAddress: String(dossier.property_address || dossier.dossier_name || 'le bien concerné'),
-    propertyLabel: quote.property_type === 'house' ? 'Maison' : quote.property_type === 'apartment' ? 'Appartement' : 'Bien',
+    propertyLabel: quote.property_type === 'house' ? 'Maison' : quote.property_type === 'apartment' ? 'Appartement' : quote.property_type === 'local' ? 'Local professionnel' : quote.property_type === 'immeuble' ? 'Immeuble' : 'Bien',
     propertySize: quote.property_size,
     notes: quote.notes,
     diagnostics,

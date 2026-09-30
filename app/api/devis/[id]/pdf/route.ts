@@ -85,7 +85,11 @@ export async function GET(
           ? 'Maison'
           : quote.property_type === 'apartment'
             ? 'Appartement'
-            : 'Bien',
+            : quote.property_type === 'local'
+              ? 'Local professionnel'
+              : quote.property_type === 'immeuble'
+                ? 'Immeuble'
+                : 'Bien',
       propertySize: quote.property_size,
       notes: quote.notes,
       diagnostics,
