@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { supabase } from '@/lib/supabase'
+import { useInternalRole } from '@/lib/use-role'
 
 type Dossier = { id:string; dossier_name:string; status:string; created_at:string }
 
@@ -19,6 +20,8 @@ function labelStatus(s:string) {
 export default function DashboardPage() {
   const router = useRouter()
   const [loading,setLoading]=useState(true)
+  const role = useInternalRole()
+  const admin = role === 'admin'
   const [dossiers,setDossiers]=useState<Dossier[]>([])
   const [metrics,setMetrics]=useState({sent:0,active:0,reports:0,payments:0})
   const [counts,setCounts]=useState({leads:0,pros:0,dossiers:0})
@@ -51,23 +54,24 @@ export default function DashboardPage() {
     <main className="page">
       <div className="hero-row"><div><h1>Bonjour 👋</h1><p>Voici l’activité de ton Espace ARIA.</p></div></div>
       <section className="grid">
-        <div className="card metric"><div className="label">Devis envoyés</div><div className="value">{metrics.sent}</div><div className="hint">En attente d’une décision</div></div>
+        {admin && <div className="card metric"><div className="label">Devis envoyés</div><div className="value">{metrics.sent}</div><div className="hint">En attente d’une décision</div></div>}
         <div className="card metric"><div className="label">Dossiers en cours</div><div className="value">{metrics.active}</div><div className="hint">Toutes étapes confondues</div></div>
         <div className="card metric"><div className="label">Rapports prêts</div><div className="value">{metrics.reports}</div><div className="hint">Prêts à transmettre</div></div>
-        <div className="card metric"><div className="label">Règlements à vérifier</div><div className="value">{metrics.payments}</div><div className="hint">Avant déblocage</div></div>
+        {admin && <div className="card metric"><div className="label">Règlements à vérifier</div><div className="value">{metrics.payments}</div><div className="hint">Avant déblocage</div></div>}
       </section>
       <section className="section">
         <div className="section-title"><h2>Accès rapides</h2></div>
         <div className="quick-grid">
           <Link href="/dossiers" className="card quick"><b>Dossiers en cours</b><span>Ouvrir la liste complète</span></Link>
-          <Link href="/devis" className="card quick"><b>Devis rapides</b><span>Créer et chiffrer un devis</span></Link>
-          <Link href="/demandes" className="card quick"><b>Demandes reçues{counts.leads?` (${counts.leads})`:''}</b><span>{counts.leads?`${counts.leads} à traiter`:'Aucune en attente'} · transformer en dossier</span></Link>
+          {admin && <Link href="/devis" className="card quick"><b>Devis rapides</b><span>Créer et chiffrer un devis</span></Link>}
+          {admin && <Link href="/demandes" className="card quick"><b>Demandes reçues{counts.leads?` (${counts.leads})`:''}</b><span>{counts.leads?`${counts.leads} à traiter`:'Aucune en attente'} · transformer en dossier</span></Link>}
           <Link href="/agenda" className="card quick"><b>Agenda / RDV</b><span>Vue jour et semaine des interventions</span></Link>
-          <Link href="/admin/comptes-pro" className="card quick"><b>Comptes pro{counts.pros?` (${counts.pros})`:''}</b><span>{counts.pros?`${counts.pros} en attente de validation`:'Agences, syndics, notaires'}</span></Link>
+          {admin && <Link href="/admin/comptes-pro" className="card quick"><b>Comptes pro{counts.pros?` (${counts.pros})`:''}</b><span>{counts.pros?`${counts.pros} en attente de validation`:'Agences, syndics, notaires'}</span></Link>}
           <Link href="/assistant" className="card quick"><b>DiagAssist</b><span>L’assistant côté client, comme le voient les pros</span></Link>
           <Link href="/ressources" className="card quick"><b>Guide pro</b><span>Contenu réglementaire des pros</span></Link>
-          <Link href="/automatisations" className="card quick"><b>Automatisations</b><span>Relances devis et rappels RDV</span></Link>
-          <div className="card quick"><b>Paiements</b><span>Qonto et déblocage rapports</span></div>
+          {admin && <Link href="/automatisations" className="card quick"><b>Automatisations</b><span>Relances devis et rappels RDV</span></Link>}
+          {admin && <Link href="/equipe" className="card quick"><b>Équipe ARIA</b><span>Accès assistante / stagiaire</span></Link>}
+          {admin && <div className="card quick"><b>Paiements</b><span>Qonto et déblocage rapports</span></div>}
         </div>
       </section>
       <section className="section">

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { fetchInternalRole } from '@/lib/use-role'
 
 // Barre d'onglets façon application iPhone.
 // - iPhone / mobile : barre fixe en bas, pleine largeur, zone « home » respectée.
@@ -10,7 +11,7 @@ import { supabase } from '@/lib/supabase'
 // Deux jeux d'onglets : admin (ARIA) et pro (agences). Sur les pages
 // partagées (DiagAssist, Guide), la variante est choisie selon le rôle.
 
-type Variant = 'admin' | 'pro'
+type Variant = 'admin' | 'pro' | 'staff'
 export type TabKey = 'accueil' | 'demandes' | 'dossiers' | 'devis' | 'agenda' | 'pro-dossiers' | 'pro-devis' | 'guide' | ''
 
 const P = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
@@ -28,16 +29,16 @@ const ICONS: Record<string, React.ReactElement> = {
 type Tab = { key: TabKey | 'call'; label: string; href: string; icon: string; big?: boolean; badge?: number }
 
 export function TabBar({ variant, active }: { variant?: Variant; active: TabKey }) {
-  const [resolved, setResolved] = useState<Variant | null>(variant || null)
+  const [resolved, setResolved] = useState<Variant | null>(variant === 'pro' ? 'pro' : null)
   const [pending, setPending] = useState(0)
 
   useEffect(() => {
     let alive = true
     void (async () => {
-      let v = variant
-      if (!v) {
-        const { data } = await supabase.rpc('is_admin')
-        v = data ? 'admin' : 'pro'
+      let v: Variant | undefined = variant
+      if (!v || v === 'admin') {
+        const role = await fetchInternalRole()
+        v = role === 'admin' ? 'admin' : role === 'staff' ? 'staff' : variant === 'admin' ? 'admin' : 'pro'
         if (alive) setResolved(v)
       }
       if (v === 'admin') {
@@ -57,6 +58,13 @@ export function TabBar({ variant, active }: { variant?: Variant; active: TabKey 
         { key: 'dossiers', label: 'Dossiers', href: '/dossiers', icon: 'folder' },
         { key: 'devis', label: 'Devis', href: '/devis', icon: 'file' },
         { key: 'agenda', label: 'Agenda', href: '/agenda', icon: 'calendar' },
+      ]
+    : resolved === 'staff'
+    ? [
+        { key: 'accueil', label: 'Accueil', href: '/dashboard', icon: 'home' },
+        { key: 'dossiers', label: 'Dossiers', href: '/dossiers', icon: 'folder' },
+        { key: 'agenda', label: 'Agenda', href: '/agenda', icon: 'calendar' },
+        { key: 'guide', label: 'Guide', href: '/ressources', icon: 'book' },
       ]
     : [
         { key: 'pro-dossiers', label: 'Dossiers', href: '/mon-espace', icon: 'folder' },

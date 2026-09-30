@@ -151,7 +151,7 @@ export default function DemandesPage() {
   const visible = leads.filter((l) => filter === 'all' || (filter === 'done') === (l.status === 'converted'))
 
   return (
-    <AppShell active="demandes">
+    <AppShell active="demandes" adminOnly>
       <main className="page" style={{ maxWidth: 1080 }}>
         <Link href="/dashboard" className="back">← Accueil</Link>
         <div className="hero-row" style={{ marginTop: 14 }}>

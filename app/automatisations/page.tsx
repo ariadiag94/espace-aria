@@ -74,10 +74,10 @@ export default function AutomatisationsPage() {
     void call(true)
   }
 
-  if (loading) return <AppShell active="accueil"><div className="loading">Chargement…</div></AppShell>
+  if (loading) return <AppShell active="accueil" adminOnly><div className="loading">Chargement…</div></AppShell>
 
   return (
-    <AppShell active="accueil">
+    <AppShell active="accueil" adminOnly>
       <main className="page" style={{ maxWidth: 980 }}>
         <Link href="/dashboard" className="back">← Accueil</Link>
         <div className="hero-row" style={{ marginTop: 14 }}>
