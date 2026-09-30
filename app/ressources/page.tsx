@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSignupClient } from '@/lib/pro-signup'
+import { ChatWidget } from '@/components/ChatWidget'
 import { COMMUNE_RULES } from '@/lib/commune-rules'
 import {
   DPE_FACTS, LAW_REFS, LOCATION_DIAGS, OFFICIAL_LINKS, PREPARATION_CHECKLIST,
@@ -175,6 +176,7 @@ export default function RessourcesPage() {
           Ces informations sont générales et ne remplacent pas l’analyse de chaque situation. Une question sur un dossier ? ARIA Diagnostics · 06 15 70 36 70 · contact@aria-diagnostics.fr
         </div>
       </div>
+      <ChatWidget page="ressources" context="L'utilisateur consulte le guide pro (diagnostics, DPE, textes de loi)." />
     </div>
   )
 }

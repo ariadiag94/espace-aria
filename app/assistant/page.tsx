@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { getSignupClient } from '@/lib/pro-signup'
+import { ChatWidget } from '@/components/ChatWidget'
 import { buildAssainissementDetail, computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
 import { COMMUNE_RULES, OTHER_COMMUNE_SLUG } from '@/lib/commune-rules'
 import { APARTMENT_ASSAINISSEMENT_PRICE, HOUSE_ASSAINISSEMENT_PRICE } from '@/lib/quote-assistant'
@@ -916,6 +917,15 @@ export default function AssistantPage() {
     sizeIndex !== null ? sizeLabels[sizeIndex] : null,
   ].filter((b): b is string => Boolean(b))
 
+  // Contexte transmis au chatbot pour qu'il aide sur l'étape en cours.
+  const SCREEN_LABEL: Record<string, string> = { commune: 'choix de la commune', purpose: 'objet (vente, location ou à la carte)', propertyType: 'type de bien', year: 'année de construction', gas: 'présence d’une installation gaz', surfaceAttestation: 'attestation de surface déjà disponible ?', size: 'taille du bien', checklist: 'sélection des diagnostics à la carte', result: 'résultat et envoi de la demande' }
+  const chatContext = [
+    `L'utilisateur remplit DiagAssist. Étape en cours : ${SCREEN_LABEL[currentScreen] || currentScreen}.`,
+    summaryBadges.length ? `Réponses déjà données : ${summaryBadges.join(', ')}.` : '',
+    isPro ? `Compte professionnel validé${proAccountName ? ` (${proAccountName})` : ''} : remise -10 % appliquée.` : '',
+    currentScreen === 'result' && typeof finalPrice === 'number' ? `Prix affiché : ${finalPrice} € TTC.` : '',
+  ].filter(Boolean).join(' ')
+
   if (accessState !== 'authorized') {
     return (
       <main style={{ minHeight: '100vh', background: LIGHT, display: 'grid', placeItems: 'center', fontFamily: 'Arial,Helvetica,sans-serif', padding: 24 }}>
@@ -1296,6 +1306,7 @@ export default function AssistantPage() {
           </div>
         </div>
       </div>
+      <ChatWidget page="assistant" context={chatContext} />
     </main>
   )
 }

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSignupClient } from '@/lib/pro-signup'
+import { ChatWidget } from '@/components/ChatWidget'
 import { dossierStatusLabel } from '@/lib/dossier-status-labels'
 
 const NAVY = '#062b59'
@@ -102,6 +103,10 @@ export default function MonEspacePage() {
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '28px 20px 60px' }}>
         <h1 style={{ color: NAVY, fontSize: 24, margin: '0 0 6px' }}>Mon espace</h1>
         <p style={{ color: '#6f7d90', fontSize: 14, margin: '0 0 24px' }}>Vos dossiers, devis et documents ARIA Diagnostics.</p>
+        <Link href="/assistant" style={{ display: 'block', padding: '16px 18px', borderRadius: 14, background: '#23a5df', color: '#fff', textDecoration: 'none', marginBottom: 12 }}>
+          <b>Nouvelle demande de devis</b>
+          <div style={{ fontSize: 13, opacity: 0.9, marginTop: 2 }}>Diagnostics obligatoires et prix en quelques minutes →</div>
+        </Link>
         <Link href="/ressources" style={{ display: 'block', padding: '16px 18px', borderRadius: 14, background: NAVY, color: '#fff', textDecoration: 'none', marginBottom: 20, borderLeft: '5px solid #23a5df' }}>
           <b>Ressources professionnelles</b>
           <div style={{ fontSize: 13, opacity: 0.85, marginTop: 2 }}>Diagnostics obligatoires, DPE, textes de loi, préparation de la visite →</div>
@@ -133,6 +138,7 @@ export default function MonEspacePage() {
           ))}
         </div>
       </div>
+      <ChatWidget page="mon-espace" context="L'utilisateur est un professionnel dans son espace (suivi de ses dossiers)." />
     </main>
   )
 }
