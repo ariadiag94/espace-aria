@@ -16,6 +16,11 @@ const MAX_MESSAGE = 1500
 
 type ChatTurn = { role: 'user' | 'assistant'; content: string }
 
+// Indique seulement si le chat est activé (clé présente), sans rien exposer.
+export async function GET() {
+  return Response.json({ enabled: Boolean(process.env.ANTHROPIC_API_KEY) }, { headers: { 'Cache-Control': 'no-store' } })
+}
+
 export async function POST(request: Request) {
   const authorization = request.headers.get('authorization') || ''
   const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : ''
