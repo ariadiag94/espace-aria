@@ -224,7 +224,7 @@ export default function NewDossierPage() {
       return
     }
 
-    router.push(`/devis?dossier=${data.id}`)
+    router.push(`/devis?dossier=${data.id}${new URLSearchParams(window.location.search).get('libre')==='1'?'&libre=1':''}`)
   }
 
   return (
