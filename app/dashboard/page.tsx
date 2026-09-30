@@ -66,6 +66,7 @@ export default function DashboardPage() {
           <Link href="/admin/comptes-pro" className="card quick"><b>Comptes pro{counts.pros?` (${counts.pros})`:''}</b><span>{counts.pros?`${counts.pros} en attente de validation`:'Agences, syndics, notaires'}</span></Link>
           <Link href="/assistant" className="card quick"><b>DiagAssist</b><span>L’assistant côté client, comme le voient les pros</span></Link>
           <Link href="/ressources" className="card quick"><b>Guide pro</b><span>Contenu réglementaire des pros</span></Link>
+          <Link href="/automatisations" className="card quick"><b>Automatisations</b><span>Relances devis et rappels RDV</span></Link>
           <div className="card quick"><b>Paiements</b><span>Qonto et déblocage rapports</span></div>
         </div>
       </section>
