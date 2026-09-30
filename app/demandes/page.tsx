@@ -63,6 +63,7 @@ export default function DemandesPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [accountFor, setAccountFor] = useState<Record<string, string>>({})
+  const [authorName, setAuthorName] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -83,9 +84,11 @@ export default function DemandesPage() {
       // Compte pro de l'auteur de la demande, quand il est lisible.
       const authors = Array.from(new Set(list.map((x) => x.created_by).filter(Boolean))) as string[]
       if (authors.length) {
-        const { data: members } = await supabase.from('account_memberships').select('user_id, account_id').in('user_id', authors)
+        const { data: members } = await supabase.from('account_memberships').select('*').in('user_id', authors)
         const byUser: Record<string, string> = {}
-        ;(members || []).forEach((m: { user_id: string; account_id: string }) => { byUser[m.user_id] = m.account_id })
+        const names: Record<string, string> = {}
+        ;(members || []).forEach((m: { user_id: string; account_id: string; display_name?: string | null }) => { byUser[m.user_id] = m.account_id; if (m.display_name) names[m.user_id] = m.display_name })
+        setAuthorName(names)
         const pre: Record<string, string> = {}
         list.forEach((x) => { if (x.created_by && byUser[x.created_by]) pre[x.id] = byUser[x.created_by] })
         setAccountFor(pre)
@@ -128,6 +131,7 @@ export default function DemandesPage() {
       construction_year: Number.isFinite(year) && year > 1000 ? year : null,
       property_address: address || null,
       contact_name: lead.contact_name,
+      ...(lead.created_by && authorName[lead.created_by] ? { requested_by_name: authorName[lead.created_by] } : {}),
       contact_phone: lead.contact_phone,
       contact_email: lead.contact_email,
       floor: lead.floor || null,
@@ -181,6 +185,7 @@ export default function DemandesPage() {
                       <div style={{ fontSize: 12, color: '#5f6b7a' }}>{dateFr(lead.created_at)}</div>
                       <b style={{ fontSize: 18, color: '#062b59' }}>{euro(lead.estimated_price)}</b>
                       <div style={{ fontSize: 12 }}>{PURPOSE[lead.purpose] || lead.purpose} · {TYPE[lead.property_type] || lead.property_type}{typeof s.sizeLabel === 'string' ? ` · ${s.sizeLabel}` : ''}</div>
+                      {lead.created_by && authorName[lead.created_by] && <div style={{ fontSize: 12, color: '#062b59', fontWeight: 700 }}>Demandé par {authorName[lead.created_by]}</div>}
                       {lead.payer_type && <div style={{ fontSize: 12, color: '#23a5df' }}>Compte pro · règle : {lead.payer_type === 'pro' ? 'le pro' : 'le client final'}</div>}
                       {lead.client_documents_sent_at && <div style={{ fontSize: 12, color: '#1f5c34' }}>Devis estimatif envoyé automatiquement</div>}
                     </div>
