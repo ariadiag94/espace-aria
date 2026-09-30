@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { getSignupClient } from '@/lib/pro-signup'
-import { ChatWidget } from '@/components/ChatWidget'
+import { ChatCoach, ChatWidget } from '@/components/ChatWidget'
 import { buildAssainissementDetail, computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
 import { COMMUNE_RULES, OTHER_COMMUNE_SLUG } from '@/lib/commune-rules'
 import { APARTMENT_ASSAINISSEMENT_PRICE, HOUSE_ASSAINISSEMENT_PRICE } from '@/lib/quote-assistant'
@@ -926,6 +926,24 @@ export default function AssistantPage() {
     currentScreen === 'result' && typeof finalPrice === 'number' ? `Prix affiché : ${finalPrice} € TTC.` : '',
   ].filter(Boolean).join(' ')
 
+  // Conseil de l'assistant affiché à chaque étape (accompagnement tout au
+  // long du parcours), avec une question type pré-remplie pour aller plus loin.
+  const communeRule = COMMUNE_RULES.find((c) => c.slug === communeSlug)
+  const COACH: Record<string, { tip: string; question?: string }> = {
+    commune: { tip: 'Bonjour, je vous accompagne jusqu’au devis. Commencez par la commune du bien : elle permet notamment de savoir si un diagnostic termites est imposé par arrêté préfectoral.', question: 'Pourquoi la commune est-elle importante ?' },
+    purpose: { tip: communeRule && communeRule.coverage !== 'aucun' && communeRule.coverage !== 'inconnu'
+      ? `${communeRule.name} est concernée par un arrêté termites${communeRule.coverage === 'partielle' ? ' sur une partie de la commune' : ''} : il sera vérifié pour une vente. Choisissez maintenant votre projet : vente, location, ou « à la carte » si vous savez exactement ce qu’il vous faut.`
+      : 'Choisissez votre projet. En vente, les diagnostics sont annexés à la promesse ; en location, au bail. « À la carte » si vous savez déjà exactement ce qu’il vous faut (par exemple un DPE seul).', question: 'Quelle différence entre vente et location ?' },
+    propertyType: { tip: 'Appartement ou maison ? Un appartement est traité comme un lot de copropriété : en vente, sa surface loi Carrez est obligatoire.', question: 'Qu’est-ce que la loi Carrez ?' },
+    year: { tip: 'Indiquez l’année du permis de construire : elle figure dans l’acte de propriété ou le règlement de copropriété. Avant 1949 : constat plomb ; avant juillet 1997 : repérage amiante.', question: 'Je ne connais pas l’année de construction' },
+    gas: { tip: 'Répondez « oui » s’il existe une arrivée de gaz dans le logement (chaudière, gazinière, compteur), même si elle n’est plus utilisée.', question: 'Comment savoir si j’ai le gaz ?' },
+    surfaceAttestation: { tip: 'Avez-vous déjà un mesurage (attestation Carrez ou Boutin) ? Si oui, le DPE seul suffit, à condition de nous l’envoyer avant la visite. Sinon, le mesurage sera fait sur place.', question: 'Où trouver mon attestation de surface ?' },
+    size: { tip: propertyType === 'house' ? 'Choisissez la surface habitable approximative de la maison : le diagnostiqueur la vérifie sur place.' : 'T1 = une pièce principale, T2 = deux pièces… sans compter la cuisine, la salle de bain et les WC.', question: 'Comment compter les pièces ?' },
+    checklist: { tip: 'Cochez les diagnostics souhaités. À partir de deux, c’est le prix du pack qui s’applique, plus avantageux que les prix à l’unité.', question: 'Quels diagnostics sont vraiment obligatoires ?' },
+    result: { tip: 'Voici votre estimation. « Obligatoire » : imposé par la loi pour votre projet ; « à confirmer » : dépend d’un point vérifié sur place. Après l’envoi, vous recevez par e-mail le devis et l’ordre de mission : il suffit de le renvoyer signé pour fixer le rendez-vous.', question: 'Comment préparer la visite ?' },
+  }
+  const coach = COACH[currentScreen]
+
   if (accessState !== 'authorized') {
     return (
       <main style={{ minHeight: '100vh', background: LIGHT, display: 'grid', placeItems: 'center', fontFamily: 'Arial,Helvetica,sans-serif', padding: 24 }}>
@@ -1299,6 +1317,8 @@ export default function AssistantPage() {
                 <button className="diagassist-restart" onClick={restart}>Recommencer</button>
               </div>
             )}
+
+            {coach && <ChatCoach tip={coach.tip} question={coach.question} />}
 
             {currentScreen !== 'commune' && currentScreen !== 'result' && (
               <button className="diagassist-back" onClick={goBack}>← Question précédente</button>

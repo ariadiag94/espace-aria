@@ -13,6 +13,24 @@ const PALE = '#EAF5FC'
 
 type Turn = { role: 'user' | 'assistant'; content: string }
 
+// La conversation suit l'utilisateur d'une page à l'autre (DiagAssist →
+// Mon espace → Guide) pendant toute la session du navigateur.
+const STORAGE_KEY = 'aria-chat-turns'
+const OPEN_EVENT = 'aria-chat:open'
+
+/** Ouvre la bulle depuis n'importe quel écran, avec une question pré-envoyée si fournie. */
+export const openAriaChat = (question?: string) => {
+  window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: { question } }))
+}
+
+const loadTurns = (): Turn[] | null => {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : null
+    return Array.isArray(parsed) && parsed.length ? parsed.slice(-30) : null
+  } catch { return null }
+}
+
 const WELCOME: Turn = {
   role: 'assistant',
   content: 'Bonjour ! Je peux vous aider à savoir quels diagnostics sont obligatoires, à répondre aux questions du devis ou à préparer la visite. Posez-moi votre question.',
@@ -33,6 +51,18 @@ export function ChatWidget({ context, page }: { context?: string; page?: string 
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [turns, busy, open])
+  useEffect(() => { const saved = loadTurns(); if (saved) setTurns(saved) }, [])
+  useEffect(() => { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(turns.slice(-30))) } catch { /* navigation privée */ } }, [turns])
+  const sendRef = useRef<(text: string) => void>(() => {})
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      setOpen(true)
+      const q = (e as CustomEvent<{ question?: string }>).detail?.question
+      if (q) sendRef.current(q)
+    }
+    window.addEventListener(OPEN_EVENT, onOpen)
+    return () => window.removeEventListener(OPEN_EVENT, onOpen)
+  }, [])
 
   const send = async (text: string) => {
     const content = text.trim()
@@ -50,7 +80,7 @@ export function ChatWidget({ context, page }: { context?: string; page?: string 
         headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
         // Le message d'accueil n'est pas envoyé : l'historique commence au
         // premier message de l'utilisateur.
-        body: JSON.stringify({ messages: next.slice(1), context, page }),
+        body: JSON.stringify({ messages: next.filter((t) => t !== WELCOME), context, page }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.reply) { setError(data.error || 'L’assistant n’a pas pu répondre.'); return }
@@ -61,6 +91,10 @@ export function ChatWidget({ context, page }: { context?: string; page?: string 
       setBusy(false)
     }
   }
+
+  sendRef.current = (text: string) => { void send(text) }
+
+  const reset = () => { setTurns([WELCOME]); setError('') }
 
   return (
     <>
@@ -86,7 +120,10 @@ export function ChatWidget({ context, page }: { context?: string; page?: string 
               <div style={{ fontWeight: 800 }}>Assistant ARIA</div>
               <div style={{ fontSize: 11, opacity: .8 }}>Réponses indicatives, sous réserve de la visite</div>
             </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+            {turns.length > 1 && <button type="button" onClick={reset} style={{ border: 0, background: 'rgba(255,255,255,.15)', color: '#fff', borderRadius: 999, padding: '0 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Nouvelle conversation</button>}
             <button type="button" onClick={() => setOpen(false)} aria-label="Fermer" style={{ border: 0, background: 'rgba(255,255,255,.15)', color: '#fff', width: 32, height: 32, borderRadius: '50%', fontSize: 18, cursor: 'pointer' }}>×</button>
+            </div>
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: 14, background: '#f7fafd', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {turns.map((t, i) => (
@@ -118,5 +155,21 @@ export function ChatWidget({ context, page }: { context?: string; page?: string 
         </div>
       )}
     </>
+  )
+}
+
+// Carte « Assistant ARIA » affichée dans le parcours, à chaque étape : un
+// conseil immédiat (sans attente ni coût) + accès direct au chat.
+export function ChatCoach({ tip, question }: { tip: string; question?: string }) {
+  return (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 18, padding: '12px 14px', borderRadius: 14, background: PALE, border: `1px solid #cfe7f6`, fontFamily: 'Arial,Helvetica,sans-serif' }}>
+      <span aria-hidden style={{ flex: '0 0 auto', width: 30, height: 30, borderRadius: '50%', background: NAVY, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 13, borderBottom: `2px solid ${SKY}` }}>A</span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, lineHeight: 1.45, color: '#14243b' }}>{tip}</div>
+        <button type="button" onClick={() => openAriaChat(question)} style={{ marginTop: 8, border: 0, background: 'none', padding: 0, color: '#0b65b5', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+          {question ? `« ${question} » →` : 'Poser une question à l’assistant →'}
+        </button>
+      </div>
+    </div>
   )
 }
