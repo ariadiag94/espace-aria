@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { TabBar, type TabKey } from '@/components/TabBar'
 
 export function AppShell({ children, active = 'accueil' }: { children: React.ReactNode; active?: string }) {
   const router = useRouter()
@@ -20,13 +21,7 @@ export function AppShell({ children, active = 'accueil' }: { children: React.Rea
         <div className="top-actions"><button onClick={logout}>Déconnexion</button></div>
       </header>
       {children}
-      <nav className="mobile-nav">
-        <Link className={active==='accueil'?'active':''} href="/dashboard">Accueil</Link>
-        <Link className={active==='agenda'?'active':''} href="/agenda">Agenda</Link>
-        <Link className={active==='dossiers'?'active':''} href="/dossiers">Dossiers</Link>
-        <Link className={active==='demandes'?'active':''} href="/demandes">Demandes</Link>
-        <Link className={active==='admin'?'active':''} href="/admin/comptes-pro">Pros</Link>
-      </nav>
+      <TabBar variant="admin" active={(['accueil','demandes','dossiers','devis','agenda'].includes(active) ? active : '') as TabKey} />
     </div>
   )
 }

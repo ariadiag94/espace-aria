@@ -20,6 +20,7 @@ export const metadata: Metadata = {
 // besoin (voir la génération dans l'historique de la PR "PWA installable").
 export const viewport: Viewport = {
   themeColor: '#062b59',
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

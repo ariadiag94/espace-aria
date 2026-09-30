@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { getSignupClient } from '@/lib/pro-signup'
 import { ChatCoach, ChatWidget } from '@/components/ChatWidget'
+import { TabBar } from '@/components/TabBar'
 import { buildAssainissementDetail, computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
 import { COMMUNE_RULES, OTHER_COMMUNE_SLUG } from '@/lib/commune-rules'
 import { APARTMENT_ASSAINISSEMENT_PRICE, HOUSE_ASSAINISSEMENT_PRICE } from '@/lib/quote-assistant'
@@ -1326,6 +1327,7 @@ export default function AssistantPage() {
           </div>
         </div>
       </div>
+      <TabBar active="pro-devis" />
       <ChatWidget page="assistant" context={chatContext} />
     </main>
   )

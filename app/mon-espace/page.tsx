@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSignupClient } from '@/lib/pro-signup'
 import { ChatWidget } from '@/components/ChatWidget'
+import { TabBar } from '@/components/TabBar'
 import { dossierStatusLabel } from '@/lib/dossier-status-labels'
 
 const NAVY = '#062b59'
@@ -138,6 +139,7 @@ export default function MonEspacePage() {
           ))}
         </div>
       </div>
+      <TabBar variant="pro" active="pro-dossiers" />
       <ChatWidget page="mon-espace" context="L'utilisateur est un professionnel dans son espace (suivi de ses dossiers)." />
     </main>
   )
