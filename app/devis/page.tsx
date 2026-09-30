@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { APARTMENT_ASSAINISSEMENT_PRICE, buildQuoteSuggestion, HOUSE_ASSAINISSEMENT_PRICE, HOUSE_SIZE_TIERS, QuoteSuggestion, splitDiagnostics } from '@/lib/quote-assistant'
-import { ALACARTE_ITEM_IDS, ALaCarteItemId, APARTMENT_DPE_ONLY_PRICES, ERP_OPTION_PRICE, getALaCartePrice, getPackPrice, HOUSE_DPE_ONLY_PRICES, PackPurpose } from '@/lib/property-pricing'
+import { ALACARTE_ITEM_IDS, ALaCarteItemId, APARTMENT_DPE_ONLY_PRICES, ERP_OPTION_PRICE, getALaCartePrice, getALaCarteUnitPrice, getPackPrice, HOUSE_DPE_ONLY_PRICES, PackPurpose } from '@/lib/property-pricing'
 import { supabase } from '@/lib/supabase'
 import { ACCOUNT_TYPE_OPTIONS } from '@/lib/pro-signup'
 import { INTERNAL_PRICING, type InternalPrice } from '@/lib/internal-pricing'
@@ -208,6 +208,10 @@ const [extrasOnly,setExtrasOnly]=useState(false);const [extraRef,setExtraRef]=us
       </select>
       <button type="button" className="ghost-btn" disabled={!extraRef} onClick={()=>{const it=INTERNAL_PRICING.flatMap(c=>c.items).find(i=>i.ref===extraRef);if(it)setExtras(x=>[...x,{...it,qty:1}]);setExtraRef('')}}>Ajouter</button>
      </div>
+     {!special&&<div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:8,alignItems:'center'}}>
+      <span style={{fontSize:13,color:'#52657a'}}>Renouvellement (diagnostic initial fait par ARIA, -20 %, sans cumul avec la remise pro) :</span>
+      {(['termites','plomb'] as const).map(id=>{const unit=getALaCarteUnitPrice(form.propertyType,id,sizeIndex);if(!unit)return null;const price=Math.ceil(unit*0.8);const size=form.propertyType==='apartment'?apartmentLabels[sizeIndex]:houseLabels[sizeIndex];const name=id==='termites'?'Termites':'Plomb (CREP)';return <button key={id} type="button" className="ghost-btn" onClick={()=>setExtras(x=>[...x,{ref:`REN-${id==='termites'?'T':'P'}`,label:`Renouvellement ${name.toLowerCase()} – ${form.propertyType==='apartment'?'appartement':'maison'} ${size}`,ttc:price,detail:`-20 % client ARIA, au lieu de ${unit} €`,qty:1}])}>+ {name} : {euro(price)} <span style={{textDecoration:'line-through',opacity:.6}}>{euro(unit)}</span></button>})}
+     </div>}
      {extras.length>0&&<div style={{display:'grid',gap:6,marginTop:8}}>{extras.map((x,i)=><div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,padding:'8px 12px',border:'1px solid #dce6f0',borderRadius:10,background:'#f7fafd',fontSize:13}}><span><b>{x.ref}</b> · {x.label}{x.detail?` (${x.detail})`:''}{x.note?<em style={{display:'block',color:'#a45121',fontSize:12}}>À vérifier : {x.note}</em>:null}</span><span style={{display:'flex',gap:10,alignItems:'center'}}>{x.unit&&<label style={{display:'flex',alignItems:'center',gap:4,fontSize:12}}>{x.unit}s<input type="number" min={1} max={x.maxQty||999} value={x.qty} onChange={e=>{const q=Math.max(1,Math.min(x.maxQty||999,Number(e.target.value)||1));setExtras(all=>all.map((y,j)=>j===i?{...y,qty:q}:y))}} style={{width:64}}/></label>}<b>{euro(x.ttc*x.qty)}</b><button type="button" className="ghost-btn" onClick={()=>setExtras(e=>e.filter((_,j)=>j!==i))}>Retirer</button></span></div>)}</div>}
      {!special&&<label className="check-field" style={{marginTop:6}}><input type="checkbox" checked={extrasOnly} onChange={e=>setExtrasOnly(e.target.checked)}/><span>Devis sans pack (uniquement ces prestations)</span></label>}
     </div>
