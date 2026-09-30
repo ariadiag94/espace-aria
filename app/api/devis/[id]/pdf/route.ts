@@ -89,7 +89,9 @@ export async function GET(
               ? 'Local professionnel'
               : quote.property_type === 'immeuble'
                 ? 'Immeuble'
-                : 'Bien',
+                : quote.property_type === 'travaux'
+                  ? 'Avant travaux / démolition'
+                  : 'Bien',
       propertySize: quote.property_size,
       notes: quote.notes,
       diagnostics,
