@@ -10,7 +10,7 @@ import { runDailyAutomations, type AutomationReport } from '@/lib/automations'
 
 export const maxDuration = 60
 
-const ORIGIN = 'https://espace-aria.vercel.app'
+const ORIGIN = 'https://ariadiag.fr'
 
 async function notifyAria(resendKey: string, report: AutomationReport) {
   const sent = report.items.filter((i) => i.status === 'envoyé' || i.status === 'erreur')
