@@ -66,7 +66,7 @@ export default function DemandesPage() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
-  const [showDone, setShowDone] = useState(false)
+  const [filter, setFilter] = useState<'all' | 'todo' | 'done'>('all')
 
   useEffect(() => {
     void (async () => {
@@ -142,7 +142,9 @@ export default function DemandesPage() {
     router.push(`/devis?dossier=${dossier.id}`)
   }
 
-  const visible = leads.filter((l) => showDone || l.status !== 'converted')
+  const todoCount = leads.filter((l) => l.status !== 'converted').length
+  const doneCount = leads.length - todoCount
+  const visible = leads.filter((l) => filter === 'all' || (filter === 'done') === (l.status === 'converted'))
 
   return (
     <AppShell active="demandes">
@@ -154,12 +156,14 @@ export default function DemandesPage() {
             <h1>Demandes reçues</h1>
             <p>Demandes envoyées depuis l’assistant. Un clic crée le dossier pré-rempli et ouvre le devis.</p>
           </div>
-          <label style={{ fontSize: 13, display: 'flex', gap: 6, alignItems: 'center' }}>
-            <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> Afficher les demandes traitées
-          </label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {([['all', `Toutes (${leads.length})`], ['todo', `À traiter (${todoCount})`], ['done', `Traitées (${doneCount})`]] as const).map(([k, label]) => (
+              <button key={k} type="button" className={filter === k ? 'action-btn primary-action' : 'action-btn'} onClick={() => setFilter(k)}>{label}</button>
+            ))}
+          </div>
         </div>
         {error && <div className="error">{error}</div>}
-        {loading ? <p>Chargement…</p> : visible.length === 0 ? <section className="card" style={{ padding: 22 }}>Aucune demande en attente.</section> : (
+        {loading ? <p>Chargement…</p> : visible.length === 0 ? <section className="card" style={{ padding: 22 }}>Aucune demande dans cette liste.</section> : (
           <div style={{ display: 'grid', gap: 12 }}>
             {visible.map((lead) => {
               const diags = leadDiagnostics(lead)

@@ -25,6 +25,7 @@ export function AppShell({ children, active = 'accueil' }: { children: React.Rea
         <Link className={active==='agenda'?'active':''} href="/agenda">Agenda</Link>
         <Link className={active==='dossiers'?'active':''} href="/dossiers">Dossiers</Link>
         <Link className={active==='demandes'?'active':''} href="/demandes">Demandes</Link>
+        <Link className={active==='admin'?'active':''} href="/admin/comptes-pro">Pros</Link>
       </nav>
     </div>
   )
