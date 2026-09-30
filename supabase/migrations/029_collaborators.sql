@@ -184,7 +184,9 @@ begin
     raise exception 'Action réservée au responsable du compte.';
   end if;
   if p_user_id is not null then
-    update public.account_memberships set active = false
+    -- Suppression du rattachement (et non simple désactivation) : les
+    -- fonctions d'accès existantes ne testent pas toutes « active ».
+    delete from public.account_memberships
      where account_id = p_account_id and user_id = p_user_id and team_role <> 'owner';
   elsif p_email is not null then
     delete from public.account_invitations where account_id = p_account_id and lower(email) = lower(p_email) and accepted_at is null;
