@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { HomeRedirect } from '@/components/HomeRedirect'
 
 const ARIA_GOOGLE_PLACE_ID = 'ChIJNaCHLkJz5kcR37FYeVZTLy0'
 
@@ -31,6 +32,7 @@ export default async function Home() {
   const googleReviews = await getGoogleReviewSummary()
   return (
     <main style={{ minHeight: '100vh', background: '#f8fbff', fontFamily: 'Arial,Helvetica,sans-serif' }}>
+      <HomeRedirect />
       <style>{`
         .hero-top-link { color: rgba(255,255,255,.82); text-decoration: none; font-size: 13px; font-weight: 700; white-space: nowrap; }
         .hero-top-link:hover { color: #fff; }
