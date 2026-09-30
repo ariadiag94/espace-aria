@@ -1009,7 +1009,7 @@ export default function AssistantPage() {
                 >
                   <option value="" disabled>Sélectionnez une commune</option>
                   {/* Communes du secteur d'ARIA mises en avant (2026-09-30). */}
-                  <optgroup label="Secteur ARIA">
+                  <optgroup label="À proximité">
                     {COMMUNE_RULES.filter((c) => PRIORITY_COMMUNES.includes(c.slug)).sort((a, b) => PRIORITY_COMMUNES.indexOf(a.slug) - PRIORITY_COMMUNES.indexOf(b.slug)).map((c) => (
                       <option key={c.slug} value={c.slug}>{c.name}</option>
                     ))}
