@@ -79,16 +79,16 @@ export const INTERNAL_PRICING: InternalCategory[] = [
   {
     id: 'controle-visuel-amiante',
     title: 'Contrôle visuel amiante',
-    items: C8.map((c, i) => ({ ref: `CVA-${c}`, label: `Contrôle visuel amiante – ${T8[i]}`, ttc: Math.round(CVA_HT[i] * 1.2), note: `Tarif de référence ${CVA_HT[i]} € HT` })),
+    items: C8.map((c, i) => ({ ref: `CVA-${c}`, label: `Contrôle visuel amiante – ${T8[i]}`, ttc: Math.round(CVA_HT[i] * 1.2), note: `${CVA_HT[i]} € HT` })),
   },
   {
     id: 'immeuble',
     title: 'Immeuble – parties communes',
     items: [
       ...PC_DTA.flatMap((v, i) => [
-        { ref: `DTA-R${i + 1}`, label: `DTA parties communes – R+${i + 1}`, ttc: v, note: 'Tarif de référence relevé' },
-        { ref: `PPC-R${i + 1}`, label: `Plomb parties communes (CREP) – R+${i + 1}`, ttc: PC_PLOMB[i], note: 'Tarif de référence relevé' },
-        { ref: `TPC-R${i + 1}`, label: `Termites parties communes – R+${i + 1}`, ttc: v, note: 'Tarif de référence relevé' },
+        { ref: `DTA-R${i + 1}`, label: `DTA parties communes – R+${i + 1}`, ttc: v },
+        { ref: `PPC-R${i + 1}`, label: `Plomb parties communes (CREP) – R+${i + 1}`, ttc: PC_PLOMB[i] },
+        { ref: `TPC-R${i + 1}`, label: `Termites parties communes – R+${i + 1}`, ttc: v },
       ]),
       { ref: 'ASS-IM', label: 'Assainissement immeuble', ttc: 470, unit: 'cage d’escalier' },
       { ref: 'DPEC-LOT', label: 'DPE collectif', ttc: 84, unit: 'lot', maxQty: 50, detail: '70 € HT par lot', note: 'Au-delà de 50 lots : sur devis' },
