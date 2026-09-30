@@ -31,7 +31,7 @@ export default function ResetPasswordPage() {
     router.replace('/login?password=updated')
   }
 
-  return <main className="login-page"><section className="login-card"><div className="login-head"><div className="login-logo">ARIA DIAGNOSTICS</div></div><div className="login-body">
+  return <main className="login-page"><section className="login-card"><div className="login-head"><div className="login-logo"><img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 58, width: 'auto', display: 'block', margin: '0 auto' }} /></div></div><div className="login-body">
     <h1>Nouveau mot de passe</h1>
     <p>Choisis un mot de passe ARIA d’au moins 10 caractères.</p>
     {error&&<div className="error">{error}</div>}

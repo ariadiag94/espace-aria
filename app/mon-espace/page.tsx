@@ -101,7 +101,7 @@ export default function MonEspacePage() {
   return (
     <main style={{ minHeight: '100vh', background: LIGHT, fontFamily: 'Arial,Helvetica,sans-serif' }}>
       <div style={{ background: NAVY, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ color: '#fff', fontWeight: 900, letterSpacing: '.04em' }}>ARIA DIAGNOSTICS</span>
+        <img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 40, width: 'auto', display: 'block' }} />
         <button onClick={logout} style={{ background: 'none', border: '1px solid rgba(255,255,255,.4)', color: '#fff', borderRadius: 10, padding: '8px 14px', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
           Déconnexion
         </button>

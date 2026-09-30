@@ -107,7 +107,7 @@ export default function InscriptionProFinalisationPage() {
     return (
       <main className="login-page">
         <section className="login-card">
-          <div className="login-head"><div className="login-logo">ARIA DIAGNOSTICS</div></div>
+          <div className="login-head"><div className="login-logo"><img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 58, width: 'auto', display: 'block', margin: '0 auto' }} /></div></div>
           <div className="login-body">
             <p>Finalisation de votre inscription…</p>
           </div>
@@ -120,7 +120,7 @@ export default function InscriptionProFinalisationPage() {
     return (
       <main className="login-page">
         <section className="login-card">
-          <div className="login-head"><div className="login-logo">ARIA DIAGNOSTICS</div></div>
+          <div className="login-head"><div className="login-logo"><img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 58, width: 'auto', display: 'block', margin: '0 auto' }} /></div></div>
           <div className="login-body">
             <h1>Lien invalide ou expiré</h1>
             <p>Ce lien de confirmation n’est plus valide, ou votre demande a déjà été traitée. Reconnectez-vous, ou recommencez l’inscription si vous n’avez pas encore de compte.</p>
@@ -138,7 +138,7 @@ export default function InscriptionProFinalisationPage() {
     return (
       <main className="login-page">
         <section className="login-card">
-          <div className="login-head"><div className="login-logo">ARIA DIAGNOSTICS</div></div>
+          <div className="login-head"><div className="login-logo"><img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 58, width: 'auto', display: 'block', margin: '0 auto' }} /></div></div>
           <div className="login-body">
             <h1>Un problème est survenu</h1>
             <div className="error">{error}</div>
@@ -154,7 +154,7 @@ export default function InscriptionProFinalisationPage() {
   return (
     <main className="login-page">
       <section className="login-card">
-        <div className="login-head"><div className="login-logo">ARIA DIAGNOSTICS</div></div>
+        <div className="login-head"><div className="login-logo"><img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 58, width: 'auto', display: 'block', margin: '0 auto' }} /></div></div>
         <div className="login-body">
           <h1>Inscription confirmée</h1>
           <p>Merci pour votre inscription. Votre demande est en cours d’examen par notre équipe, vous recevrez un email de confirmation dès qu’elle sera validée.</p>

@@ -74,7 +74,7 @@ export default function InvitationPage() {
   return (
     <main style={{ minHeight: '100vh', background: '#f3f6f9', fontFamily: 'Arial,Helvetica,sans-serif', display: 'grid', placeItems: 'center', padding: 16 }}>
       <div style={{ width: 'min(440px,100%)', background: '#fff', borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 60px rgba(11,45,83,.15)' }}>
-        <div style={{ background: NAVY, padding: '22px 24px', borderBottom: `3px solid ${SKY}`, color: '#fff', fontWeight: 900, letterSpacing: '.06em' }}>ARIA DIAGNOSTICS</div>
+        <div style={{ background: NAVY, padding: '18px 24px', borderBottom: `3px solid ${SKY}` }}><img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 44, width: 'auto', display: 'block' }} /></div>
         <div style={{ padding: 24 }}>
           {state === 'loading' && <p style={{ color: '#6f7d90' }}>Chargement…</p>}
           {state === 'invalid' && <><h1 style={{ color: NAVY, fontSize: 22 }}>Invitation introuvable</h1><p style={{ color: '#6f7d90' }}>Ce lien a expiré ou n’est plus valable. Demandez une nouvelle invitation à votre responsable, ou appelez ARIA au 06 15 70 36 70.</p></>}

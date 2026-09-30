@@ -15,8 +15,8 @@ export function AppShell({ children, active = 'accueil' }: { children: React.Rea
     <div className="shell">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark">ARIA</div>
-          <div className="brand-copy"><strong>Espace ARIA</strong><span>Administration interne</span></div>
+          <a href="/dashboard" style={{ display: 'block' }}><img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 44, width: 'auto', display: 'block' }} /></a>
+          <div className="brand-copy" style={{ borderLeft: '1px solid rgba(255,255,255,.3)', paddingLeft: 14 }}><strong>Espace ARIA</strong><span>Administration interne</span></div>
         </div>
         <div className="top-actions"><button onClick={logout}>Déconnexion</button></div>
       </header>

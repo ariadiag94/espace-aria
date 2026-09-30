@@ -89,7 +89,7 @@ function LoginPageInner() {
     return (
       <main className="login-page">
         <section className="login-card">
-          <div className="login-head"><div className="login-logo">ARIA DIAGNOSTICS</div></div>
+          <div className="login-head"><div className="login-logo"><img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 58, width: 'auto', display: 'block', margin: '0 auto' }} /></div></div>
           <div className="login-body">
             <h1>Accès non disponible</h1>
             <p>{REASON_MESSAGE[reason || ''] || REASON_MESSAGE['no-account']}</p>
@@ -106,7 +106,7 @@ function LoginPageInner() {
   return (
     <main className="login-page">
       <section className="login-card">
-        <div className="login-head"><div className="login-logo">ARIA DIAGNOSTICS</div></div>
+        <div className="login-head"><div className="login-logo"><img src="/logo-aria-white-sm.png" alt="ARIA Diagnostics" style={{ height: 58, width: 'auto', display: 'block', margin: '0 auto' }} /></div></div>
         <div className="login-body">
           <h1>Bienvenue dans Espace ARIA</h1>
           <p>Accès sécurisé à l’administration interne.</p>
