@@ -45,7 +45,6 @@ export type QuoteSuggestion = {
   packCount: number
   boutin: boolean
   assainissement: boolean
-  proximity: boolean
   // Mission minimale : la checklist ne contient que "DPE" (l'ERP, s'il est
   // coché en plus, n'entre pas dans ce calcul — voir lib/property-alerts.ts).
   // packCount garde une valeur de repli (2) mais n'est pas utilisé pour le
@@ -118,7 +117,6 @@ export const buildQuoteSuggestion = (dossier: QuoteAssistantDossier): QuoteSugge
   const missionMinimale = realDiagnostics.length === 1 && realDiagnostics[0] === 'dpe'
   const packCount = missionMinimale ? 2 : Math.max(2, Math.min(maxPack, pricedDiagnostics.length || 2))
   const address = normalize(String(dossier.property_address ?? ''))
-  const proximity = address.includes('94140') || address.includes('94700') || address.includes('alfortville') || address.includes('maisonsalfort')
   const reasons: string[] = []
   const warnings: string[] = []
 
@@ -127,7 +125,6 @@ export const buildQuoteSuggestion = (dossier: QuoteAssistantDossier): QuoteSugge
   if (boutin) reasons.push('Option Loi Boutin détectée pour la maison')
   if (propertyType === 'apartment' && hasBoutin) reasons.push('Loi Boutin comprise dans le pack appartement')
   if (assainissement) reasons.push('Option assainissement détectée')
-  if (proximity) reasons.push('Adresse éligible à la remise proximité')
   if (dossier.dependencies?.trim()) reasons.push('Dépendances signalées : vérifier le périmètre et le prix')
 
   if (!diagnostics.length) warnings.push('Aucun diagnostic n’est renseigné : vérifier le nombre de missions.')
@@ -136,5 +133,5 @@ export const buildQuoteSuggestion = (dossier: QuoteAssistantDossier): QuoteSugge
   if (propertyType === 'house' && sizeKey === String(HOUSE_SIZE_TIERS.length - 1)) warnings.push('Surface supérieure à 250 m² : aucun prix de pack ne s’applique, une évaluation personnalisée est nécessaire.')
   if (dossier.dependencies?.trim()) warnings.push('Les dépendances peuvent nécessiter une ligne ou une majoration manuelle.')
 
-  return { propertyType, sizeKey, packCount, boutin, assainissement, proximity, missionMinimale, diagnostics, reasons, warnings }
+  return { propertyType, sizeKey, packCount, boutin, assainissement, missionMinimale, diagnostics, reasons, warnings }
 }
