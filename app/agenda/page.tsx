@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { supabase } from '@/lib/supabase'
+import { CalendarSync } from '@/components/CalendarSync'
 
 type Row = Record<string, any>
 type Appointment = Row & { id:string; dossier_id:string; starts_at?:string|null; ends_at?:string|null; scheduled_at?:string|null; status?:string|null; notes?:string|null }
@@ -99,7 +100,7 @@ export default function AgendaPage(){
   <main className="page" style={{maxWidth:1320}}>
    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:16,flexWrap:'wrap',marginBottom:18}}>
     <div><div className="eyebrow">AGENDA</div><h1 style={{margin:'4px 0 5px',color:'#062b59'}}>Planning des interventions</h1><p style={{margin:0,color:'#6f7d90'}}>{upcoming} rendez-vous à venir · {visibleAppointments.length} actif(s)</p></div>
-    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button onClick={()=>openNew()} style={{...navButton,background:'#062b59',color:'#fff',borderColor:'#062b59'}}>＋ Nouveau RDV</button><button onClick={()=>setView('day')} style={toggleStyle(view==='day')}>Jour</button><button onClick={()=>setView('week')} style={toggleStyle(view==='week')}>Semaine</button></div>
+    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button onClick={()=>openNew()} style={{...navButton,background:'#062b59',color:'#fff',borderColor:'#062b59'}}>＋ Nouveau RDV</button><button onClick={()=>setView('day')} style={toggleStyle(view==='day')}>Jour</button><button onClick={()=>setView('week')} style={toggleStyle(view==='week')}>Semaine</button><CalendarSync/></div>
    </div>
 
    <section className="card" style={{padding:16,marginBottom:16}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><div style={{display:'flex',gap:8}}><button onClick={()=>navigate(-1)} style={navButton}>←</button><button onClick={goToday} style={navButton}>Aujourd’hui</button><button onClick={()=>navigate(1)} style={navButton}>→</button></div><strong style={{color:'#062b59',fontSize:18,textTransform:'capitalize'}}>{view==='week'?monthYear(weekStart):fullDateFr(selected)}</strong></div></section>
