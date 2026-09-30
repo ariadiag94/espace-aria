@@ -6,7 +6,7 @@ const escapeHtml = (value: string) =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;')
 
-const LOGIN_URL = 'https://espace-aria.vercel.app/login'
+const LOGIN_URL = 'https://ariadiag.fr/login'
 
 // Endpoint public (pas d'authentification staff — la décision elle-même est
 // déjà protégée par la RLS admin-only au moment de la mise à jour de
