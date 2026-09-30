@@ -159,7 +159,7 @@ export default function AdminComptesProPage() {
               {processed.map((row) => (
                 <div key={row.id}>
                 <div className="table-row">
-                  <div><b>{row.company_name || '—'}</b><div className="subline">{row.email}</div>{row.validation_status === 'validated' && <button type="button" className="ghost-btn" style={{ marginTop: 6 }} onClick={() => setTeamOpen(teamOpen === row.id ? null : row.id)}>{teamOpen === row.id ? 'Masquer l’équipe' : 'Équipe / collaborateurs'}</button>}</div>
+                  <div><b>{row.company_name || '—'}</b><div className="subline">{row.email}</div>{row.validation_status === 'validated' && row.account_type !== 'individual' && <button type="button" className="ghost-btn" style={{ marginTop: 6 }} onClick={() => setTeamOpen(teamOpen === row.id ? null : row.id)}>{teamOpen === row.id ? 'Masquer l’équipe' : 'Équipe / collaborateurs'}</button>}</div>
                   <div>{accountTypeLabel(row.account_type)}</div>
                   <div><span className="status">{STATUS_LABEL[row.validation_status] || row.validation_status}</span></div>
                   <div>{dateFr(row.validated_at)}</div>
