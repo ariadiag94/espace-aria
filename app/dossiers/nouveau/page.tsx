@@ -23,7 +23,9 @@ type FormState = {
   account_id: string
   dossier_name: string
   purpose: string
-  property_type: 'apartment' | 'house'
+  // Valeurs de la contrainte properties_property_type_check : un local
+  // professionnel est enregistré 'commercial', un immeuble 'building'.
+  property_type: 'apartment' | 'house' | 'commercial' | 'building'
   construction_year: string
   property_address: string
   contact_name: string
@@ -270,6 +272,8 @@ export default function NewDossierPage() {
               <select value={form.property_type} onChange={(event) => setField('property_type', event.target.value)}>
                 <option value="house">Maison</option>
                 <option value="apartment">Appartement</option>
+                <option value="commercial">Local professionnel (commerce, bureau)</option>
+                <option value="building">Immeuble (parties communes)</option>
               </select>
             </label>
             <label className="edit-field">
