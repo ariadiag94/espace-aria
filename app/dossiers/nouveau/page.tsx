@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { supabase } from '@/lib/supabase'
+import { AddressAutocomplete } from '@/components/AddressAutocomplete'
+import { YEAR_BRACKETS } from '@/lib/property-alerts'
 
 type ClientAccount = {
   id: string
@@ -277,8 +279,11 @@ export default function NewDossierPage() {
               </select>
             </label>
             <label className="edit-field">
-              <span>Année de construction du bien</span>
-              <input type="number" value={form.construction_year} onChange={(event) => setField('construction_year', event.target.value)} placeholder="Ex. 1965" />
+              <span>Année de construction (permis de construire)</span>
+              <select value={form.construction_year} onChange={(event) => setField('construction_year', event.target.value)}>
+                <option value="">Non connue</option>
+                {YEAR_BRACKETS.map((bracket) => <option key={bracket.label} value={String(bracket.year)}>{bracket.label}</option>)}
+              </select>
             </label>
             {yearAlerts.length > 0 && (
               <div className="wide" style={{ padding: '12px 14px', border: '1px solid #f0c76a', borderRadius: 12, background: '#fff8e6', color: '#7a5612', fontSize: 13 }}>
@@ -289,7 +294,7 @@ export default function NewDossierPage() {
             )}
             <label className="edit-field wide">
               <span>Adresse complète du bien *</span>
-              <input value={form.property_address} onChange={(event) => setField('property_address', event.target.value)} placeholder="Numéro, rue, code postal et ville" />
+              <AddressAutocomplete value={form.property_address} onChange={(value) => setField('property_address', value)} placeholder="Ex. 8 rue de Paris, Alfortville" />
             </label>
             <label className="edit-field">
               <span>Donneur d’ordre *</span>

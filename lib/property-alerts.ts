@@ -2,6 +2,25 @@ import { APARTMENT_ASSAINISSEMENT_PRICE, HOUSE_ASSAINISSEMENT_PRICE } from './qu
 import { getCommuneCoverage } from './commune-rules'
 
 export type Purpose = 'sale' | 'rental'
+
+// Tranches d'année de construction (seuils réglementaires : plomb < 1949,
+// amiante permis < juillet 1997, installations gaz/élec > 15 ans). Partagées
+// par DiagAssist et le formulaire « Nouveau dossier » ; year est la valeur
+// représentative enregistrée et utilisée par les calculs.
+const CURRENT_YEAR = new Date().getFullYear()
+export const YEAR_BRACKETS = [
+  { label: 'Avant 1949', year: 1930 },
+  { label: 'Entre 1949 et 1997', year: 1970 },
+  { label: 'Après 1997', year: CURRENT_YEAR - 15 },
+  { label: 'Après 1997 et moins de 15 ans', year: CURRENT_YEAR },
+]
+export const yearBracketIndex = (year: number | null | undefined): number | null => {
+  if (year === null || year === undefined || !Number.isFinite(year)) return null
+  if (year < 1949) return 0
+  if (year < 1997) return 1
+  if (CURRENT_YEAR - year >= 15) return 2
+  return 3
+}
 export type PropertyType = 'apartment' | 'house'
 
 // countsTowardPack : false pour un item obligatoire qui ne doit PAS

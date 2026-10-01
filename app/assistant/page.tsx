@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getSignupClient } from '@/lib/pro-signup'
 import { ChatCoach, ChatWidget } from '@/components/ChatWidget'
 import { TabBar } from '@/components/TabBar'
-import { buildAssainissementDetail, computeDiagnostics, PricedOptionId } from '@/lib/property-alerts'
+import { buildAssainissementDetail, computeDiagnostics, PricedOptionId, YEAR_BRACKETS } from '@/lib/property-alerts'
 import { COMMUNE_RULES, OTHER_COMMUNE_SLUG } from '@/lib/commune-rules'
 import { APARTMENT_ASSAINISSEMENT_PRICE, HOUSE_ASSAINISSEMENT_PRICE } from '@/lib/quote-assistant'
 import {
@@ -64,16 +64,7 @@ type Purpose = 'sale' | 'rental' | 'alaCarte'
 type PropertyType = 'apartment' | 'house'
 
 const currentYear = new Date().getFullYear()
-// Libellés reformulés le 2026-09-26 (moins de chiffres explicites, plus
-// clair pour le client) : year reste le seul champ qui alimente le calcul
-// (isBefore1949/isBefore1997/isOldInstallation dans computeDiagnostics), ces
-// valeurs numériques ne changent pas — uniquement le texte affiché.
-const YEAR_BRACKETS = [
-  { label: 'Avant 1949', year: 1930 },
-  { label: 'Entre 1949 et 1997', year: 1970 },
-  { label: 'Après 1997', year: currentYear - 15 },
-  { label: 'Après 1997 et moins de 15 ans', year: currentYear },
-]
+// Tranches d'année : source unique dans lib/property-alerts.ts (YEAR_BRACKETS).
 
 // Libellé de chaque diagnostic sélectionnable en mode "à la carte" ;
 // "surface" dépend du type de bien (pas d'objet vente/location dans ce mode).
