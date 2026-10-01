@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { supabase } from '@/lib/supabase'
+import { AddressAutocomplete } from '@/components/AddressAutocomplete'
+import { YEAR_BRACKETS } from '@/lib/property-alerts'
 
 type ClientAccount = {
   id: string
@@ -23,7 +25,9 @@ type FormState = {
   account_id: string
   dossier_name: string
   purpose: string
-  property_type: 'apartment' | 'house'
+  // Valeurs de la contrainte properties_property_type_check : un local
+  // professionnel est enregistré 'commercial', un immeuble 'building'.
+  property_type: 'apartment' | 'house' | 'commercial' | 'building'
   construction_year: string
   property_address: string
   contact_name: string
@@ -270,11 +274,16 @@ export default function NewDossierPage() {
               <select value={form.property_type} onChange={(event) => setField('property_type', event.target.value)}>
                 <option value="house">Maison</option>
                 <option value="apartment">Appartement</option>
+                <option value="commercial">Local professionnel (commerce, bureau)</option>
+                <option value="building">Immeuble (parties communes)</option>
               </select>
             </label>
             <label className="edit-field">
-              <span>Année de construction du bien</span>
-              <input type="number" value={form.construction_year} onChange={(event) => setField('construction_year', event.target.value)} placeholder="Ex. 1965" />
+              <span>Année de construction (permis de construire)</span>
+              <select value={form.construction_year} onChange={(event) => setField('construction_year', event.target.value)}>
+                <option value="">Non connue</option>
+                {YEAR_BRACKETS.map((bracket) => <option key={bracket.label} value={String(bracket.year)}>{bracket.label}</option>)}
+              </select>
             </label>
             {yearAlerts.length > 0 && (
               <div className="wide" style={{ padding: '12px 14px', border: '1px solid #f0c76a', borderRadius: 12, background: '#fff8e6', color: '#7a5612', fontSize: 13 }}>
@@ -285,7 +294,7 @@ export default function NewDossierPage() {
             )}
             <label className="edit-field wide">
               <span>Adresse complète du bien *</span>
-              <input value={form.property_address} onChange={(event) => setField('property_address', event.target.value)} placeholder="Numéro, rue, code postal et ville" />
+              <AddressAutocomplete value={form.property_address} onChange={(value) => setField('property_address', value)} placeholder="Ex. 8 rue de Paris, Alfortville" />
             </label>
             <label className="edit-field">
               <span>Donneur d’ordre *</span>

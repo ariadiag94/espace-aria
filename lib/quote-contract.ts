@@ -249,6 +249,24 @@ const diagnosticBlocks: Array<{ keywords: string[]; block: ContractBlock }> = [
 const normalize = (value: string) =>
   value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
+// DPE d'un local tertiaire (locaux professionnels) : méthode sur relevés de
+// consommations (factures), pas la méthode 3CL du logement. Détecté par le
+// libellé des packs locaux pro (lib/internal-pricing.ts).
+const tertiaryDpeBlock: ContractBlock = {
+  title: 'DPE tertiaire (locaux professionnels) – méthode sur factures',
+  paragraphs: [
+    '• Le DPE d’un local à usage professionnel est établi à partir des consommations réelles d’énergie : fournir les factures ou relevés de consommation des 3 dernières années pour toutes les énergies du local (électricité, gaz, fioul, réseau de chaleur ou de froid…).',
+    '• Communiquer également la surface, l’activité exercée, les horaires d’occupation, les plans et le descriptif des équipements (chauffage, refroidissement, ECS, ventilation, éclairage). En copropriété ou avec un équipement collectif, la quote-part des consommations communes doit être obtenue auprès du syndic, du gestionnaire ou de l’exploitant.',
+    '• À défaut de factures exploitables, le DPE ne peut pas comporter d’étiquette de consommation (DPE dit « vierge »), conformément à la réglementation applicable aux bâtiments tertiaires.',
+  ],
+}
+
+const isTertiary = (labels: string) => labels.includes('locaux professionnels')
+
+// Identifiant fiscal du logement : DPE logement uniquement (pas en tertiaire).
+export const isTertiaryMission = (lines: ContractLine[], diagnostics: string[] = []) =>
+  isTertiary(normalize([...lines.map((line) => line.label), ...diagnostics].join(' ')))
+
 export const hasDpe = (lines: ContractLine[], diagnostics: string[] = []) => {
   const labels = normalize([...lines.map((line) => line.label), ...diagnostics].join(' '))
   return labels.includes('dpe') || labels.includes('energetique')
@@ -261,7 +279,7 @@ export const interventionTerms = (
   const labels = normalize([...lines.map((line) => line.label), ...diagnostics].join(' '))
   const selected = diagnosticBlocks
     .filter(({ keywords }) => keywords.some((keyword) => labels.includes(normalize(keyword))))
-    .map(({ block }) => block)
+    .map(({ block }) => (isTertiary(labels) && block.title === 'DPE et performance énergétique' ? tertiaryDpeBlock : block))
 
   return {
     title: 'Conditions générales d’intervention',
