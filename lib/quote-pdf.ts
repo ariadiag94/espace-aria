@@ -9,6 +9,7 @@ import {
   generalTerms,
   hasDpe,
   interventionTerms,
+  isTertiaryMission,
   mediatorNotice,
   missionDocument,
   withdrawalDocument,
@@ -295,7 +296,10 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     interventionTerms(input.lines, input.diagnostics || []),
     withdrawalDocument,
   ]
-  if (hasDpe(input.lines, input.diagnostics || [])) documents.push(dpeConsentDocument, dpeFiscalDocument)
+  if (hasDpe(input.lines, input.diagnostics || [])) {
+    documents.push(dpeConsentDocument)
+    if (!isTertiaryMission(input.lines, input.diagnostics || [])) documents.push(dpeFiscalDocument)
+  }
 
   const headerLogo = await pdf.embedJpg(`data:image/jpeg;base64,${TPL.HEADER_LOGO_JPEG}`).catch(() => null)
   // Version fine du bandeau « bloc marine » pour les pages suivantes.
