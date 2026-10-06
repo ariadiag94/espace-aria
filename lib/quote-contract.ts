@@ -408,7 +408,9 @@ export const missionDocument = (
       title: 'Tarification',
       paragraphs: lines.map(
         (line) =>
-          `• ${line.label} — quantité ${Number(line.quantity || 0).toLocaleString('fr-FR')}`,
+          Number(line.quantity || 0) === 0 && Number(line.unit_ttc || 0) > 0
+            ? `• Option non incluse, au choix du client : ${line.label} — ${Number(line.unit_ttc).toLocaleString('fr-FR')} € TTC`
+            : `• ${line.label} — quantité ${Number(line.quantity || 0).toLocaleString('fr-FR')}`,
       ),
     },
     {

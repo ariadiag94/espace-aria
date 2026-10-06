@@ -248,13 +248,22 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   for (const line of input.lines) {
     const qty = Number(line.quantity || 0)
     const unitTtc = Number(line.unit_ttc || 0)
-    const labelLines = wrapText(String(line.label || 'Prestation'), regular, 8.4, xQty - M - 50)
+    const isOption = qty === 0 && unitTtc > 0
+    const labelLines = wrapText(`${isOption ? 'Option (non incluse) – ' : ''}${String(line.label || 'Prestation')}`, regular, 8.4, xQty - M - 50)
     const rowH = Math.max(26, 12 + labelLines.length * 11)
-    labelLines.forEach((l, k) => firstPage.drawText(l, { x: M + 8, y: Y(top + 16 + k * 11), size: 8.4, font: regular, color: ink }))
+    labelLines.forEach((l, k) => firstPage.drawText(l, { x: M + 8, y: Y(top + 16 + k * 11), size: 8.4, font: regular, color: isOption ? soft : ink }))
+    if (isOption) {
+      // Ligne « option » (quantité 0) : prix affiché, non compris dans le total.
+      TR('Option', xQty, top + 16, 8.4, regular, soft)
+      TR(euro(round2(unitTtc / 1.2)), xUnit, top + 16, 8.4, regular, soft)
+      TR('20 %', xTva, top + 16, 8.4, regular, soft)
+      TR(`+ ${euro(unitTtc)}`, xEnd - 8, top + 16, 8.4, bold, soft)
+    } else {
     TR(String(qty.toLocaleString('fr-FR')), xQty, top + 16, 8.4)
     TR(euro(round2(unitTtc / 1.2)), xUnit, top + 16, 8.4)
     TR('20 %', xTva, top + 16, 8.4)
     TR(euro(round2(qty * unitTtc)), xEnd - 8, top + 16, 8.4, bold)
+    }
     top += rowH
     firstPage.drawLine({ start: { x: M, y: Y(top) }, end: { x: xEnd, y: Y(top) }, color: rule, thickness: 0.8 })
   }
@@ -277,6 +286,9 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   mention('Particuliers : médiateur de la consommation CM2C, 49 rue de Ponthieu, 75008 Paris - www.cm2c.net, après réclamation écrite préalable.')
   if (/amiante|dapp/i.test([...input.lines.map((l) => l.label), ...(input.diagnostics || [])].join(' '))) {
     mention('Hors coût éventuel de prélèvements et analyses amiante, facturés après accord exprès du donneur d’ordre.')
+  }
+  if (input.lines.some((l) => Number(l.quantity || 0) === 0 && Number(l.unit_ttc || 0) > 0)) {
+    mention('Options : non comprises dans le total ; ajoutées au montant uniquement si vous les validez.', bold)
   }
   mention('Devis gratuit et sans engagement jusqu’à son acceptation.')
   if (input.notes) mention(`Précisions : ${String(input.notes)}`)
