@@ -35,16 +35,28 @@ export type PackPurpose = 'sale' | 'rental'
 // lue par /assistant et /devis.
 export const RENTAL_PACK_DISCOUNT_RATE = 0
 
+// Supplément plomb (CREP), intégré au prix du pack sans ligne visible dès que
+// le plomb fait partie de la mission (bien d'avant 1949). Décision de Mani du
+// 06/10/2026 : maisons d'abord, selon la surface. Appartement prévu à +20 €,
+// laissé à 0 tant qu'il n'est pas validé.
+export const PLOMB_SURCHARGE_HOUSE = [30, 30, 50, 50, 70, 70, 0]
+export const PLOMB_SURCHARGE_APARTMENT = [0, 0, 0, 0, 0]
+export const getPlombSurcharge = (propertyType: PackPropertyType, sizeIndex: number) =>
+  (propertyType === 'apartment' ? PLOMB_SURCHARGE_APARTMENT : PLOMB_SURCHARGE_HOUSE)[sizeIndex] ?? 0
+export const isPlombYear = (year: number | null | undefined) => typeof year === 'number' && Number.isFinite(year) && year < 1949
+
 export const getPackPrice = (
   propertyType: PackPropertyType,
   packCount: number,
   sizeIndex: number,
-  purpose: PackPurpose
+  purpose: PackPurpose,
+  withPlomb = false
 ): number | null => {
   const table = propertyType === 'apartment' ? APARTMENT_PACK_PRICES : HOUSE_PACK_PRICES
   const salePrice = table[packCount]?.[sizeIndex]
   if (salePrice === undefined) return null
-  return purpose === 'rental' ? Math.round(salePrice * (1 - RENTAL_PACK_DISCOUNT_RATE)) : salePrice
+  const base = purpose === 'rental' ? Math.round(salePrice * (1 - RENTAL_PACK_DISCOUNT_RATE)) : salePrice
+  return base + (withPlomb && packCount >= 2 ? getPlombSurcharge(propertyType, sizeIndex) : 0)
 }
 
 // Prix de l'option "mesurage (surface habitable)" maison, lu depuis
@@ -148,5 +160,7 @@ export const getALaCartePrice = (
   const maxPack = propertyType === 'apartment' ? 7 : 6
   if (count > maxPack) return null
   const table = propertyType === 'apartment' ? APARTMENT_PACK_PRICES : HOUSE_PACK_PRICES
-  return table[count]?.[sizeIndex] ?? null
+  const price = table[count]?.[sizeIndex]
+  if (price === undefined) return null
+  return price + (checkedIds.includes('plomb') ? getPlombSurcharge(propertyType, sizeIndex) : 0)
 }

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { APARTMENT_ASSAINISSEMENT_PRICE, buildQuoteSuggestion, HOUSE_ASSAINISSEMENT_PRICE, HOUSE_SIZE_TIERS, QuoteSuggestion, splitDiagnostics } from '@/lib/quote-assistant'
-import { ALACARTE_ITEM_IDS, ALaCarteItemId, APARTMENT_DPE_ONLY_PRICES, ERP_OPTION_PRICE, getALaCartePrice, getALaCarteUnitPrice, getPackPrice, HOUSE_DPE_ONLY_PRICES, PackPurpose } from '@/lib/property-pricing'
+import { ALACARTE_ITEM_IDS, ALaCarteItemId, APARTMENT_DPE_ONLY_PRICES, ERP_OPTION_PRICE, getALaCartePrice, getALaCarteUnitPrice, getPackPrice, HOUSE_DPE_ONLY_PRICES, isPlombYear, PackPurpose } from '@/lib/property-pricing'
 import { supabase } from '@/lib/supabase'
 import { ACCOUNT_TYPE_OPTIONS } from '@/lib/pro-signup'
 import { INTERNAL_PRICING, type InternalPrice } from '@/lib/internal-pricing'
@@ -120,6 +120,8 @@ const [extrasOnly,setExtrasOnly]=useState(false);const [extraRef,setExtraRef]=us
  // avec /assistant). Aucun dossier sélectionné, ou objet autre que
  // vente/location (travaux, autre) : prix vente par défaut, non remisé.
  const packPurpose:PackPurpose=selectedDossier?.purpose==='rental'?'rental':'sale'
+ // Plomb dans la mission : bien d'avant 1949 ou plomb coché sur le dossier.
+ const dossierHasPlomb=isPlombYear((selectedDossier as {construction_year?:number|null}|undefined)?.construction_year)||splitDiagnostics(selectedDossier?.diagnostics??null).some(x=>/plomb/i.test(x))
  // Mission minimale : "Oui" (attestation déjà fournie) -> DPE seul, grille
  // dédiée, ERP en option (+25€) si coché. "Non" -> DPE + diagnostic de
  // surface, réutilise directement le pack 2 existant (aucun nouveau calcul),
@@ -137,7 +139,7 @@ const [extrasOnly,setExtrasOnly]=useState(false);const [extraRef,setExtraRef]=us
  // du pack existant correspondant au nombre coché (peu importe lesquels),
  // même source lib/property-pricing.ts que /assistant.
  const alaCartePrice=alaCarte&&!quoteOnRequest?getALaCartePrice(form.propertyType,Array.from(alaCarteEffectiveChecked),sizeIndex)??0:0
- const base=quoteOnRequest?0:alaCarte?alaCartePrice:(missionMinimale?missionBase:getPackPrice(form.propertyType,effectivePack,sizeIndex,packPurpose)??0),measurement=!missionMinimale&&!alaCarte&&form.propertyType==='house'&&form.measurement!=='none'&&!quoteOnRequest?HOUSE_SIZE_TIERS[sizeIndex]?.measurementPrice||0:0,assainissement=form.assainissement?(form.propertyType==='apartment'?APARTMENT_ASSAINISSEMENT_PRICE:HOUSE_ASSAINISSEMENT_PRICE):0
+ const base=quoteOnRequest?0:alaCarte?alaCartePrice:(missionMinimale?missionBase:getPackPrice(form.propertyType,effectivePack,sizeIndex,packPurpose,dossierHasPlomb)??0),measurement=!missionMinimale&&!alaCarte&&form.propertyType==='house'&&form.measurement!=='none'&&!quoteOnRequest?HOUSE_SIZE_TIERS[sizeIndex]?.measurementPrice||0:0,assainissement=form.assainissement?(form.propertyType==='apartment'?APARTMENT_ASSAINISSEMENT_PRICE:HOUSE_ASSAINISSEMENT_PRICE):0
  const selectedAccount=(()=>{const d=dossiers.find(x=>x.id===form.dossier_id);return d?.account_id?accounts[d.account_id]||null:null})()
  const accountIsPro=!!selectedAccount&&PRO_ACCOUNT_TYPES.has(String(selectedAccount.account_type||''))
  const accountIsValidatedPro=accountIsPro&&selectedAccount?.validation_status==='validated'

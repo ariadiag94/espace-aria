@@ -19,6 +19,7 @@ import {
   ERP_OPTION_PRICE,
   getALaCartePrice,
   getPackPrice,
+  isPlombYear,
   HOUSE_DPE_ONLY_PRICES,
   HOUSE_MEASUREMENT_PRICES,
   HOUSE_QUOTE_ON_REQUEST_INDEX,
@@ -831,7 +832,7 @@ export default function AssistantPage() {
   // tranche de taille), calculé par la source commune lib/property-pricing.ts
   // pour que /assistant et /devis ne puissent pas diverger.
   const packPrice = !isDpeOnly && diagnostics && packCount !== null && sizeIndex !== null && propertyType && (purpose === 'sale' || purpose === 'rental')
-    ? getPackPrice(propertyType, packCount, sizeIndex, purpose)
+    ? getPackPrice(propertyType, packCount, sizeIndex, purpose, isPlombYear(constructionYear))
     : null
   const dpeOnlyPrice = isDpeOnly && sizeIndex !== null
     ? (propertyType === 'apartment' ? APARTMENT_DPE_ONLY_PRICES[sizeIndex] : HOUSE_DPE_ONLY_PRICES[sizeIndex]) ?? null
