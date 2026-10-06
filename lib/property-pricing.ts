@@ -37,6 +37,11 @@ export type PackPurpose = 'sale' | 'rental'
 // lue par /assistant et /devis.
 export const RENTAL_PACK_DISCOUNT_RATE = 0
 
+// Remise partenaire (comptes pro validés), sur le TTC, arrondie à l'euro
+// supérieur. 10 % jusqu'au 06/10/2026, puis 5 % (décision de Mani).
+export const PRO_DISCOUNT_RATE = 0.05
+export const PRO_DISCOUNT_LABEL = `-${Math.round(PRO_DISCOUNT_RATE * 100)} %`
+
 // Supplément plomb (CREP), intégré au prix du pack sans ligne visible dès que
 // le plomb fait partie de la mission (bien d'avant 1949). Décision de Mani du
 // 06/10/2026 : maisons d'abord, selon la surface. Appartement prévu à +20 €,

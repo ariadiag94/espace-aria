@@ -10,7 +10,7 @@ const PROPERTY_TYPE_LABEL: Record<string, string> = { apartment: 'Appartement', 
 const PURPOSE_LABEL: Record<string, string> = { sale: 'Vente', rental: 'Location', alaCarte: 'Diagnostics à la carte' }
 const DEPENDENCY_LABEL: Record<string, string> = { cave: 'Cave', garage: 'Garage', parking: 'Parking', autre: 'Autre' }
 const DTG_AUDIT_LABEL: Record<string, string> = { oui: 'Oui', non: 'Non', inconnu: 'Ne sait pas' }
-const PAYER_TYPE_LABEL: Record<string, string> = { pro: 'Le compte pro (remise 10 %)', client_final: 'Le client final (tarif plein)' }
+const PAYER_TYPE_LABEL: Record<string, string> = { pro: 'Le compte pro (remise 5 %)', client_final: 'Le client final (tarif plein)' }
 const PRICE_STATUS_LABEL: Record<string, string> = {
   estimated: 'Estimé',
   quote_on_request: 'Devis personnalisé (hors grille de packs)',

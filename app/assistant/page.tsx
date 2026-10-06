@@ -19,6 +19,8 @@ import {
   ERP_OPTION_PRICE,
   getALaCartePrice,
   getPackPrice,
+  PRO_DISCOUNT_RATE,
+  PRO_DISCOUNT_LABEL,
   isPlombYear,
   HOUSE_DPE_ONLY_PRICES,
   HOUSE_MEASUREMENT_PRICES,
@@ -35,7 +37,6 @@ const LIGHT = '#eef1f5'
 // d'ordre (l'utilisateur connecté sur /assistant) est un compte pro validé —
 // indépendamment du choix "qui règle cette demande" (voir applyPayerDiscount
 // dans AssistantPage). Constante unique, à ajuster ici seulement.
-const PRO_DISCOUNT_RATE = 0.10
 
 const euro = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
 
@@ -915,7 +916,7 @@ export default function AssistantPage() {
   const chatContext = [
     `L'utilisateur remplit DiagAssist. Étape en cours : ${SCREEN_LABEL[currentScreen] || currentScreen}.`,
     summaryBadges.length ? `Réponses déjà données : ${summaryBadges.join(', ')}.` : '',
-    isPro ? `Compte professionnel validé${proAccountName ? ` (${proAccountName})` : ''} : remise -10 % appliquée.` : '',
+    isPro ? `Compte professionnel validé${proAccountName ? ` (${proAccountName})` : ''} : remise ${PRO_DISCOUNT_LABEL} appliquée.` : '',
     currentScreen === 'result' && typeof finalPrice === 'number' ? `Prix affiché : ${finalPrice} € TTC.` : '',
   ].filter(Boolean).join(' ')
 
