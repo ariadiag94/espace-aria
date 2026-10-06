@@ -132,7 +132,8 @@ export async function POST(
         <div style="font-size:22px;font-weight:700;color:#062b59">ARIA Diagnostics</div>
         <div style="font-size:13px;color:#66788c">18 rue de Budapest · 94140 Alfortville · 06 15 70 36 70</div>
       </div>
-      <p>Bonjour ${contactName},</p>
+      <p>Bonjour,</p>
+      <p>Nous vous remercions de nous avoir sollicités.</p>
       <p>Veuillez trouver ci-joint le devis <strong>${escapeHtml(quote.quote_number)}</strong> concernant <strong>${propertyAddress}</strong>, au format PDF.</p>
       <p>Nous restons à votre disposition pour toute question concernant ce devis.</p>
       <p style="margin-top:24px">Cordialement,<br><strong>ARIA Diagnostics</strong><br>06 15 70 36 70<br>contact@aria-diagnostics.fr</p>
