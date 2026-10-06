@@ -254,6 +254,7 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     labelLines.forEach((l, k) => firstPage.drawText(l, { x: M + 8, y: Y(top + 16 + k * 11), size: 8.4, font: regular, color: isOption ? soft : ink }))
     if (isOption) {
       // Ligne « option » (quantité 0) : prix affiché, non compris dans le total.
+      firstPage.drawRectangle({ x: xQty - 34, y: Y(top + 17), width: 7, height: 7, borderColor: soft, borderWidth: 0.8 })
       TR('Option', xQty, top + 16, 8.4, regular, soft)
       TR(euro(round2(unitTtc / 1.2)), xUnit, top + 16, 8.4, regular, soft)
       TR('20 %', xTva, top + 16, 8.4, regular, soft)
@@ -288,7 +289,7 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     mention('Prélèvements et analyses amiante éventuels : 48 € TTC par prélèvement, facturés après accord exprès du donneur d’ordre.')
   }
   if (input.lines.some((l) => Number(l.quantity || 0) === 0 && Number(l.unit_ttc || 0) > 0)) {
-    mention('Options : non comprises dans le total ; ajoutées au montant uniquement si vous les validez.', bold)
+    mention('Options : non comprises dans le total. Cochez la case de l’option souhaitée avant de signer, ou ajoutez-la depuis votre espace client : elle sera ajoutée au montant.', bold)
   }
   mention('Devis gratuit et sans engagement jusqu’à son acceptation.')
   if (input.notes) mention(`Précisions : ${String(input.notes)}`)
