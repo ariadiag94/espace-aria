@@ -1,3 +1,4 @@
+import { reviewsEmailBlock } from '@/lib/google-reviews'
 import { createClient } from '@supabase/supabase-js'
 import { generateQuotePdf } from '@/lib/quote-pdf'
 import { loadDossierPdfExtras } from '@/lib/dossier-pdf-extras'
@@ -139,6 +140,7 @@ export async function POST(
       <p>Nous vous remercions pour votre confiance et restons à votre entière disposition pour tout complément d’information concernant ce devis.</p>
       <p>En vous souhaitant bonne réception,<br>Cordialement,</p>
       <p style="margin-top:20px">Le service client<br><br><strong>ARIA Diagnostics</strong><br>📞 06 15 70 36 70<br>✉️ contact@aria-diagnostics.fr</p>
+      ${await reviewsEmailBlock()}
     </div>`
 
   let pdfBase64 = ''
