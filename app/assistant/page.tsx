@@ -20,7 +20,6 @@ import {
   getALaCartePrice,
   getPackPrice,
   PRO_DISCOUNT_RATE,
-  PRO_DISCOUNT_LABEL,
   isPlombYear,
   HOUSE_DPE_ONLY_PRICES,
   HOUSE_MEASUREMENT_PRICES,
@@ -916,7 +915,7 @@ export default function AssistantPage() {
   const chatContext = [
     `L'utilisateur remplit DiagAssist. Étape en cours : ${SCREEN_LABEL[currentScreen] || currentScreen}.`,
     summaryBadges.length ? `Réponses déjà données : ${summaryBadges.join(', ')}.` : '',
-    isPro ? `Compte professionnel validé${proAccountName ? ` (${proAccountName})` : ''} : remise ${PRO_DISCOUNT_LABEL} appliquée.` : '',
+    isPro ? `Compte professionnel validé${proAccountName ? ` (${proAccountName})` : ''} : tarif partenaire appliqué.` : '',
     currentScreen === 'result' && typeof finalPrice === 'number' ? `Prix affiché : ${finalPrice} € TTC.` : '',
   ].filter(Boolean).join(' ')
 
@@ -1137,7 +1136,7 @@ export default function AssistantPage() {
                     <>
                       {isPro && (
                         <div style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '5px 12px', fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,.16)', color: '#fff', marginBottom: 8 }}>
-                          Tarif préférentiel partenaire (-{Math.round(PRO_DISCOUNT_RATE * 100)} %)
+                          Tarif préférentiel partenaire
                         </div>
                       )}
                       <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(finalALaCartePrice as number)}</div>
@@ -1265,7 +1264,7 @@ export default function AssistantPage() {
                     <>
                       {isPro && (
                         <div style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '5px 12px', fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,.16)', color: '#fff', marginBottom: 8 }}>
-                          Tarif préférentiel partenaire (-{Math.round(PRO_DISCOUNT_RATE * 100)} %)
+                          Tarif préférentiel partenaire
                         </div>
                       )}
                       <div style={{ color: '#fff', fontWeight: 900, fontSize: 26 }}>{euro(finalPrice as number)}</div>

@@ -70,6 +70,7 @@ export default function DashboardPage() {
           <Link href="/assistant" className="card quick"><b>DiagAssist</b><span>L’assistant côté client, comme le voient les pros</span></Link>
           <Link href="/ressources" className="card quick"><b>Guide pro</b><span>Contenu réglementaire des pros</span></Link>
           {admin && <Link href="/automatisations" className="card quick"><b>Automatisations</b><span>Relances devis et rappels RDV</span></Link>}
+          {admin && <Link href="/admin/codes-partenaires" className="card quick"><b>Codes partenaires</b><span>Un code par agence pour ses clients</span></Link>}
           {admin && <Link href="/equipe" className="card quick"><b>Équipe ARIA</b><span>Accès assistante / stagiaire</span></Link>}
           {admin && <div className="card quick"><b>Paiements</b><span>Qonto et déblocage rapports</span></div>}
         </div>
