@@ -28,7 +28,7 @@ function pricingText() {
   lines.push(`- DPE seul : ${row(house, HOUSE_DPE_ONLY_PRICES)}`)
   lines.push(`- Unitaires : Mesurage ${row(house, HOUSE_BOUTIN_MESURAGE_UNIT_PRICES)} ; Plomb ${row(house, HOUSE_PLOMB_UNIT_PRICES)} ; Amiante ${row(house, HOUSE_AMIANTE_UNIT_PRICES)} ; Électricité ${row(house, HOUSE_ELEC_UNIT_PRICES)} ; Gaz ${row(house, HOUSE_GAZ_UNIT_PRICES)} ; Termites ${row(house, HOUSE_TERMITES_UNIT_PRICES)}`)
   lines.push(`- ERP : inclus dans tous les packs ; ${ERP_OPTION_PRICE} € s'il est commandé seul (offert avec une mission DPE seul).`)
-  lines.push('- Remise partenaire : -10 % pour les comptes professionnels validés (agences, syndics, notaires…). Pas d’autre remise.')
+  lines.push('- Remise partenaire : -5 % pour les comptes professionnels validés (agences, syndics, notaires…). Pas d’autre remise.')
   lines.push('- Pour un DPE seul sans attestation de surface : le mesurage est réalisé sur place et facturé au tarif du pack 2 (DPE + surface).')
   return lines.join('\n')
 }
