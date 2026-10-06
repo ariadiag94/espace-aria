@@ -131,11 +131,33 @@ export default function MonEspaceDossierPage() {
     return () => { cancelled = true }
   }, [dossierId, router])
 
+  const [chosenOptions, setChosenOptions] = useState<Record<string, string[]>>({})
+  const toggleOption = (quoteId: string, lineId: string) =>
+    setChosenOptions((prev) => {
+      const cur = prev[quoteId] || []
+      return { ...prev, [quoteId]: cur.includes(lineId) ? cur.filter((x) => x !== lineId) : [...cur, lineId] }
+    })
+  const optionsTotal = (quote: QuoteRow) =>
+    (linesByQuote[quote.id] || []).filter((l) => (chosenOptions[quote.id] || []).includes(l.id)).reduce((s, l) => s + Number(l.unit_ttc), 0)
+
   const decide = async (quote: QuoteRow, decision: 'accepted' | 'refused') => {
     const client = getSignupClient()
     if (!client || !dossier) return
     setDecidingId(quote.id)
     setDecisionError((prev) => ({ ...prev, [quote.id]: '' }))
+
+    // Options cochées par le client : ajoutées au devis avant l'acceptation.
+    const chosen = decision === 'accepted' ? chosenOptions[quote.id] || [] : []
+    if (chosen.length) {
+      const { data: { session } } = await client.auth.getSession()
+      const res = await fetch(`/api/quotes/${quote.id}/options`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ line_ids: chosen }) })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setDecisionError((prev) => ({ ...prev, [quote.id]: data.error || 'Les options n’ont pas pu être ajoutées.' }))
+        setDecidingId(null)
+        return
+      }
+    }
 
     const { error } = await client
       .from('quotes')
@@ -173,7 +195,7 @@ export default function MonEspaceDossierPage() {
           quote_number: quote.quote_number,
           dossier_name: dossier.dossier_name,
           property_address: dossier.property_address,
-          total_ttc: quote.total_ttc,
+          total_ttc: quote.total_ttc !== null ? Number(quote.total_ttc) + (decision === 'accepted' ? optionsTotal(quote) : 0) : null,
           contact_name: dossier.contact_name,
           contact_email: dossier.contact_email,
         }),
@@ -242,7 +264,14 @@ export default function MonEspaceDossierPage() {
               <div style={{ marginTop: 12, display: 'grid', gap: 6 }}>
                 {(linesByQuote[quote.id] || []).map((line) => (
                   <div key={line.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#44586c' }}>
+                    {line.quantity === 0 && quote.status === 'sent' ? (
+                      <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer', color: NAVY, fontWeight: 600 }}>
+                        <input type="checkbox" checked={(chosenOptions[quote.id] || []).includes(line.id)} onChange={() => toggleOption(quote.id, line.id)} style={{ marginTop: 2 }} />
+                        <span>Ajouter l’option : {line.label}</span>
+                      </label>
+                    ) : (
                     <span>{line.quantity === 0 ? 'Option (non incluse) – ' : ''}{line.label}{line.quantity > 1 ? ` × ${line.quantity}` : ''}</span>
+                    )}
                     <span>{line.quantity === 0 ? `+ ${euro(line.unit_ttc)}` : euro(line.total_ttc)}</span>
                   </div>
                 ))}
@@ -250,7 +279,7 @@ export default function MonEspaceDossierPage() {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: '1px solid #edf2f7' }}>
                 <b style={{ color: NAVY, fontSize: 15 }}>Total TTC</b>
-                <b style={{ color: NAVY, fontSize: 15 }}>{quote.total_ttc !== null ? euro(quote.total_ttc) : '—'}</b>
+                <b style={{ color: NAVY, fontSize: 15 }}>{quote.total_ttc !== null ? euro(Number(quote.total_ttc) + (quote.status === 'sent' ? optionsTotal(quote) : 0)) : '—'}</b>
               </div>
 
               {quote.status === 'sent' && (
