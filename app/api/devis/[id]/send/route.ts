@@ -133,10 +133,12 @@ export async function POST(
         <div style="font-size:13px;color:#66788c">18 rue de Budapest · 94140 Alfortville · 06 15 70 36 70</div>
       </div>
       <p>Bonjour,</p>
-      <p>Nous vous remercions de nous avoir sollicités.</p>
-      <p>Veuillez trouver ci-joint le devis <strong>${escapeHtml(quote.quote_number)}</strong> concernant <strong>${propertyAddress}</strong>, au format PDF.</p>
-      <p>Nous restons à votre disposition pour toute question concernant ce devis.</p>
-      <p style="margin-top:24px">Cordialement,<br><strong>ARIA Diagnostics</strong><br>06 15 70 36 70<br>contact@aria-diagnostics.fr</p>
+      <p>Suite à votre demande, vous trouverez ci-joint notre proposition commerciale pour la réalisation des diagnostics souhaités, relatifs au bien mentionné en objet.</p>
+      <p>Si cette offre vous convient, nous vous remercions de bien vouloir nous la retourner signée et datée, accompagnée de la mention « Bon pour accord ».</p>
+      <p>Nous vous invitons également à compléter le formulaire de consentement joint${quote.property_type === 'house' || quote.property_type === 'apartment' ? ' et à nous transmettre l’identifiant fiscal du bien concerné' : ''}.</p>
+      <p>Nous vous remercions pour votre confiance et restons à votre entière disposition pour tout complément d’information concernant ce devis.</p>
+      <p>En vous souhaitant bonne réception,<br>Cordialement,</p>
+      <p style="margin-top:20px">Le service client<br><br><strong>ARIA Diagnostics</strong><br>📞 06 15 70 36 70<br>✉️ contact@aria-diagnostics.fr</p>
     </div>`
 
   let pdfBase64 = ''
@@ -198,7 +200,7 @@ export async function POST(
       from: 'ARIA Diagnostics <contact@aria-diagnostics.fr>',
       to: recipients,
       reply_to: 'contact@aria-diagnostics.fr',
-      subject: `Votre devis ARIA Diagnostics ${quote.quote_number}`,
+      subject: `Devis ${quote.quote_number} – ${rawPropertyAddress}`,
       html,
       attachments: [
         {
