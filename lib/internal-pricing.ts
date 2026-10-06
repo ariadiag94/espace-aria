@@ -46,7 +46,7 @@ export const INTERNAL_PRICING: InternalCategory[] = [
     id: 'avant-travaux',
     title: 'Avant travaux',
     items: AT.flatMap((t) => [
-      { ref: `RAAT-${t.code}`, label: `Repérage amiante avant travaux – ${t.label}`, ttc: t.amiante, detail: 'analyses laboratoire en supplément selon mission' },
+      { ref: `RAAT-${t.code}`, label: `Repérage amiante avant travaux – ${t.label}`, ttc: t.amiante, detail: 'prélèvements et analyses laboratoire en supplément : 48 € TTC par prélèvement' },
       { ref: `PBAT-${t.code}`, label: `Diagnostic plomb avant travaux – ${t.label}`, ttc: t.plomb },
       { ref: `TAT-${t.code}`, label: `Termites avant travaux – ${t.label}`, ttc: t.amiante, note: 'Si zone termites' },
     ]),

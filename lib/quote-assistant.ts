@@ -20,6 +20,8 @@ export const HOUSE_SIZE_TIERS: { label: string; maxSurface: number | null; measu
 // Prix de l'option assainissement, seule source de vérité pour app/devis
 // (Devis Express) et pour l'assistant public (/assistant) — aucune des
 // deux pages ne doit garder sa propre valeur codée en dur.
+// Prélèvement + analyse amiante en laboratoire, facturé à l'unité après accord.
+export const AMIANTE_SAMPLE_PRICE = 48
 export const APARTMENT_ASSAINISSEMENT_PRICE = 120
 export const HOUSE_ASSAINISSEMENT_PRICE = 180
 

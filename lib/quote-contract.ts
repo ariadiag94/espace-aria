@@ -168,7 +168,7 @@ const diagnosticBlocks: Array<{ keywords: string[]; block: ContractBlock }> = [
       title: 'Amiante (vente, DAPP, DTA, avant travaux ou démolition)',
       paragraphs: [
         '• Transmettre les anciens repérages, DAPP, DTA, plans et informations sur travaux ; pour l’avant travaux ou démolition, un programme précis (plans, zones, phasage) : le repérage est limité à ce périmètre.',
-        '• Les matériaux non concluables visuellement peuvent nécessiter des prélèvements et analyses, facturés après accord ; leur refus ou un accès impossible peut conduire à une réserve ou un pré-rapport. Les remises en état après sondage ne sont pas comprises.',
+        '• Les matériaux non concluables visuellement peuvent nécessiter des prélèvements et analyses (48 € TTC par prélèvement), facturés après accord ; leur refus ou un accès impossible peut conduire à une réserve ou un pré-rapport. Les remises en état après sondage ne sont pas comprises.',
       ],
     },
   },

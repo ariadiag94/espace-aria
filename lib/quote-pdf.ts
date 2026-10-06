@@ -285,7 +285,7 @@ export async function generateQuotePdf(input: QuotePdfInput) {
   mention('Professionnels : pénalités de retard à trois fois le taux d’intérêt légal et indemnité forfaitaire de 40 € pour frais de recouvrement (art. L441-10 C. com.). Aucun escompte pour paiement anticipé.')
   mention('Particuliers : médiateur de la consommation CM2C, 49 rue de Ponthieu, 75008 Paris - www.cm2c.net, après réclamation écrite préalable.')
   if (/amiante|dapp/i.test([...input.lines.map((l) => l.label), ...(input.diagnostics || [])].join(' '))) {
-    mention('Hors coût éventuel de prélèvements et analyses amiante, facturés après accord exprès du donneur d’ordre.')
+    mention('Prélèvements et analyses amiante éventuels : 48 € TTC par prélèvement, facturés après accord exprès du donneur d’ordre.')
   }
   if (input.lines.some((l) => Number(l.quantity || 0) === 0 && Number(l.unit_ttc || 0) > 0)) {
     mention('Options : non comprises dans le total ; ajoutées au montant uniquement si vous les validez.', bold)
