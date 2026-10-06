@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { supabase } from '@/lib/supabase'
+import { PRO_DISCOUNT_RATE } from '@/lib/property-pricing'
 import { HOUSE_SIZE_TIERS, APARTMENT_ASSAINISSEMENT_PRICE, HOUSE_ASSAINISSEMENT_PRICE, AMIANTE_SAMPLE_PRICE } from '@/lib/quote-assistant'
 
 type Quote={id:string;quote_number:string;status:string;total_ht:number;total_vat:number;total_ttc:number;created_at:string;dossier_id:string;property_type?:string|null;property_size?:string|null;quote_kind?:string|null;notes?:string|null}
@@ -49,6 +50,10 @@ export default function QuoteDetailPage(){
  const addMesurage=()=>pushLine(`Mesurage de la surface habitable (loi Boutin) – Maison ${quote?.property_size||''}`.trim(),houseTier?.measurementPrice??0,true)
  const addAssainissement=()=>pushLine(`Contrôle du raccordement au réseau d’assainissement – ${quote?.property_type==='house'?'Maison':'Appartement'}`,quote?.property_type==='house'?HOUSE_ASSAINISSEMENT_PRICE:APARTMENT_ASSAINISSEMENT_PRICE,true)
  const addPrelevement=()=>pushLine('Prélèvement et analyse amiante en laboratoire accrédité – par prélèvement',AMIANTE_SAMPLE_PRICE,true)
+ // Remise partenaire sur un devis existant : PRO_DISCOUNT_RATE du total des
+ // lignes comptées (hors options), même arrondi que Devis Express (TTC final
+ // arrondi à l'euro supérieur). Libellé sans pourcentage.
+ const addRemise=()=>{const sub=lines.filter(l=>Number(l.unit_ttc)>0).reduce((s,l)=>s+Number(l.quantity||0)*Number(l.unit_ttc||0),0);const d=sub-Math.ceil(sub*(1-PRO_DISCOUNT_RATE));if(d>0)pushLine('Tarif partenaire',-d)}
  const removeLine=(i:number)=>setLines(v=>v.filter((_,n)=>n!==i).map((l,n)=>({...l,sort_order:n})))
 
  const persistQuote=async()=>{
@@ -100,7 +105,7 @@ export default function QuoteDetailPage(){
   <style>{`.qd-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.55fr);gap:18px;align-items:start}.qd-line{display:grid;grid-template-columns:minmax(0,1fr) 80px 110px 42px;gap:9px;align-items:end;padding:12px 0;border-bottom:1px solid #edf2f7}@media(max-width:820px){.qd-grid{grid-template-columns:1fr}.qd-grid aside{position:static!important}.qd-line{grid-template-columns:1fr 1fr 42px}.qd-line>label:first-child{grid-column:1/-1}}`}</style>
   <div className="qd-grid">
    <section className="card" style={{padding:22}}>
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:14}}><div><div className="eyebrow">LIGNES</div><h2 style={{margin:'3px 0 0',color:'#062b59'}}>Prestations</h2><small style={{color:'#6f7d90'}}>Libellés, quantités et prix modifiables librement.</small></div><div style={{display:'flex',gap:6,flexWrap:'wrap',justifyContent:'flex-end'}}>{quote.property_type==='house'&&<button className="ghost-btn" onClick={addMesurage}>＋ Mesurage</button>}{(quote.property_type==='house'||quote.property_type==='apartment')&&<button className="ghost-btn" onClick={addAssainissement}>＋ Assainissement</button>}<button className="ghost-btn" onClick={addPrelevement}>＋ Prélèvement amiante</button><button className="ghost-btn" onClick={addLine}>＋ Ligne libre</button></div></div>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:14}}><div><div className="eyebrow">LIGNES</div><h2 style={{margin:'3px 0 0',color:'#062b59'}}>Prestations</h2><small style={{color:'#6f7d90'}}>Libellés, quantités et prix modifiables librement.</small></div><div style={{display:'flex',gap:6,flexWrap:'wrap',justifyContent:'flex-end'}}>{quote.property_type==='house'&&<button className="ghost-btn" onClick={addMesurage}>＋ Mesurage</button>}{(quote.property_type==='house'||quote.property_type==='apartment')&&<button className="ghost-btn" onClick={addAssainissement}>＋ Assainissement</button>}<button className="ghost-btn" onClick={addPrelevement}>＋ Prélèvement amiante</button><button className="ghost-btn" onClick={addRemise} disabled={lines.some(l=>Number(l.unit_ttc)<0)}>＋ Remise partenaire</button><button className="ghost-btn" onClick={addLine}>＋ Ligne libre</button></div></div>
     <div style={{display:'grid',gap:10}}>{lines.map((l,i)=><div key={i} className="qd-line">
       <label className="edit-field"><span>Libellé</span><input value={l.label} onChange={e=>setLine(i,{label:e.target.value})}/></label>
       <label className="edit-field"><span>Qté</span><input inputMode="decimal" value={l.quantity} onChange={e=>setLine(i,{quantity:Number(e.target.value.replace(',','.'))||0})}/></label>
