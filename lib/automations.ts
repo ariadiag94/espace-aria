@@ -1,3 +1,4 @@
+import { reviewsEmailBlock } from './google-reviews'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { generateQuotePdf } from '@/lib/quote-pdf'
 import { loadDossierPdfExtras } from '@/lib/dossier-pdf-extras'
@@ -142,8 +143,9 @@ export async function runDailyAutomations(
             <p>${step === 1 ? 'Nous revenons vers vous' : 'Nous nous permettons de vous relancer une dernière fois'} au sujet de notre devis <strong>${esc(quote.quote_number)}</strong> (${esc(euro(Number(quote.total_ttc || 0)))} TTC) pour <strong>${esc(address)}</strong>, que vous retrouverez ci-joint.</p>
             <p>Pour confirmer la mission, il vous suffit de nous retourner l’ordre de mission signé (mention « Bon pour accord ») en réponse à cet e-mail${dossier.account_id ? `, ou de l’accepter directement depuis votre espace : <a href="${opts.origin}/mon-espace">${opts.origin.replace(/^https?:\/\//, '')}/mon-espace</a>` : ''}. Nous vous proposerons ensuite un créneau d’intervention.</p>
             <p>Une question, une précision sur le bien ? Répondez simplement à cet e-mail ou appelez-nous au 06 15 70 36 70.</p>`)
+          const htmlWithReviews = html.replace(/\n  <\/div>$/, `${await reviewsEmailBlock()}\n  </div>`)
           const id = await sendEmail(opts.resendKey!, {
-            to, subject: `${step === 1 ? 'Relance' : 'Dernière relance'} — votre devis ARIA Diagnostics ${quote.quote_number}`, html,
+            to, subject: `${step === 1 ? 'Relance' : 'Dernière relance'} — votre devis ARIA Diagnostics ${quote.quote_number}`, html: htmlWithReviews,
             attachments: [{ filename: `${quote.quote_number}.pdf`, content: pdf }],
           })
           await log({ kind: 'quote_reminder', target_id: quote.id, dossier_id: quote.dossier_id, recipient: to.join(', '), step, resend_email_id: id || null })
