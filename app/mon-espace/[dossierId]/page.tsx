@@ -242,8 +242,8 @@ export default function MonEspaceDossierPage() {
               <div style={{ marginTop: 12, display: 'grid', gap: 6 }}>
                 {(linesByQuote[quote.id] || []).map((line) => (
                   <div key={line.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#44586c' }}>
-                    <span>{line.label}{line.quantity > 1 ? ` × ${line.quantity}` : ''}</span>
-                    <span>{euro(line.total_ttc)}</span>
+                    <span>{line.quantity === 0 ? 'Option (non incluse) – ' : ''}{line.label}{line.quantity > 1 ? ` × ${line.quantity}` : ''}</span>
+                    <span>{line.quantity === 0 ? `+ ${euro(line.unit_ttc)}` : euro(line.total_ttc)}</span>
                   </div>
                 ))}
               </div>

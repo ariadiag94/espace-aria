@@ -42,10 +42,12 @@ export default function QuoteDetailPage(){
  const addLine=()=>setLines(v=>[...v,{label:'Nouvelle prestation',quantity:1,unit_ttc:0,total_ttc:0,sort_order:v.length}])
  // Options rapides : mesurage maison (prix selon la tranche du devis) et
  // assainissement, ajoutés en une touche sans ressaisir libellé et prix.
- const pushLine=(label:string,price:number)=>setLines(v=>[...v,{label,quantity:1,unit_ttc:price,total_ttc:price,sort_order:v.length}])
+ // asOption : quantité 0 = proposée au client avec son prix, hors total.
+ const pushLine=(label:string,price:number,asOption=false)=>setLines(v=>[...v,{label,quantity:asOption?0:1,unit_ttc:price,total_ttc:asOption?0:price,sort_order:v.length}])
+ const toggleOption=(i:number)=>setLine(i,{quantity:lines[i]?.quantity===0?1:0})
  const houseTier=quote?.property_type==='house'?HOUSE_SIZE_TIERS.find(t=>t.label===quote?.property_size):undefined
- const addMesurage=()=>pushLine(`Mesurage de la surface habitable (loi Boutin) – Maison ${quote?.property_size||''}`.trim(),houseTier?.measurementPrice??0)
- const addAssainissement=()=>pushLine(`Contrôle du raccordement au réseau d’assainissement – ${quote?.property_type==='house'?'Maison':'Appartement'}`,quote?.property_type==='house'?HOUSE_ASSAINISSEMENT_PRICE:APARTMENT_ASSAINISSEMENT_PRICE)
+ const addMesurage=()=>pushLine(`Mesurage de la surface habitable (loi Boutin) – Maison ${quote?.property_size||''}`.trim(),houseTier?.measurementPrice??0,true)
+ const addAssainissement=()=>pushLine(`Contrôle du raccordement au réseau d’assainissement – ${quote?.property_type==='house'?'Maison':'Appartement'}`,quote?.property_type==='house'?HOUSE_ASSAINISSEMENT_PRICE:APARTMENT_ASSAINISSEMENT_PRICE,true)
  const removeLine=(i:number)=>setLines(v=>v.filter((_,n)=>n!==i).map((l,n)=>({...l,sort_order:n})))
 
  const persistQuote=async()=>{
@@ -103,6 +105,7 @@ export default function QuoteDetailPage(){
       <label className="edit-field"><span>Qté</span><input inputMode="decimal" value={l.quantity} onChange={e=>setLine(i,{quantity:Number(e.target.value.replace(',','.'))||0})}/></label>
       <label className="edit-field"><span>Prix TTC</span><input inputMode="decimal" value={l.unit_ttc} onChange={e=>setLine(i,{unit_ttc:Number(e.target.value.replace(',','.'))||0})}/></label>
       <button className="ghost-btn" title="Supprimer" onClick={()=>removeLine(i)}>×</button>
+      <label style={{gridColumn:'1/-1',display:'flex',alignItems:'center',gap:7,fontSize:12.5,color:l.quantity===0?'#0b65b5':'#6f7d90',fontWeight:l.quantity===0?800:400,cursor:'pointer'}}><input type="checkbox" checked={l.quantity===0} onChange={()=>toggleOption(i)}/>Option laissée au choix du client (prix affiché, non compris dans le total)</label>
     </div>)}</div>
     <label className="edit-field" style={{marginTop:18}}><span>Notes internes</span><textarea rows={4} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Précisions, remise commerciale, éléments à vérifier…"/></label>
     <div style={{display:'flex',justifyContent:'flex-end',marginTop:16}}><button className="action-btn primary-action" disabled={saving||sending} onClick={save}>{saving?'Enregistrement…':'Enregistrer les modifications'}</button></div>
