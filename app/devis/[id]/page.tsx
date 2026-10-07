@@ -18,6 +18,15 @@ const dateFr=(v:string)=>new Date(v).toLocaleDateString('fr-FR',{day:'2-digit',m
 const dateTimeFr=(v:string)=>new Date(v).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
 const statusLabel=(s:string)=>({draft:'Brouillon',sent:'Envoyé',accepted:'Accepté',rejected:'Refusé'} as Record<string,string>)[s]||s
 
+// Champ numérique tolérant : on peut effacer, taper une virgule ou un signe
+// moins sans que la valeur saute à 0 pendant la saisie (le nombre n'est
+// transmis que lorsqu'il est complet ; le champ se remet au propre en sortie).
+function NumField({value,onChange,label}:{value:number;onChange:(n:number)=>void;label:string}){
+ const [text,setText]=useState(String(value).replace('.',','))
+ useEffect(()=>{setText(t=>Number(t.replace(',','.'))===value?t:String(value).replace('.',','))},[value])
+ return <label className="edit-field"><span>{label}</span><input inputMode="decimal" value={text} onFocus={e=>e.target.select()} onChange={e=>{const t=e.target.value.replace(/[^0-9,.-]/g,'');setText(t);const n=Number(t.replace(',','.'));if(t!==''&&t!=='-'&&Number.isFinite(n))onChange(n)}} onBlur={()=>{const n=Number(text.replace(',','.'));if(text===''||!Number.isFinite(n))setText(String(value).replace('.',','));else setText(String(n).replace('.',','))}}/></label>
+}
+
 export default function QuoteDetailPage(){
  const params=useParams<{id:string}>();const router=useRouter();const id=params.id
  const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);const [sending,setSending]=useState(false);const [error,setError]=useState('');const [sendMessage,setSendMessage]=useState('');const [confirmSend,setConfirmSend]=useState(false)
@@ -65,7 +74,11 @@ export default function QuoteDetailPage(){
   return true
  }
 
- const save=async()=>{if(!quote)return;setSaving(true);setError('');setSendMessage('');const ok=await persistQuote();setSaving(false);if(ok)await load()}
+ const [savedSnapshot,setSavedSnapshot]=useState('')
+ const snapshot=JSON.stringify({lines:lines.map(l=>[l.label,l.quantity,l.unit_ttc]),notes})
+ useEffect(()=>{if(!loading&&savedSnapshot==='')setSavedSnapshot(snapshot)},[loading,snapshot,savedSnapshot])
+ const dirty=!loading&&savedSnapshot!==''&&snapshot!==savedSnapshot
+ const save=async()=>{if(!quote)return;setSaving(true);setError('');setSendMessage('');const ok=await persistQuote();setSaving(false);if(ok){setSavedSnapshot('');setSendMessage('Modifications enregistrées.');await load()}}
 
  const changeStatus=async(status:'draft'|'sent'|'accepted')=>{
   if(!quote)return;setSaving(true);setError('');setSendMessage('')
@@ -102,19 +115,19 @@ export default function QuoteDetailPage(){
   </div>
   {error&&<div className="error" style={{marginBottom:14}}>{error}</div>}
   {sendMessage&&<div style={{marginBottom:14,padding:'11px 13px',border:'1px solid #b9e4c7',borderRadius:10,background:'#f1fbf4',color:'#176b35',fontWeight:700}}>{sendMessage}</div>}
-  <style>{`.qd-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.55fr);gap:18px;align-items:start}.qd-line{display:grid;grid-template-columns:minmax(0,1fr) 80px 110px 42px;gap:9px;align-items:end;padding:12px 0;border-bottom:1px solid #edf2f7}@media(max-width:820px){.qd-grid{grid-template-columns:1fr}.qd-grid aside{position:static!important}.qd-line{grid-template-columns:1fr 1fr 42px}.qd-line>label:first-child{grid-column:1/-1}}`}</style>
+  <style>{`.qd-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.55fr);gap:18px;align-items:start}.qd-line{display:grid;grid-template-columns:minmax(0,1fr) 80px 110px 42px;gap:9px;align-items:end;padding:12px 0;border-bottom:1px solid #edf2f7}\n.qd-save{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap}@media(max-width:820px){.qd-save{position:sticky;bottom:calc(74px + env(safe-area-inset-bottom));z-index:5;background:#fff;border:1px solid #dce6f0;border-radius:14px;padding:10px 12px;box-shadow:0 8px 24px rgba(6,43,89,.15)}}@media(max-width:820px){.qd-grid{grid-template-columns:1fr}.qd-grid aside{position:static!important}.qd-line{grid-template-columns:1fr 1fr 42px}.qd-line>label:first-child{grid-column:1/-1}}`}</style>
   <div className="qd-grid">
    <section className="card" style={{padding:22}}>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:14}}><div><div className="eyebrow">LIGNES</div><h2 style={{margin:'3px 0 0',color:'#062b59'}}>Prestations</h2><small style={{color:'#6f7d90'}}>Libellés, quantités et prix modifiables librement.</small></div><div style={{display:'flex',gap:6,flexWrap:'wrap',justifyContent:'flex-end'}}>{quote.property_type==='house'&&<button className="ghost-btn" onClick={addMesurage}>＋ Mesurage</button>}{(quote.property_type==='house'||quote.property_type==='apartment')&&<button className="ghost-btn" onClick={addAssainissement}>＋ Assainissement</button>}<button className="ghost-btn" onClick={addPrelevement}>＋ Prélèvement amiante</button><button className="ghost-btn" onClick={addRemise} disabled={lines.some(l=>Number(l.unit_ttc)<0)}>＋ Remise partenaire</button><button className="ghost-btn" onClick={addLine}>＋ Ligne libre</button></div></div>
     <div style={{display:'grid',gap:10}}>{lines.map((l,i)=><div key={i} className="qd-line">
-      <label className="edit-field"><span>Libellé</span><input value={l.label} onChange={e=>setLine(i,{label:e.target.value})}/></label>
-      <label className="edit-field"><span>Qté</span><input inputMode="decimal" value={l.quantity} onChange={e=>setLine(i,{quantity:Number(e.target.value.replace(',','.'))||0})}/></label>
-      <label className="edit-field"><span>Prix TTC</span><input inputMode="decimal" value={l.unit_ttc} onChange={e=>setLine(i,{unit_ttc:Number(e.target.value.replace(',','.'))||0})}/></label>
+      <label className="edit-field"><span>Libellé</span><textarea rows={2} value={l.label} onChange={e=>setLine(i,{label:e.target.value})} style={{resize:'vertical',lineHeight:1.35}}/></label>
+      {l.quantity===0?<label className="edit-field"><span>Qté</span><input value="Option" disabled style={{color:'#0b65b5',fontWeight:700,background:'#EAF5FC'}}/></label>:<NumField label="Qté" value={l.quantity} onChange={n=>setLine(i,{quantity:n})}/>}
+      <NumField label="Prix TTC" value={l.unit_ttc} onChange={n=>setLine(i,{unit_ttc:n})}/>
       <button className="ghost-btn" title="Supprimer" onClick={()=>removeLine(i)}>×</button>
       <label style={{gridColumn:'1/-1',display:'flex',alignItems:'center',gap:7,fontSize:12.5,color:l.quantity===0?'#0b65b5':'#6f7d90',fontWeight:l.quantity===0?800:400,cursor:'pointer'}}><input type="checkbox" checked={l.quantity===0} onChange={()=>toggleOption(i)}/>Option laissée au choix du client (prix affiché, non compris dans le total)</label>
     </div>)}</div>
     <label className="edit-field" style={{marginTop:18}}><span>Notes internes</span><textarea rows={4} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Précisions, remise commerciale, éléments à vérifier…"/></label>
-    <div style={{display:'flex',justifyContent:'flex-end',marginTop:16}}><button className="action-btn primary-action" disabled={saving||sending} onClick={save}>{saving?'Enregistrement…':'Enregistrer les modifications'}</button></div>
+    <div className="qd-save"><span style={{fontSize:13,color:dirty?'#a45121':'#6f7d90',fontWeight:dirty?800:400}}>{dirty?'Modifications non enregistrées':'Tout est enregistré'} · Total {euro(totalTtc)} TTC</span><button className="action-btn primary-action" disabled={saving||sending||!dirty} onClick={save}>{saving?'Enregistrement…':'Enregistrer'}</button></div>
    </section>
    <aside style={{display:'grid',gap:14,position:'sticky',top:18}}>
     <section className="card" style={{padding:20}}><div className="eyebrow">DOSSIER</div><h2 style={{margin:'4px 0 10px',color:'#062b59'}}>{dossier?.dossier_name||'Dossier'}</h2><p style={{margin:'0 0 7px',color:'#6f7d90'}}>{({house:'Maison',apartment:'Appartement',local:'Local professionnel',immeuble:'Immeuble',travaux:'Avant travaux / démolition'} as Record<string,string>)[quote.property_type||'']||(quote.quote_kind==='libre'?'Devis libre':'Bien')} {quote.property_size?`· ${quote.property_size}`:''}</p><p style={{margin:'0 0 10px',color:dossier?.contact_email?'#52657a':'#a05353',fontSize:13}}>{dossier?.contact_email||'E-mail du donneur d’ordre non renseigné'}</p><Link className="back" href={`/dossiers/${quote.dossier_id}`}>Ouvrir le dossier →</Link></section>
