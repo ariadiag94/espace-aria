@@ -36,6 +36,8 @@ type QuotePdfInput = {
   // Champs facultatifs du modèle de devis ARIA (laissés vides si inconnus).
   dossierRef?: string | null
   ownerName?: string | null
+  ownerAddress?: string | null
+  ownerContact?: string | null
   appointmentAt?: string | null
   dependencies?: string[]
   lotFloor?: string | null
@@ -597,8 +599,8 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     tl = row(M, tl, 'Téléphone', input.contactPhone || '', half)
     tl = row(M, tl, 'E-mail', input.contactEmail || '', half)
     tr = row(x2, tr, 'Nom / société', input.ownerName || '', half)
-    tr = row(x2, tr, 'Adresse', input.ownerName ? '' : '', half)
-    tr = row(x2, tr, 'Téléphone / e-mail', '', half)
+    tr = row(x2, tr, 'Adresse', input.ownerAddress || '', half)
+    tr = row(x2, tr, 'Téléphone / e-mail', input.ownerContact || '', half)
     top = Math.max(tl, tr) + 6
 
     // IV. Détails de la mission / V. Environnement

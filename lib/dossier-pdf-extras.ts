@@ -11,6 +11,8 @@ export type DossierPdfExtras = {
   // Titulaire du compte client (propriétaire) quand il diffère du donneur
   // d'ordre du dossier (ex. agence ou architecte qui commande pour son client).
   ownerName: string | null
+  ownerAddress: string | null
+  ownerContact: string | null
 }
 
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null)
@@ -48,12 +50,18 @@ export async function loadDossierPdfExtras(
   }
 
   let ownerName: string | null = null
+  let ownerAddress: string | null = null
+  let ownerContact: string | null = null
   try {
     if (dossier.account_id) {
-      const { data: acc } = await supabase.from('client_accounts').select('company_name,first_name,last_name').eq('id', String(dossier.account_id)).maybeSingle()
+      const { data: acc } = await supabase.from('client_accounts').select('company_name,first_name,last_name,address_line1,postal_code,city,phone,email').eq('id', String(dossier.account_id)).maybeSingle()
       const name = acc ? (text(acc.company_name) || [text(acc.first_name), text(acc.last_name)].filter(Boolean).join(' ') || null) : null
       const contact = text(dossier.contact_name)
-      if (name && (!contact || name.toLowerCase() !== contact.toLowerCase())) ownerName = name
+      if (name && (!contact || name.toLowerCase() !== contact.toLowerCase())) {
+        ownerName = name
+        ownerAddress = [text(acc?.address_line1), [text(acc?.postal_code), text(acc?.city)].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null
+        ownerContact = [text(acc?.phone), text(acc?.email)].filter(Boolean).join(' · ') || null
+      }
     }
   } catch {
     ownerName = null
@@ -61,6 +69,8 @@ export async function loadDossierPdfExtras(
 
   return {
     ownerName,
+    ownerAddress,
+    ownerContact,
     dossierRef: text(dossier.liciel_number),
     appointmentAt,
     dependencies,
