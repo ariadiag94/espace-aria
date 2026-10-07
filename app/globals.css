@@ -31,3 +31,12 @@
   .tabbar .tab:hover{background:#f1f6fb;color:#062b59}
   .tabbar .tab-big{margin-top:-2px;width:40px;height:40px;box-shadow:0 4px 12px rgba(35,165,223,.4)}
 }
+
+/* Choix des diagnostics (modale dossier) : cases compactes, 2 colonnes sur mobile. */
+.edit-field input[type=checkbox]{width:auto;padding:0;border:0;box-shadow:none}
+.diag-pick-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+.diag-pick{display:flex;align-items:center;gap:9px;min-width:0;padding:11px 12px;border:1px solid #d3e0ea;border-radius:12px;background:#f7fafd;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.diag-pick input{flex:0 0 auto;width:20px!important;height:20px;margin:0;accent-color:#0b65b5}
+.diag-pick b{font-size:13.5px;color:#062b59;line-height:1.2;overflow-wrap:anywhere}
+.diag-pick.on{border-color:#23A5DF;background:#EAF5FC}
+@media(max-width:620px){.diag-pick-grid{grid-template-columns:1fr 1fr}.edit-modal{overflow-x:hidden}}
