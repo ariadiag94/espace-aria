@@ -8,6 +8,9 @@ export type DossierPdfExtras = {
   appointmentAt: string | null
   dependencies: string[]
   lotFloor: string | null
+  // Titulaire du compte client (propriétaire) quand il diffère du donneur
+  // d'ordre du dossier (ex. agence ou architecte qui commande pour son client).
+  ownerName: string | null
 }
 
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null)
@@ -44,7 +47,20 @@ export async function loadDossierPdfExtras(
     appointmentAt = null
   }
 
+  let ownerName: string | null = null
+  try {
+    if (dossier.account_id) {
+      const { data: acc } = await supabase.from('client_accounts').select('company_name,first_name,last_name').eq('id', String(dossier.account_id)).maybeSingle()
+      const name = acc ? (text(acc.company_name) || [text(acc.first_name), text(acc.last_name)].filter(Boolean).join(' ') || null) : null
+      const contact = text(dossier.contact_name)
+      if (name && (!contact || name.toLowerCase() !== contact.toLowerCase())) ownerName = name
+    }
+  } catch {
+    ownerName = null
+  }
+
   return {
+    ownerName,
     dossierRef: text(dossier.liciel_number),
     appointmentAt,
     dependencies,
