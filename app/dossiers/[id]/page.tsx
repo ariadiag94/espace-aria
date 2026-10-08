@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { supabase } from '@/lib/supabase'
+import { dossierStatusLabel } from '@/lib/dossier-status-labels'
 import { googleCalendarLink } from '@/lib/google-calendar-link'
 import { useInternalRole } from '@/lib/use-role'
 
@@ -18,7 +19,7 @@ type AppointmentForm = { day:string; month:string; year:string; hour:string; min
 const statusLabels:Record<string,string>={draft:'Brouillon',sent:'Devis envoyé',quote_sent:'Devis envoyé',accepted:'Accepté',signed:'Signé',scheduled:'RDV planifié',planned:'RDV planifié',in_progress:'En cours',completed:'Terminé',done:'Terminé',paid:'Payé',pending:'En attente',ready:'Prêt',available:'Disponible',cancelled:'Annulé',canceled:'Annulé'}
 const purposeLabels:Record<string,string>={sale:'Vente',vente:'Vente',rental:'Location',rent:'Location',location:'Location',works:'Travaux',work:'Travaux',travaux:'Travaux',other:'Autre',autre:'Autre'}
 const labelPurpose=(v?:string|null)=>purposeLabels[(v||'').trim().toLowerCase()]||(v||'—')
-const labelStatus=(v?:string|null)=>statusLabels[(v||'').trim().toLowerCase()]||(v?String(v).replaceAll('_',' '):'—')
+const labelStatus=(v?:string|null)=>statusLabels[(v||'').trim().toLowerCase()]||(v?dossierStatusLabel(String(v)):'—')
 const value=(...candidates:any[])=>candidates.find(v=>v!==null&&v!==undefined&&String(v).trim()!=='')??'—'
 const euro=(n:any)=>Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'
 const dateFr=(v:any)=>{if(!v||v==='—')return '—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('fr-FR')}

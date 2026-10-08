@@ -37,11 +37,27 @@ const DOSSIER_STATUS_LABEL: Record<string, string> = {
   quote_sent: 'Devis envoyé',
   quote_accepted: 'Devis accepté',
   quote_refused: 'Devis refusé',
+  request_received: 'Demande reçue',
+  quote_to_prepare: 'Devis à préparer',
   to_schedule: 'À planifier',
   scheduled: 'Planifié',
   reports_ready: 'Rapports prêts',
   waiting_payment: 'Règlement',
+  intervention_done: 'Intervention réalisée',
+  reports_in_progress: 'Rapports en cours',
   completed: 'Terminé',
+  cancelled: 'Annulé',
+  archived: 'Archivé',
 }
 
 export const dossierStatusLabel = (status: string) => DOSSIER_STATUS_LABEL[status] || humanize(status)
+
+const PURPOSE_LABEL: Record<string, string> = {
+  sale: 'Vente',
+  rental: 'Location',
+  works: 'Avant travaux',
+  demolition: 'Avant démolition',
+  other: 'Autre',
+}
+
+export const dossierPurposeLabel = (purpose: string | null | undefined) => (purpose ? PURPOSE_LABEL[purpose] || humanize(purpose) : '—')
