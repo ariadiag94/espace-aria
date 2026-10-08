@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { dossierStatusLabel } from '@/lib/dossier-status-labels'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
@@ -14,7 +15,7 @@ function labelStatus(s:string) {
     quote_sent:'Devis envoyé', quote_accepted:'Devis accepté', quote_refused:'Devis refusé', to_schedule:'À planifier', scheduled:'Planifié',
     reports_ready:'Rapports prêts', waiting_payment:'Règlement', completed:'Terminé', draft:'Brouillon'
   }
-  return map[s] || s.replaceAll('_',' ')
+  return map[s] || dossierStatusLabel(s)
 }
 
 export default function DashboardPage() {
