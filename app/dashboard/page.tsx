@@ -64,6 +64,7 @@ export default function DashboardPage() {
         <div className="quick-grid">
           <Link href="/dossiers" className="card quick"><b>Dossiers en cours</b><span>Ouvrir la liste complète</span></Link>
           {admin && <Link href="/devis" className="card quick"><b>Devis rapides</b><span>Créer et chiffrer un devis</span></Link>}
+          {admin && <Link href="/devis/suivi" className="card quick"><b>Suivi des devis</b><span>Envoyés, en attente, acceptés</span></Link>}
           {admin && <Link href="/demandes" className="card quick"><b>Demandes reçues{counts.leads?` (${counts.leads})`:''}</b><span>{counts.leads?`${counts.leads} à traiter`:'Aucune en attente'} · transformer en dossier</span></Link>}
           <Link href="/agenda" className="card quick"><b>Agenda / RDV</b><span>Vue jour et semaine des interventions</span></Link>
           {admin && <Link href="/admin/comptes-pro" className="card quick"><b>Comptes pro{counts.pros?` (${counts.pros})`:''}</b><span>{counts.pros?`${counts.pros} en attente de validation`:'Agences, syndics, notaires'}</span></Link>}

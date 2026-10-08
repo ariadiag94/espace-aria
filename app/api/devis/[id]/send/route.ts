@@ -224,7 +224,7 @@ export async function POST(
   const sentAt = new Date().toISOString()
   const { error: quoteUpdateError } = await supabase
     .from('quotes')
-    .update({ status: 'sent', total_ttc: calculatedTotal })
+    .update({ status: 'sent', total_ttc: calculatedTotal, sent_at: sentAt })
     .eq('id', quote.id)
 
   const { error: dossierUpdateError } = await supabase
