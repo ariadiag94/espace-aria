@@ -82,7 +82,7 @@ export const generalTerms: ContractDocument = {
       title: '8 bis. Délai de remise des rapports',
       paragraphs: [
         'Sauf délai particulier prévu au devis, les rapports sont remis dans un délai maximal de 30 jours suivant la visite.',
-        'Ce délai est suspendu tant que les éléments dépendant d’un tiers ne sont pas disponibles : résultats d’analyses de laboratoire, documents ou données transmis par le syndic, le gestionnaire ou l’exploitant (notamment pour un chauffage ou une production d’eau chaude collectifs). À défaut de réponse de ce tiers dans un délai raisonnable, et après information du donneur d’ordre, le DPE peut être établi avec les valeurs par défaut prévues par la méthode réglementaire.',
+        'Ce délai est suspendu tant que les éléments dépendant d’un tiers ne sont pas disponibles : résultats d’analyses de laboratoire, documents ou données transmis par le syndic, le gestionnaire ou l’exploitant (notamment pour un chauffage ou une production d’eau chaude collectifs). À défaut de réponse de ce tiers dans un délai raisonnable, et après information du donneur d’ordre, le DPE d’un logement peut être établi avec les valeurs par défaut prévues par la méthode réglementaire ; le DPE d’un local tertiaire est établi sans étiquette de consommation (DPE dit « vierge »).',
       ],
     },
     {
