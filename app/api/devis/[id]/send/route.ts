@@ -158,7 +158,7 @@ export async function POST(
       quoteNumber: quote.quote_number,
       createdAt: quote.created_at,
       contactName: dossier.contact_name,
-      contactEmail: dossier.contact_email,
+      contactEmail: recipients[0],
       contactPhone: dossier.contact_phone,
       propertyAddress: rawPropertyAddress,
       propertyLabel:
@@ -200,7 +200,8 @@ export async function POST(
     },
     body: JSON.stringify({
       from: 'ARIA Diagnostics <contact@aria-diagnostics.fr>',
-      to: recipients,
+      to: [recipients[0]],
+      ...(recipients.length > 1 ? { cc: recipients.slice(1) } : {}),
       reply_to: 'contact@aria-diagnostics.fr',
       subject: `Devis ${quote.quote_number} – ${rawPropertyAddress}`,
       html,
