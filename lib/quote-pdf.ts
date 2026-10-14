@@ -38,6 +38,7 @@ type QuotePdfInput = {
   ownerName?: string | null
   ownerAddress?: string | null
   ownerContact?: string | null
+  declaredSurface?: string | null
   appointmentAt?: string | null
   dependencies?: string[]
   lotFloor?: string | null
@@ -609,6 +610,7 @@ export async function generateQuotePdf(input: QuotePdfInput) {
     tl = row(M, tl, 'Adresse du bien', input.propertyAddress, half)
     tl = row(M, tl, 'Type de bien', input.propertyLabel || '', half)
     tl = row(M, tl, 'Surface', input.propertySize || '', half)
+    tl = row(M, tl, 'Surface communiquée', input.declaredSurface || '', half)
     tl = row(M, tl, 'Date de visite', input.appointmentAt ? dateFr(input.appointmentAt) : '', half)
     tl = row(M, tl, 'Remise des clés', '', half)
     tl = row(M, tl, 'Lot(s) / étage', input.lotFloor || '', half)

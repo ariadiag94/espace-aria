@@ -13,6 +13,8 @@ export type DossierPdfExtras = {
   ownerName: string | null
   ownerAddress: string | null
   ownerContact: string | null
+  // Surface communiquée par le donneur d'ordre (« 54,5 m² »).
+  declaredSurface: string | null
 }
 
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null)
@@ -76,6 +78,7 @@ export async function loadDossierPdfExtras(
     ownerName,
     ownerAddress,
     ownerContact,
+    declaredSurface: Number(dossier.declared_surface_m2) > 0 ? `${String(dossier.declared_surface_m2).replace('.', ',')} m²` : null,
     dossierRef: text(dossier.liciel_number),
     appointmentAt,
     dependencies,
