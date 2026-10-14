@@ -31,6 +31,7 @@ type FormState = {
   construction_year: string
   property_address: string
   contact_name: string
+  owner_name: string
   contact_phone: string
   contact_emails: string
   diagnostics: string[]
@@ -84,6 +85,7 @@ export default function NewDossierPage() {
     construction_year: '',
     property_address: '',
     contact_name: '',
+    owner_name: '',
     contact_phone: '',
     contact_emails: '',
     diagnostics: [],
@@ -151,13 +153,14 @@ export default function NewDossierPage() {
       return
     }
 
-    // Nouveau client particulier créé à partir du donneur d'ordre (base vide
-    // ou client jamais vu) : plus besoin de passer par un autre écran.
+    // Nouveau client particulier : le compte porte le nom du propriétaire du
+    // bien quand il est saisi (sinon celui du donneur d'ordre), pour qu'il
+    // apparaisse en « Propriétaire » sur le devis et l'ordre de mission.
     let accountId = form.account_id
     if (accountId === NEW_ACCOUNT) {
       const { data: account, error: accountError } = await supabase
         .from('client_accounts')
-        .insert({ account_type: 'individual', last_name: form.contact_name.trim(), email: emails[0] || null, phone: form.contact_phone.trim() || null, validation_status: 'validated' })
+        .insert({ account_type: 'individual', last_name: (form.owner_name.trim() || form.contact_name.trim()), email: emails[0] || null, phone: form.contact_phone.trim() || null, validation_status: 'validated' })
         .select('id')
         .single()
       if (accountError || !account) {
@@ -300,6 +303,12 @@ export default function NewDossierPage() {
               <span>Donneur d’ordre *</span>
               <input value={form.contact_name} onChange={(event) => setField('contact_name', event.target.value)} placeholder="Nom, société ou succession" />
             </label>
+            {form.account_id === NEW_ACCOUNT && (
+              <label className="edit-field">
+                <span>Propriétaire du bien (si différent du donneur d’ordre)</span>
+                <input value={form.owner_name} onChange={(event) => setField('owner_name', event.target.value)} placeholder="Ex. Sylvie Martin" />
+              </label>
+            )}
             <label className="edit-field">
               <span>Téléphone</span>
               <input value={form.contact_phone} onChange={(event) => setField('contact_phone', event.target.value)} inputMode="tel" />
