@@ -545,7 +545,8 @@ export async function generateQuotePdf(input: QuotePdfInput) {
 
     // I. Objet de la mission
     top = section('I', 'Objet de la mission', M, top, W)
-    const ordered = normalizeKey([...(input.diagnostics || []), ...input.lines.map((l) => l.label)].join(' | '))
+    // Les options (qté 0) ne sont pas commandées : elles ne cochent rien.
+    const ordered = normalizeKey([...(input.diagnostics || []), ...input.lines.filter((l) => Number(l.quantity || 0) > 0).map((l) => l.label)].join(' | '))
     const has = (re: RegExp) => re.test(ordered)
     const groups: Array<[string, Array<[string, boolean]>]> = [
       ['Diagnostics transactionnels', [
