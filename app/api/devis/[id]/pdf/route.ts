@@ -77,7 +77,7 @@ export async function GET(
       quoteNumber: quote.quote_number,
       createdAt: quote.created_at,
       contactName: dossier.contact_name,
-      contactEmail: dossier.contact_email,
+      contactEmail: String(dossier.contact_email || "").split(/[;,\s]+/).filter(Boolean)[0] || null,
       contactPhone: dossier.contact_phone,
       propertyAddress: dossier.property_address || dossier.dossier_name || 'Adresse du bien non renseignée',
       propertyLabel:
