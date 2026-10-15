@@ -13,6 +13,8 @@ export type DossierPdfExtras = {
   ownerName: string | null
   ownerAddress: string | null
   ownerContact: string | null
+  // Surface communiquée par le donneur d'ordre (« 54,5 m² »).
+  declaredSurface: string | null
 }
 
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null)
@@ -60,7 +62,12 @@ export async function loadDossierPdfExtras(
       if (name && (!contact || name.toLowerCase() !== contact.toLowerCase())) {
         ownerName = name
         ownerAddress = [text(acc?.address_line1), [text(acc?.postal_code), text(acc?.city)].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null
-        ownerContact = [text(acc?.phone), text(acc?.email)].filter(Boolean).join(' · ') || null
+        // Coordonnées du compte reprises seulement si ce ne sont pas celles du
+        // donneur d'ordre (compte créé depuis ses coordonnées).
+        const norm = (v: unknown) => String(v || '').replace(/[\s.]/g, '').toLowerCase()
+        const ownPhone = text(acc?.phone) && norm(acc?.phone) !== norm(dossier.contact_phone) ? text(acc?.phone) : null
+        const ownEmail = text(acc?.email) && !norm(dossier.contact_email).includes(norm(acc?.email)) ? text(acc?.email) : null
+        ownerContact = [ownPhone, ownEmail].filter(Boolean).join(' · ') || null
       }
     }
   } catch {
@@ -71,6 +78,7 @@ export async function loadDossierPdfExtras(
     ownerName,
     ownerAddress,
     ownerContact,
+    declaredSurface: Number(dossier.declared_surface_m2) > 0 ? `${String(dossier.declared_surface_m2).replace('.', ',')} m²` : null,
     dossierRef: text(dossier.liciel_number),
     appointmentAt,
     dependencies,

@@ -18,6 +18,12 @@ type ClientAccount = {
 
 const NEW_ACCOUNT = '__new__'
 
+// « 54,5 m² » → 54.5 ; vide ou invalide → null.
+const parseSurface = (raw: string) => {
+  const n = Number(raw.replace(',', '.').replace(/[^0-9.]/g, ''))
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null
+}
+
 const accountLabel = (account: ClientAccount) =>
   account.company_name || [account.first_name, account.last_name].filter(Boolean).join(' ') || 'Compte sans nom'
 
@@ -29,8 +35,10 @@ type FormState = {
   // professionnel est enregistré 'commercial', un immeuble 'building'.
   property_type: 'apartment' | 'house' | 'commercial' | 'building'
   construction_year: string
+  declared_surface: string
   property_address: string
   contact_name: string
+  owner_name: string
   contact_phone: string
   contact_emails: string
   diagnostics: string[]
@@ -82,8 +90,10 @@ export default function NewDossierPage() {
     purpose: 'sale',
     property_type: 'house',
     construction_year: '',
+    declared_surface: '',
     property_address: '',
     contact_name: '',
+    owner_name: '',
     contact_phone: '',
     contact_emails: '',
     diagnostics: [],
@@ -151,13 +161,14 @@ export default function NewDossierPage() {
       return
     }
 
-    // Nouveau client particulier créé à partir du donneur d'ordre (base vide
-    // ou client jamais vu) : plus besoin de passer par un autre écran.
+    // Nouveau client particulier : le compte porte le nom du propriétaire du
+    // bien quand il est saisi (sinon celui du donneur d'ordre), pour qu'il
+    // apparaisse en « Propriétaire » sur le devis et l'ordre de mission.
     let accountId = form.account_id
     if (accountId === NEW_ACCOUNT) {
       const { data: account, error: accountError } = await supabase
         .from('client_accounts')
-        .insert({ account_type: 'individual', last_name: form.contact_name.trim(), email: emails[0] || null, phone: form.contact_phone.trim() || null, validation_status: 'validated' })
+        .insert({ account_type: 'individual', last_name: (form.owner_name.trim() || form.contact_name.trim()), email: emails[0] || null, phone: form.contact_phone.trim() || null, validation_status: 'validated' })
         .select('id')
         .single()
       if (accountError || !account) {
@@ -211,6 +222,7 @@ export default function NewDossierPage() {
         status: 'draft',
         purpose: form.purpose || null,
         construction_year: form.construction_year.trim() ? Number(form.construction_year) : null,
+        declared_surface_m2: parseSurface(form.declared_surface),
         property_address: form.property_address.trim(),
         contact_name: form.contact_name.trim(),
         contact_phone: form.contact_phone.trim() || null,
@@ -285,6 +297,10 @@ export default function NewDossierPage() {
                 {YEAR_BRACKETS.map((bracket) => <option key={bracket.label} value={String(bracket.year)}>{bracket.label}</option>)}
               </select>
             </label>
+            <label className="edit-field">
+              <span>Surface communiquée par le donneur d’ordre (m²)</span>
+              <input value={form.declared_surface} onChange={(event) => setField('declared_surface', event.target.value)} inputMode="decimal" placeholder="Ex. 54,5" />
+            </label>
             {yearAlerts.length > 0 && (
               <div className="wide" style={{ padding: '12px 14px', border: '1px solid #f0c76a', borderRadius: 12, background: '#fff8e6', color: '#7a5612', fontSize: 13 }}>
                 <ul style={{ margin: 0, paddingLeft: 18 }}>
@@ -300,6 +316,12 @@ export default function NewDossierPage() {
               <span>Donneur d’ordre *</span>
               <input value={form.contact_name} onChange={(event) => setField('contact_name', event.target.value)} placeholder="Nom, société ou succession" />
             </label>
+            {form.account_id === NEW_ACCOUNT && (
+              <label className="edit-field">
+                <span>Propriétaire du bien (si différent du donneur d’ordre)</span>
+                <input value={form.owner_name} onChange={(event) => setField('owner_name', event.target.value)} placeholder="Ex. Sylvie Martin" />
+              </label>
+            )}
             <label className="edit-field">
               <span>Téléphone</span>
               <input value={form.contact_phone} onChange={(event) => setField('contact_phone', event.target.value)} inputMode="tel" />
